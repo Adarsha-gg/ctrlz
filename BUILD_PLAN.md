@@ -24,6 +24,13 @@
 - **Cut line** per phase = what happens if you run out of time. `NEVER` = the
   demo dies without it.
 
+## Parallel work rule
+
+When Codex and Claude are both active, split work by [WORKSTREAMS.md](WORKSTREAMS.md).
+Codex owns the contract lane; Claude owns the web/risk/UI lane; docs/submission
+work needs one named owner at a time. Shared handoff files (`web/lib/contract.ts`,
+root package files, `.env.example`) require a `log.md` entry before editing.
+
 ## The ethos (do not drift — re-read before each phase)
 
 1. **We protect the send, not the shopping.** After `claim()` a payment is

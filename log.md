@@ -9,6 +9,18 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-12 · agent (Codex) · workstream split
+
+- **Did:** Added [WORKSTREAMS.md](WORKSTREAMS.md) to separate Codex vs Claude
+  lanes by path ownership, branch prefix, PR order, and handoff files. Added the
+  pointer to [BUILD_PLAN.md](BUILD_PLAN.md). Ignored `.pnpm-store/` so local
+  pnpm cache state does not enter PRs.
+- **State:** Coordination-only change. P0.1 scaffold remains local and
+  incomplete: `forge build --root contracts` passed, but
+  `pnpm --filter web dev` is still unverified because npm downloads timed out.
+- **Next:** Pick one owner for the scaffold PR, then keep Codex on
+  `contracts/**` and Claude on `web/**` unless a handoff is logged.
+
 ## 2026-06-12 (later) · agent (Claude) · plan review pass
 
 - **Did:** Re-reviewed BUILD_PLAN.md against the design docs and fixed real
