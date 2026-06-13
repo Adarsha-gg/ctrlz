@@ -105,7 +105,7 @@ P3.1 to wrap it in language.
 
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
-| `[ ]` | **P3.1** | One LLM call (Claude — check the `claude-api` skill for the current model id when wiring it) that turns the verdict's `reasons[]` into a plain-English explanation. | Given a verdict, returns a 1–2 sentence human explanation. | The LLM **explains**, it never decides — it cannot override the deterministic tier. |
+| `[x]` | **P3.1** | One LLM call (Claude — check the `claude-api` skill for the current model id when wiring it) that turns the verdict's `reasons[]` into a plain-English explanation. | Given a verdict, returns a 1–2 sentence human explanation. | The LLM **explains**, it never decides — it cannot override the deterministic tier. |
 | `[ ]` | **P3.2** | Wire the explanation into the verdict-card shape the UI renders. | Verdict card carries `{tier, explanation, reasons[]}`. | Degrade to `reasons[]` bullets if the call fails — never block a send on the LLM. |
 
 ---

@@ -36,6 +36,29 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 - **Next:** Codex → P1.4 `claimFor(id, recipientSig)` with replay protection
   and recipient-only payout.
 
+## 2026-06-13 · agent (Claude) · LLM explainer (P3.1)
+
+- **Did:** Built the AI explainer (P3.1). `web/lib/llm/explain.ts` — one
+  server-side Claude call (`claude-opus-4-8`, effort low, per the `claude-api`
+  skill) that turns the deterministic verdict's signals into a 1–2 sentence
+  plain-English explanation. `web/app/api/explain/route.ts` — POST route so the
+  call + API key stay server-side (browser computes the verdict, posts it here).
+  Added `@anthropic-ai/sdk` + `server-only` to web deps; gitignored
+  `*.tsbuildinfo`.
+- **Ethos guard:** the LLM only explains — it reads `verdict.tier` but cannot
+  change it. Every failure path (no `ANTHROPIC_API_KEY`, API error, `refusal`
+  stop reason, empty output) degrades to the deterministic `reasons[]` join —
+  a send is never blocked on the model.
+- **Verified:** `tsc --noEmit` clean against the installed SDK types; risk
+  selfcheck still 11/11. The live call is human-blocked on `ANTHROPIC_API_KEY`
+  (route degrades without it).
+- **Note:** branched off origin/main, so this PR does NOT include Codex's
+  P1.1–P1.3 contract work (still on `codex/contract-core`, unmerged) — my lane
+  doesn't depend on it. Doc edits (BUILD_PLAN P3.1 box, this entry) may conflict
+  with Codex's branch at merge; trivial add/add.
+- **Next (Claude lane):** P3.2 + P6.1 — render `{tier, explanation, reasons}`
+  in the buyer verdict card.
+
 ## 2026-06-12 ~21:50 · agent (Claude) · per-agent handoff docs
 
 - **Did:** Added [CLAUDE.md](CLAUDE.md) (web/risk/UI lane) and [CODEX.md](CODEX.md)
