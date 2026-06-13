@@ -60,6 +60,7 @@ contract CtrlZEscrow {
     error NotSender();
     error NotRecipient();
     error ClaimTooEarly();
+    error ExpireTooEarly();
     error SignatureAlreadyUsed();
     error InvalidSignature();
     error TransferFailed();
@@ -151,6 +152,18 @@ contract CtrlZEscrow {
 
         emit Sealed(id, sender, recipient, amount);
         _sendValue(recipient, amount);
+    }
+
+    function expire(uint256 id) external {
+        Payment storage payment = payments[id];
+        if (payment.state != State.PENDING) revert InvalidState();
+        if (block.timestamp < payment.expiresAt) revert ExpireTooEarly();
+
+        uint256 amount = payment.amount;
+        address refundTo = payment.refundTo;
+        payment.state = State.REFUNDED;
+
+        _sendValue(refundTo, amount);
     }
 
     function claimForDigest(uint256 id) public view returns (bytes32) {
