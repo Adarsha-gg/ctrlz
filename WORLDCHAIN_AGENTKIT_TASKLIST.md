@@ -16,7 +16,7 @@ Official requirements we are implementing against:
 | `[x]` | Add protected resource endpoint. | Codex | `GET/POST /api/world/agentkit` returns AgentKit-aware `402`, verifies AgentKit headers, looks up AgentBook, and applies the three-use trial. |
 | `[x]` | Add agent-side client. | Codex | `pnpm --dir web world:agentkit-client` uses `createAgentkitClient` to sign and retry the protected endpoint. |
 | `[x]` | Add local selfcheck. | Codex | `node --experimental-strip-types web/lib/world/agentkit-selfcheck.ts` proves missing header blocks, first three human-backed uses pass, fourth requires payment. |
-| `[ ]` | Register demo agent wallet in AgentBook on World Chain. | Human/Codex at terminal | `npx @worldcoin/agentkit-cli register <agent-address>` then `status` shows registered. Requires World App verification. |
+| `[ ]` | Register demo agent wallet in AgentBook on World Chain. | Human/Codex at terminal | Current wallet: `0x1FB40496ca6e4Ab3A1d8c5ce1D603Df52a38f669`. `npx @worldcoin/agentkit-cli register <agent-address>` then `status` must show registered. Blocked until someone with Orb-verified World ID completes World App verification. |
 | `[ ]` | Run live AgentKit rehearsal. | Codex | Start `web` dev server, set `WORLD_AGENTKIT_AGENT_PRIVATE_KEY`, then run `pnpm --dir web world:agentkit-client` four times. First three should grant access; fourth should return payment-required. |
 | `[ ]` | Record demo proof. | Human/Codex | Show AgentBook status, protected endpoint challenge, signed AgentKit retry, and trial exhaustion. |
 | `[ ]` | Production persistence hardening. | Codex/stretch | Replace the in-memory usage/nonce maps with a durable atomic store before any hosted production claim. |
@@ -38,8 +38,8 @@ This lets a new agent from the same human or company inherit the backing cluster
 Register the agent wallet:
 
 ```sh
-npx @worldcoin/agentkit-cli register <agent-address>
-npx @worldcoin/agentkit-cli status <agent-address>
+npx @worldcoin/agentkit-cli register 0x1FB40496ca6e4Ab3A1d8c5ce1D603Df52a38f669
+npx @worldcoin/agentkit-cli status 0x1FB40496ca6e4Ab3A1d8c5ce1D603Df52a38f669
 ```
 
 Run the local server:
@@ -71,6 +71,7 @@ WORLD_AGENTKIT_TARGET_URL=http://localhost:3000/api/world/agentkit
 ## Guardrails
 
 - Do not claim F4/F5 complete until AgentBook registration and a live signed client call succeed.
+- Registration currently fails/stalls because the team needs an Orb-verified World ID account. The CLI generated verification links, but World App could not complete them without Orb verification. Resume from the same wallet in `.env.world-agent`.
 - The current trial counter/nonce store is in-memory and acceptable only for local demo rehearsal. Production needs a durable atomic store.
 - `WORLD_AGENTKIT_PAY_TO` must be a real non-zero EVM address. The endpoint refuses to advertise payment to `0x0000000000000000000000000000000000000000`.
 - AgentBook lookup is the human-backed source of truth. IDKit alone cannot upgrade an unknown agent.
