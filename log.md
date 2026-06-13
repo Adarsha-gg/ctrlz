@@ -9,6 +9,23 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · Real World AgentKit lane + backing clusters
+
+- **Did:** Split the old World-style F1 gate from a real AgentKit lane. Added
+  `@worldcoin/agentkit`, a protected `/api/world/agentkit` endpoint, and an
+  agent-side client script that signs/retries with `createAgentkitClient`.
+- **Reputation model:** added backing-aware reputation subjects: `world-human:*`
+  for agents tied to the same World human, `enterprise:*` for verified company
+  agents, and `agent:*` for unbacked agents. UI now shows whether reputation is
+  shared across a backing cluster or local to the agent.
+- **Verify:** `npm run demo:check` passes, including the new AgentKit selfcheck
+  and Next build.
+- **Blocked/live step:** F4/F5 remain open until the demo wallet is registered
+  in AgentBook through World App verification and the live client is run four
+  times to show 3 free uses then payment-required.
+
+---
+
 ## 2026-06-13 · agent (Claude) · Stress test + walrusUri terminology fix
 
 - **Did:** Inspected/stress-tested all 30 merged PRs. `forge test` 47/47 pass;

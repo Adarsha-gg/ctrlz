@@ -77,7 +77,9 @@ export function identityFromIdKit(agentId: string, result: IdKitVerifyResult): W
   return {
     agentId,
     humanBacked: result.ok,
+    backingKind: result.ok ? "human" : "none",
     source: result.mode === "portal" ? "idkit" : "demo",
-    nullifierHash: result.nullifierHash
+    nullifierHash: result.nullifierHash,
+    clusterId: result.nullifierHash
   };
 }

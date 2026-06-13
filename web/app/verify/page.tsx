@@ -56,6 +56,12 @@ const RESULT_EMOJI: Record<CheckerReport["result"], string> = {
   uncertain: "⚠️"
 };
 
+function backingLabel(kind: VerificationResult["worldTrustBoost"]["backingKind"]) {
+  if (kind === "human") return "Human-backed agent";
+  if (kind === "enterprise") return "Enterprise-backed agent";
+  return "Unbacked agent";
+}
+
 function CheckerMetaLine({ meta }: { meta?: CheckerMeta }) {
   if (!meta) return null;
   return (
@@ -215,12 +221,18 @@ export default function VerifyPage() {
             <div>
               <p className="field-label">World AgentKit gate</p>
               <p className="world-gate-title">
-                {result.worldGate.humanBacked ? "Human-backed agent" : "Unknown agent"} ·{" "}
+                {backingLabel(result.worldTrustBoost.backingKind)} ·{" "}
                 {result.worldGate.status === "free" ? "free verification" : "payment required"}
               </p>
               <p className="muted-text" style={{ fontSize: "0.82rem", margin: "4px 0 0" }}>
                 {result.worldGate.reason}. Free uses left: {result.worldGate.freeUsesRemaining}/
                 {result.worldGate.trialLimit}. Source: {result.worldGate.source}.
+              </p>
+              <p className="muted-text" style={{ fontSize: "0.82rem", margin: "4px 0 0" }}>
+                Reputation subject: {result.worldTrustBoost.reputationSubject.label} ·{" "}
+                {result.worldTrustBoost.reputationSubject.sharedAcrossAgents
+                  ? "shared across agents"
+                  : "agent-local"}.
               </p>
             </div>
             <span
@@ -234,7 +246,8 @@ export default function VerifyPage() {
 
           {result.worldTrustBoost.applied && (
             <p className="world-boost-note">
-              World backing lifted agentTrust from {result.worldTrustBoost.before.score} to{" "}
+              {backingLabel(result.worldTrustBoost.backingKind)} lifted agentTrust from{" "}
+              {result.worldTrustBoost.before.score} to{" "}
               {result.worldTrustBoost.after.score}, capped at {result.worldTrustBoost.cap}. Output
               checks and hard-gate failures are unchanged.
             </p>

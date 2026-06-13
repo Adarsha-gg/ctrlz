@@ -314,6 +314,11 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
 | `[x]` | **F1** | Human-backed agent → first 3 verifications free; unknown → pay; backing raises baseline `agentTrust`. | Human-backed gets the trial; unknown is gated. | Backing raises baseline trust, NEVER replaces output checks. |
+| `[x]` | **F2** | Real AgentKit resource endpoint using `@worldcoin/agentkit` challenge + header verification + AgentBook lookup. | `/api/world/agentkit` returns an AgentKit-aware 402, verifies signed AgentKit headers, and grants only AgentBook-backed wallets. | Use official SDK, not a hand-rolled fake. |
+| `[x]` | **F3** | Agent-side AgentKit client path. | `pnpm --dir web world:agentkit-client` signs and retries the protected endpoint with `createAgentkitClient`. | Agent must operate, not only register. |
+| `[x]` | **F3b** | Backing-aware reputation subjects: human, enterprise, unbacked. | Same World human maps multiple agents to `world-human:*`; enterprise maps to `enterprise:*`; unbacked stays `agent:*`; UI shows the subject. | Shared backing can lift baseline only; checks still decide. |
+| `[ ]` | **F4** | Register the demo agent wallet in AgentBook on World Chain. | `npx @worldcoin/agentkit-cli status <agent-address>` shows registered/human-backed. | Needs World App verification; do not fake it. |
+| `[ ]` | **F5** | Live World AgentKit rehearsal. | With the registered wallet private key, the first three calls to `/api/world/agentkit` return access granted and the fourth returns payment-required. | Track A proof: delegated World ID enhances free initial usage. |
 
 ### Phase G — Demo + submission · `NEVER` · Sun
 | St | Part | Goal | Done when | Guard |

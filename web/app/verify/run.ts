@@ -79,7 +79,11 @@ export function verifySubmission(demo: DemoSubmission): VerificationResult {
     usedVerifications: demo.worldAgent.usedVerifications,
     identity: demo.worldAgent.identity
   });
-  const { split, boost: worldTrustBoost } = applyWorldTrustBoost(rawSplit, worldGate);
+  const { split, boost: worldTrustBoost } = applyWorldTrustBoost(
+    rawSplit,
+    worldGate,
+    demo.worldAgent.identity
+  );
 
   // Assemble the verifiable manifest + evidence blob (E2). The manifest uses the
   // injected checks (so its hash reflects exactly what was evaluated); the
