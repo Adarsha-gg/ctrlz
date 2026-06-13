@@ -333,6 +333,106 @@ contract CtrlZEscrowTest {
         _assertEq(claimableAt, uint64(block.timestamp + 5 minutes), "floor");
     }
 
+    function testSenderCanFlagSealedPaymentOnceInsideWindow() public {
+        uint256 id = _send(1 ether, 5 minutes);
+        _claimAsRecipient(id);
+
+        vm.prank(sender);
+        escrow.flag(id);
+
+        _assertTrue(escrow.paymentFlagged(id), "flagged");
+        _assertRecipientCounters(recipient, 1, 1, 1, escrow.firstSeen(recipient), "flag counters");
+
+        vm.prank(sender);
+        vm.expectRevert(CtrlZEscrow.AlreadyFlagged.selector);
+        escrow.flag(id);
+    }
+
+    function testNonPayerCannotFlagSealedPayment() public {
+        uint256 id = _send(1 ether, 5 minutes);
+        _claimAsRecipient(id);
+
+        vm.prank(stranger);
+        vm.expectRevert(CtrlZEscrow.NotSender.selector);
+        escrow.flag(id);
+    }
+
+    function testFlagBeforeSealReverts() public {
+        uint256 id = _send(1 ether, 5 minutes);
+
+        vm.prank(sender);
+        vm.expectRevert(CtrlZEscrow.InvalidState.selector);
+        escrow.flag(id);
+    }
+
+    function testFlagAfterThirtyDaysReverts() public {
+        uint256 id = _send(1 ether, 5 minutes);
+        _claimAsRecipient(id);
+
+        vm.warp(block.timestamp + 30 days + 1 seconds);
+        vm.prank(sender);
+        vm.expectRevert(CtrlZEscrow.FlagTooLate.selector);
+        escrow.flag(id);
+    }
+
+    function testFlagDoesNotMoveBalances() public {
+        uint256 id = _send(2 ether, 5 minutes);
+        _claimAsRecipient(id);
+        uint256 senderBefore = sender.balance;
+        uint256 recipientBefore = recipient.balance;
+        uint256 contractBefore = address(escrow).balance;
+
+        vm.prank(sender);
+        escrow.flag(id);
+
+        _assertEq(sender.balance, senderBefore, "sender unchanged");
+        _assertEq(recipient.balance, recipientBefore, "recipient unchanged");
+        _assertEq(address(escrow).balance, contractBefore, "contract unchanged");
+    }
+
+    function testRecipientCanAttachProofOnSealedPayment() public {
+        uint256 id = _send(1 ether, 5 minutes);
+        _claimAsRecipient(id);
+        bytes32 hash = keccak256("tracking-hash");
+
+        vm.prank(recipient);
+        escrow.attachProof(id, hash);
+
+        _assertEq(escrow.proofHash(id), hash, "proof hash");
+    }
+
+    function testNonRecipientCannotAttachProof() public {
+        uint256 id = _send(1 ether, 5 minutes);
+        _claimAsRecipient(id);
+
+        vm.prank(stranger);
+        vm.expectRevert(CtrlZEscrow.NotRecipient.selector);
+        escrow.attachProof(id, keccak256("tracking-hash"));
+    }
+
+    function testAttachProofBeforeSealReverts() public {
+        uint256 id = _send(1 ether, 5 minutes);
+
+        vm.prank(recipient);
+        vm.expectRevert(CtrlZEscrow.InvalidState.selector);
+        escrow.attachProof(id, keccak256("tracking-hash"));
+    }
+
+    function testAttachProofDoesNotMoveBalances() public {
+        uint256 id = _send(2 ether, 5 minutes);
+        _claimAsRecipient(id);
+        uint256 senderBefore = sender.balance;
+        uint256 recipientBefore = recipient.balance;
+        uint256 contractBefore = address(escrow).balance;
+
+        vm.prank(recipient);
+        escrow.attachProof(id, keccak256("tracking-hash"));
+
+        _assertEq(sender.balance, senderBefore, "sender unchanged");
+        _assertEq(recipient.balance, recipientBefore, "recipient unchanged");
+        _assertEq(address(escrow).balance, contractBefore, "contract unchanged");
+    }
+
     function _send(uint256 amount, uint256 undoWin) private returns (uint256 id) {
         return _sendFrom(sender, recipient, amount, undoWin);
     }
@@ -369,6 +469,10 @@ contract CtrlZEscrowTest {
 
     function _assertEq(uint256 actual, uint256 expected, string memory label) private pure {
         if (actual != expected) revert(string.concat(label, " uint mismatch"));
+    }
+
+    function _assertEq(bytes32 actual, bytes32 expected, string memory label) private pure {
+        if (actual != expected) revert(string.concat(label, " bytes32 mismatch"));
     }
 
     function _assertRecipientCounters(
