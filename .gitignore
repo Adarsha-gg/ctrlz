@@ -6,6 +6,7 @@
 
 # deps / builds
 node_modules/
+.pnpm-store/
 dist/
 out/
 cache/
