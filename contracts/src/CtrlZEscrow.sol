@@ -10,6 +10,9 @@ contract CtrlZEscrow {
     uint256 public constant MIN_UNDO_WINDOW = 5 minutes;
     uint256 public constant MAX_UNDO_WINDOW = 24 hours;
     uint256 public constant EXPIRY_WINDOW = 72 hours;
+    uint256 public constant UNKNOWN_HOLD = 30 minutes;
+    uint256 public constant FIRST_SEAL_HOLD = 15 minutes;
+    uint256 public constant FLAGGED_HOLD = 24 hours;
 
     enum State {
         NONE,
@@ -39,6 +42,11 @@ contract CtrlZEscrow {
     uint256 public nextPaymentId = 1;
     mapping(uint256 => Payment) public payments;
     mapping(bytes32 => bool) public claimForHashUsed;
+    mapping(address => uint256) public sealedCount;
+    mapping(address => uint256) public distinctSenderCount;
+    mapping(address => uint256) public flagCount;
+    mapping(address => uint64) public firstSeen;
+    mapping(address => mapping(address => bool)) public hasSealedFrom;
 
     event Sent(
         uint256 indexed id,
@@ -130,6 +138,7 @@ contract CtrlZEscrow {
         address sender = payment.sender;
         payment.state = State.SEALED;
         payment.sealedAt = uint64(block.timestamp);
+        _recordSealed(sender, recipient);
 
         emit Sealed(id, sender, recipient, amount);
         _sendValue(recipient, amount);
@@ -149,6 +158,7 @@ contract CtrlZEscrow {
         claimForHashUsed[digest] = true;
         payment.state = State.SEALED;
         payment.sealedAt = uint64(block.timestamp);
+        _recordSealed(sender, recipient);
 
         emit Sealed(id, sender, recipient, amount);
         _sendValue(recipient, amount);
@@ -174,8 +184,26 @@ contract CtrlZEscrow {
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", structHash));
     }
 
-    function hold(address) public pure returns (uint256) {
-        return 0;
+    function hold(address recipient) public view returns (uint256) {
+        uint256 sealedPayments = sealedCount[recipient];
+        uint256 flags = flagCount[recipient];
+        uint256 distinctSenders = distinctSenderCount[recipient];
+        uint64 seenAt = firstSeen[recipient];
+
+        if (flags > 0 && flags >= sealedPayments) return FLAGGED_HOLD;
+        if (seenAt == 0) return UNKNOWN_HOLD;
+        if (sealedPayments >= 2 && distinctSenders >= 1) return 0;
+        return FIRST_SEAL_HOLD;
+    }
+
+    function _recordSealed(address sender, address recipient) private {
+        if (firstSeen[recipient] == 0) firstSeen[recipient] = uint64(block.timestamp);
+
+        sealedCount[recipient]++;
+        if (!hasSealedFrom[recipient][sender]) {
+            hasSealedFrom[recipient][sender] = true;
+            distinctSenderCount[recipient]++;
+        }
     }
 
     function _clampUndoWindow(uint256 undoWin) private pure returns (uint256) {
