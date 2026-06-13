@@ -1,185 +1,347 @@
-# CTRL+Z — Build Plan (tiny parts)
+# CTRL+Z Verify — Master Plan (how it works + build)
 
-> The public design lives in [README.md](README.md) / [ARCHITECTURE.md](ARCHITECTURE.md).
-> The full spec + logistics live in `notes/` (CTRLZ.md, PREP.md — **local only,
-> gitignored, never committed**). **This file is the build decomposition** — the
-> spec sliced into the smallest units that each (a) do one thing, (b) have a
-> single "Done when" line you can verify, and (c) leave an obvious place to stop
-> and resume. Work the log at [log.md](log.md) as you go.
-
-> **Before building anything:** run the DO-NOW list in `notes/PREP.md` —
-> faucets (Arc + Sepolia), register **ctrlz.eth** on Sepolia, Ledger loaner,
-> Circle booth questions. None of that is code; all of it gates the code.
-
-## How to read this
-
-- Parts are numbered `P<phase>.<step>`. Do them in order inside a phase; phases
-  mostly stack, but Phase 2/4 only need the contract's **events + ABI + deployed
-  address**, not a finished UI.
-- Every part has a **St** (status) box — `[ ]` not started, `[~]` in progress,
-  `[x]` done — plus **Done when** (the checkpoint) and **Guard** (the ethos
-  invariant it must not break — if a part violates its Guard it isn't done,
-  it's a regression). When you flip a box, add an entry to [log.md](log.md)
-  with who/what/where-to-continue.
-- **Cut line** per phase = what happens if you run out of time. `NEVER` = the
-  demo dies without it.
-
-## Parallel work rule
-
-When Codex and Claude are both active, split work by [WORKSTREAMS.md](WORKSTREAMS.md).
-Codex owns the contract lane; Claude owns the web/risk/UI lane; docs/submission
-work needs one named owner at a time. Shared handoff files (`web/lib/contract.ts`,
-root package files, `.env.example`) require a `log.md` entry before editing.
-
-## The ethos (do not drift — re-read before each phase)
-
-1. **We protect the send, not the shopping.** After `claim()` a payment is
-   forever final. No goods escrow, no vesting, no partial seal.
-2. **No arbiters, no admin keys, ever.** The only undo right belongs to the
-   **sender**, only **before claim**. Nobody can touch a SEALED payment.
-3. **The escrow IS the reputation system.** Tiers/holds are derived on-chain
-   from the contract's own counters. The off-chain indexer only enriches the
-   *display* score — it never gates money.
-4. **Two timers, never conflated.** Universal 5-min sender undo floor; tiered
-   recipient-side risk hold stacks on top via `max()`.
-5. **Raw `0x` on screen = a bug.** Every surface resolves ENS names.
-6. **Delivery proof never gates money.** `flag()`/`attachProof()` are signals.
-7. **Signals are opinions; patterns are evidence; money only moves on evidence.**
+> **Canonical plan.** Replaces the escrow-first `BUILD_PLAN.md` (being deleted).
+> Product per [NEW_DIRECTION.md](NEW_DIRECTION.md), sharpened by the design
+> decisions below. **Deadline: Sunday 09:00** (~18–20 effective build hours after
+> sleep + the Sunday video/diagram/rehearsal tax). Strategy: **port settlement to
+> Hedera, REUSE the working core, build the verification spine on top.**
 
 ---
 
-## Phase 0 — Scaffold & chain access · `NEVER` · ~1h
+## 1. What it is
 
-| St | Part | Goal | Done when | Guard |
-|---|---|---|---|---|
-| `[ ]` | **P0.1** | Repo scaffold: monorepo layout (`contracts/` Foundry, `web/` Next.js + Chrome/WebHID target, `web/lib/` shared TS), root `package.json`, `.env.example` (keys named, values empty). `.gitignore` already covers `.env` — verified. | `forge build` and `pnpm --filter web dev` both run on an empty skeleton. | `.env` never committed — real keys live locally only. |
-| `[ ]` | **P0.2** | Chain config + read sanity, **both chains**: Arc testnet (`https://rpc.testnet.arc.network`, chainId `5042002`, USDC-as-gas) for the escrow, **Ethereum Sepolia RPC for all ENS reads** (ENS lives there, not on Arc). Payer/settler wired from env; a `scripts/balances` read printing both wallets on both chains. | Script prints non-zero Arc balances for payer + settler and reaches Sepolia. | Decimals trap: Arc native gas = 18 decimals, ERC-20 USDC = 6. Don't mix. |
+**CTRL+Z Verify lets agents safely hire and pay other agents.** A buyer agent
+posts an intent with explicit acceptance criteria and locks payment; a worker
+agent accepts the terms and submits output + evidence; **checker agents** run
+bounded constraint checks; payment resolves on the result — and **we score the
+checker agents too**, not just the workers.
 
-**Stop point:** repo builds, both chains reachable. Resume at P1.1.
+**The honest claim (say this, not "fault-proof"):**
+> We don't promise the work is perfect. We promise the decision is
+> **constraint-based, reputation-weighted, and accountable.**
 
----
-
-## Phase 1 — Escrow contract on Arc · `NEVER` (Fri night) · the core
-
-Build the state machine in slices; keep each compiling. Target ~165 lines total.
-
-| St | Part | Goal | Done when | Guard |
-|---|---|---|---|---|
-| `[x]` | **P1.1** | Storage + `send(to, amount, undoWin)` → PENDING. Struct stores sender, recipient, amount, `claimableAt`, `expiresAt`, `refundTo` (= sender, locked here), state. | A `send` tx creates a PENDING payment readable by id. | `refundTo` fixed to sender at `send()` — zero redirect surface. |
-| `[x]` | **P1.2** | `recall(reason)` (sender-only, PENDING→REFUNDED) with reason enum `WRONG_ADDRESS / WRONG_AMOUNT / FRAUD_SUSPECTED / OTHER`; `reject()` (recipient-only, instant, PENDING→REFUNDED). | Sender can recall, recipient can reject; both refund to `refundTo`. | Only the **sender** may recall; gate on **state**, not timestamp. |
-| `[x]` | **P1.3** | `claim()` (recipient, PENDING→SEALED after `claimableAt`), store `sealedAt`. Two-timer math: `claimableAt = now + max(undoWin, hold(recipient))`, `undoWin` clamped `[5min, 24h]`, `expiresAt = now + 72h`. **`hold()` is a stub returning 0 here** — the real counter-derived version lands in P1.6; the `max()` shape goes in now so it never gets bolted on. | A payment claims only after `claimableAt`; reverts before. | 5-min undo floor is universal — no tier buys it below 5 min. |
-| `[x]` | **P1.4** | `claimFor(id, recipientSig)` gasless via any relayer. Sig hash binds `paymentID + recipient`; mark hash used (no replay); checks-effects-interactions; funds only ever go to the recipient. | A relayer claims with the recipient's sig; replay reverts. | Funds can only land at the recipient — never the relayer. (Circle's own README disclosed a drain vuln in their analogous fn — this hardening is the lesson.) |
-| `[x]` | **P1.5** | `expire()` — anyone, after `expiresAt`, unclaimed → auto-refund to sender. | After 72h time-warp in tests, anyone can expire a dead-address payment. | Refund goes to `refundTo` only. |
-| `[x]` | **P1.6** | On-chain tier: per-address counters (`sealedCount`, distinct-sender approx, `flagCount`, `firstSeen`) updated on transitions; replace the P1.3 stub — `hold()` now reads them. Unsolicited PENDING **never** updates counters — only claimed payments do. | Two send+claims to the same recipient shorten its computed hold. | Tier is contract-derived only — never UI-supplied (spoofable). Dust-PENDING can't poison counters. |
-| `[x]` | **P1.7** | `flag(id)` (original sender of a SEALED payment, once, within 30 days of `sealedAt` → complaint event, no refund) + `attachProof(id, hash)` (seller, on SEALED, signal only). | Sender flags once inside window; second flag / non-payer / post-30d all revert. | Neither ever moves money. |
-| `[x]` | **P1.8** | Events for every transition: `Sent`, `Recalled(reason)`, `Rejected`, `Sealed(sender,recipient,amount)`, `Expired`, `Flagged`, `ProofAttached`. | All transitions emit; ABI exported to `web/lib`. | Events are the indexer's only feed — emit enough to reconstruct the score. |
-| `[x]` | **P1.9** | Foundry tests: one per transition + invariants (no double-claim, recall-after-claim reverts, same-block recall/claim resolves by state, refund always to sender, claimFor replay protection, undo floor unbuyable). | `forge test` green. | The same-block recall/claim race resolves with no special case — whichever executes first wins. |
-| `[x]` | **P1.10** | Deploy to Arc testnet; record address + deploy block in `web/lib/contract.ts` **and in [log.md](log.md)**. | Contract readable on Arc; address committed. | — |
-| `[x]` | **P1.11** | **Seed script** — give `alice` real on-chain history: loop of small send+claims so the tier and the "1,402 sealed claims" verdict aren't zeros. Also plant the demo's **poisoned lookalike** in the sender's history fixture (a near-miss of alice's address). | Reading alice's counters shows non-trivial sealed history; the lookalike fixture exists. | Everyone forgets this — without it the demo verdict shows zeros and beat 1 has nothing to catch. |
-
-**Stop points:** after P1.9 the contract is trustworthy; after P1.11 the demo
-data exists. Resume at P2.0 (Phase 2 needs only ABI + address + seed).
+No verifier is an oracle god. The reason checkers earn their own reputation is
+*precisely because* no single check is perfect — a wrong checker loses influence,
+and every decision is backed by auditable evidence.
 
 ---
 
-## Phase 2 — Risk engine (deterministic signals) · `NEVER` (Sat AM)
+## 2. Actors
 
-Pure TS in `web/lib/risk/`. Signals **decide**; the LLM only explains (Phase 3).
-
-| St | Part | Goal | Done when | Guard |
-|---|---|---|---|---|
-| `[ ]` | **P2.0** | **Manual ENS setup — hands, not code** (~30 min in the Sepolia ENS app): issue `alice.ctrlz.eth` subname → alice's address, set her primary name (reverse record) so fwd+rev match, set the `ctrlz.score` text record by hand. | `alice.ctrlz.eth` resolves both directions on Sepolia and carries a score record. | Setup is allowed; **code only READS ENS this weekend** — writes stay manual. |
-| `[x]` | **P2.1** | Address-book + known-names data model: the sender's saved contacts (incl. alice and the **planted poisoned lookalike from P1.11**) and a small set of well-known names to diff against. | The fixture address book loads and is queryable. | — |
-| `[x]` | **P2.2** | Lookalike **address** edit-distance vs address book → "1 char off your known address, 0 history". | The planted lookalike scores 🔴; alice's exact address scores clean. | This is the poisoning core — demo beat 1 lives or dies here. |
-| `[x]` | **P2.3** | Lookalike **name** check: homoglyph map (`aIice`, Cyrillic а) + ENSIP-15 normalization + edit-distance vs known names. | `aIice.eth` flags against `alice.eth`. | Names get the *same* scrutiny as addresses — closes the "you just moved poisoning to ENS" objection. |
-| `[ ]` | **P2.4** | ENS resolution (Sepolia): forward + reverse must match (primary name set); surface name age; mismatch → 🟡 "claims to be alice.eth, isn't". | A mismatched primary name downgrades the verdict; alice (P2.0) passes. | No raw hex returned — always resolve to a name for display. |
-| `[x]` | **P2.5** | History signals from Arc: read on-chain tier/counters + recall-rate split by reason (`FRAUD_SUSPECTED` = early-warning; `WRONG_*` = neutral noise). | Verdict reflects alice's seeded sealed history. | Only **claimed** payments count; unsolicited PENDING is ignored. |
-| `[x]` | **P2.6** | Verdict aggregator → 🔴/🟡/🟢 from the signals above (deterministic, explainable, ordered rules). | `score(recipient)` returns `{tier, reasons[]}` for the three demo cases: lookalike → 🔴, mismatch → 🟡, alice → 🟢. | The verdict object is the single source of truth the LLM, Ledger screen, and UI all read. |
-
-**Stop point:** `score(recipient)` is deterministic and demo-correct. Resume at
-P3.1 to wrap it in language.
+| Actor | Role |
+|---|---|
+| **Buyer agent** | Posts an intent + acceptance spec, locks payment, accepts/rejects on uncertain outcomes. |
+| **Worker / service agent** | Accepts the spec, performs the task, submits output + evidence. Earns settlement-derived reputation. |
+| **Checker agents** | Bounded, mostly-deterministic verifiers (schema, price, wallet-risk, source, code-tests…). Emit machine-readable reports. **Earn their own meta-reputation.** |
+| **Settlement contract** | Hedera EVM escrow: locks funds, releases/refunds on the verification result. |
+| **Human (World-backed)** | Optional human backing that raises an agent's *baseline* trust and unlocks a free-trial quota — never replaces output checks. |
 
 ---
 
-## Phase 3 — AI explainer · Sat PM · `Fallback: render reasons[] as bullets`
+## 3. The verification model (core IP)
 
-| St | Part | Goal | Done when | Guard |
-|---|---|---|---|---|
-| `[x]` | **P3.1** | One LLM call (Claude — check the `claude-api` skill for the current model id when wiring it) that turns the verdict's `reasons[]` into a plain-English explanation. | Given a verdict, returns a 1–2 sentence human explanation. | The LLM **explains**, it never decides — it cannot override the deterministic tier. |
-| `[x]` | **P3.2** | Wire the explanation into the verdict-card shape the UI renders. | Verdict card carries `{tier, explanation, reasons[]}`. | Degrade to `reasons[]` bullets if the call fails — never block a send on the LLM. |
+**Verification is a spectrum, and the *constraint type* dictates the resolution
+path.** This is the single most important design decision — it's what keeps the
+system honest and prevents the oracle trap.
 
----
-
-## Phase 4 — Reputation indexer / rich score · Sat PM · `Cut: on-chain tier only, skip rich strings`
-
-| St | Part | Goal | Done when | Guard |
-|---|---|---|---|---|
-| `[ ]` | **P4.1** | Event reader: pull `Sealed/Recalled/Expired/Flagged` from the deploy block, aggregate per address (client-side is fine). | A function returns per-address event rollups. | Off-chain — display only, never gates money. |
-| `[ ]` | **P4.2** | Rich score: sealed claims weighted by **distinct senders**; flags weighted by amount + distinct payers; recall-rate by reason; produces the demo string "1,402 sealed claims, 890 buyers, 0.3% recall rate". | The rich tier string renders for alice from seeded events. | Wash-trading guard: 500 self-loops count as 1 sender (distinct-sender weighting). |
-
-> Reviewer-credibility weighting (score-the-scorers) and ENS/ERC-8004 **writes**
-> are **say-don't-build** — see the tail of this file.
-
----
-
-## Phase 5 — Ledger clear-sign · Sat eve · `Timebox 4h → fallback: wallet-sig approval`
-
-Chrome/WebHID only, localhost or HTTPS. Packages: `@ledgerhq/device-management-kit`,
-`@ledgerhq/device-signer-kit-ethereum`, `@ledgerhq/device-transport-kit-web-hid`.
-
-| St | Part | Goal | Done when | Guard |
-|---|---|---|---|---|
-| `[ ]` | **P5.1** | DMK + WebHID connect flow in Chrome. | App detects + connects the Ledger. | No device by Fri eve → skip the whole phase to the wallet-sig fallback; don't fight hardware at hour 20. |
-| `[ ]` | **P5.2** | EIP-712 typed data carrying the human verdict string. | Typed data renders "Pay alice.eth $2,000 — risk LOW". | The device shows the *verdict and the name*, never blind hex. |
-| `[ ]` | **P5.3** | Clear-sign → physical tap → submit `send()`; below-threshold amounts take the wallet-sig path. | Above-threshold pay routes through Ledger; below-threshold through wallet sig. | Keep `ledger-feedback.md` running — SDK feedback is free bonus consideration. |
-
----
-
-## Phase 6 — Buyer + Seller dApps · Sun AM · `Audience-facing polish > features`
-
-| St | Part | Goal | Done when | Guard |
-|---|---|---|---|---|
-| `[x]` | **P6.1** | Buyer: marketplace listing frame ("buying a used GPU from a stranger", **Pay with CTRL+Z** button) + recipient field + verdict card from P2/P3. | Pasting a recipient shows the live 🔴/🟡/🟢 verdict + explanation. | Frame as a marketplace buy, never an abstract "send money" screen. |
-| `[ ]` | **P6.2** | Buyer: `send()` → PENDING view → **UNDO** button → `recall()` → refund rendered **from RPC state** (explorer is corroboration only). | The full poison→fix→pay→undo→refund loop runs in-UI. | The recall climax reads RPC — testnet explorer indexing lag must not own the demo. |
-| `[ ]` | **P6.3** | Seller: "⏳ PENDING — do not deliver" / "✅ SEALED — irreversibly yours" view + `claim()` and gasless `claimFor()` (relayer = the **settler** wallet) + `attachProof()` + a mocked "Delivered ✓ (FedEx)" chip. | Seller claims with an empty wallet via relayer; seals; attaches proof; buyer view flips the chip. | The chip is display only — it **never** gates money. The empty-wallet claim is the Arc-necessity beat: rehearse saying it. |
-| `[ ]` | **P6.4** | ENS-everywhere pass across both apps: recipient field, verdict card, Ledger screen, seller dashboard, event feed, flag records, ⚠️ badges. | Grep the rendered UI — no bare `0x…` anywhere. | Raw `0x` on screen = a bug. |
-| `[ ]` | **P6.5** | Tier badges + two-sided buyer ⚠️ (serial-recaller) badge from the P4 score. | Tiers/badges render from indexed events. | — |
-
----
-
-## Phase 7 — Demo + submission · Sun PM · `NEVER`
-
-| St | Part | Goal | Done when | Guard |
-|---|---|---|---|---|
-| `[ ]` | **P7.1** | Rehearse the demo ×5 against real seeded state; verify the recall climax reads RPC live. | Runs cleanly start-to-finish 5× without a hitch. | Protect rehearsal time above ANY remaining feature — solo means nobody else rehearses. |
-| `[ ]` | **P7.2** | Video + diagrams + README **Status** section updated to list **only what actually shipped** (move the rest to Roadmap) + ENS submission checklist: ① tick the ENS prize boxes on the ETHGlobal form, ② one explicit ENS sentence in the video, ③ ENS section in the README. | Submission complete; all three ENS boxes done. | Arc requires diagram + video + repo; the ENS split pool evaporates if any box is missed. |
-
-### Demo beats → parts (what each beat needs; if a part slips, its beat dies)
-
-| Beat | Moment | Needs |
+| Constraint type | Examples | How it resolves |
 |---|---|---|
-| 1 | Paste poisoned lookalike → 🔴 + AI explains the attack | P1.11 (planted fixture), P2.2, P3.1, P6.1 |
-| 2 | Fix to alice.eth → 🟢 "1,402 sealed claims, 890 buyers, 0.3% recall" | P2.0, P2.4–P2.6, P4.2, P1.11 |
-| 3 | $2,000 → Ledger: "Pay alice.eth $2,000 — risk LOW" → tap | P5.1–P5.3 (or wallet-sig fallback) |
-| 4 | "…wait. Wrong invoice." → **UNDO** → refund live | P1.2, P6.2 |
-| 5 | Seller: empty wallet claims → SEALED → proof → "Delivered ✓" chip | P1.4, P6.3 |
-| 5b | *(conditional)* watcher auto-recalls mid-window, zero human touch | C1 only |
+| **Deterministic / machine-checkable** | code test cases, JSON schema, `price ≤ 700 USDC`, wallet-risk tier, valid signature | Objective → **auto-resolve** (pass → release, hard-fail → refund). |
+| **Oracle-attested** | shipping label via carrier API, receipt signed by a known issuer | The attestation is a **signal that adjusts the score**, weighted by the *attestor's* reputation — **never a hard money-gate by itself** (don't make a carrier API a key to the vault). |
+| **Subjective** | "is this design good", "did the genuine physical item arrive" | **No checker settles this** → goes **UNCERTAIN → PAUSED → buyer-accept**. Never auto-brand fraud on a subjective call. |
+
+The acceptance spec declares which bucket each check is in. "If it's good, it's
+good → pay" holds *literally only* for the deterministic bucket. Everything else
+is reputation-weighted or paused — which is what makes the system fair.
 
 ---
 
-## Conditional tier — only if running ahead of the table
+## 4. The acceptance spec (the verifiable manifest)
 
-| St | Part | Goal | Trigger |
-|---|---|---|---|
-| `[ ]` | **C1** | **Auto-recall watcher**: one rule re-scores PENDING after send; a flag mid-window → autonomous `recall()`. "The undo button works while you sleep." | Core (P1–P7) locked + rehearsed. |
-| `[ ]` | **C2** | **Circle Agent Wallets** agent-sender demo with the verdict as the policy input. | **Only if** the Circle booth confirmed the Arc-testnet quickstart works today. |
-| `[ ]` | **C3** | **Circle Wallets** gasless seller claim (else the `claimFor` relayer already covers it). | Spare time + Circle console set up. |
+The buyer's intent carries a machine-readable **acceptance spec**. The **hash is
+committed on-chain at intent**; the **full spec is stored on Walrus** (the
+verifiable manifest). This makes the criteria immutable and tamper-evident: the
+worker can't dispute what was asked, and the buyer can't move the goalposts after
+delivery.
 
-## Say-don't-build (pitch as design, do not write this weekend)
+```jsonc
+// acceptance spec (manifest) — full body on Walrus, hash committed on Hedera
+{
+  "intent": "Buy an RTX 4090 under 700 USDC from a seller with a valid wallet + shipping proof.",
+  "checks": [
+    { "type": "schema",       "hardGate": true,  "spec": { /* required invoice fields */ } },
+    { "type": "price_max",    "hardGate": true,  "value": 700, "currency": "USDC" },
+    { "type": "wallet_risk",  "hardGate": true,  "maxTier": "yellow" },
+    { "type": "source_listing","hardGate": false, "advisory": true },
+    { "type": "shipping_proof","hardGate": false, "attested": true, "carrier": "any" }
+  ],
+  "resolutionPolicy": "auto_on_hardgates",  // pass all hard-gates → release
+  "createdAt": "..."
+}
+```
 
-`depositBond` + slash rules · World ID nullifier binding · ERC-8004 Identity/
-Reputation **writes** · ENS **writes in code** (P2.0 does them by hand; code only
-**reads**) · reviewer-credibility weighting in the indexer · subname-issuance
-code · Compliance Engine call · nanopayments / risk-verdict-as-a-service ·
-reputation decay curves · partial-seal/vesting (rejected on purpose — it breaks
-"we protect the send, not the shopping").
+- **`hardGate: true`** checks gate money; **advisory/attested** checks only move the score.
+- Each `check.type` maps to a **checker agent** (§6).
+
+---
+
+## 5. Lifecycle / state machine
+
+```
+CREATED ──lock──▶ LOCKED ──worker accepts──▶ ACCEPTED ──submit──▶ SUBMITTED
+                                                                     │
+                                                              checkers run
+                                                                     ▼
+                                   ┌──────────── VERIFYING ────────────┐
+                                   ▼                  ▼                 ▼
+                            VERIFIED_PASS       UNCERTAIN          VERIFIED_FAIL
+                                   │             (pause)            (hard-gate
+                              auto release         │                 objective
+                                   ▼          buyer accept/           fail)
+                                 PAID         reject │                  ▼
+                                              ┌──────┴──────┐        REFUNDED
+                                              ▼             ▼       (+ worker rep
+                                            PAID         REFUNDED    ding, capped,
+                                                       (/DISPUTED*)  evidence-linked)
+```
+
+| Transition | Who | What happens |
+|---|---|---|
+| CREATED → **LOCKED** | buyer | Funds escrowed on Hedera; spec hash committed; full spec → Walrus. |
+| LOCKED → **ACCEPTED** | worker | Worker reviews the spec and **explicitly accepts on-chain** — consent to be judged by spec X. (Gasless: fee can be sponsored — §8.) Decline = renegotiate (MVP: accept-or-decline). |
+| ACCEPTED → **SUBMITTED** | worker | Posts output + evidence blob → Walrus; hash referenced on-chain. |
+| SUBMITTED → **VERIFYING** | system | Checker runner executes the spec's checks. |
+| → **VERIFIED_PASS** | system | All hard-gates pass → auto **PAID** (release). |
+| → **VERIFIED_FAIL** | system | An *objective* hard-gate fails → **REFUNDED** + worker rep ding (capped, evidence-linked). |
+| → **UNCERTAIN → PAUSED** | system→buyer | Attested/subjective uncertainty or advisory-only fail → buyer **accepts** (PAID) or **rejects** (REFUNDED / DISPUTED*). |
+
+\* DISPUTED + full appeal flow are **design-only** for the MVP.
+
+**Guard — no unfair hard failures:** never instantly refund-and-brand work that
+may be valid; objective hard-gate fails resolve automatically, everything else
+pauses for a human/buyer decision.
+
+---
+
+## 6. Checker agents
+
+Every checker is a bounded function that returns a **machine-readable report**:
+
+```jsonc
+{
+  "checker": "wallet-risk-checker",
+  "result": "pass",            // pass | fail | uncertain
+  "confidence": 0.97,
+  "detail": "Recipient is a known contact with 14 sealed settlements, 0 flags.",
+  "evidenceHash": "0x…"        // points into the Walrus evidence blob
+}
+```
+
+**Interface:** `runChecker(check, taskContext) → CheckerReport`. A **registry**
+maps `check.type → checker`. The **runner** executes all of a spec's checks and
+collects reports.
+
+**Demo checker set (GPU invoice):**
+
+| Checker | Type | Reuses |
+|---|---|---|
+| `schema-checker` | deterministic | — (validate required invoice fields) |
+| `price-checker` | deterministic | — (`amount ≤ 700 USDC`) |
+| `wallet-risk-checker` | deterministic | **the existing risk engine** (`web/lib/risk`) — address poisoning, history, tier |
+| `source-listing-checker` | advisory | — (listing/source plausibility; LLM may *summarize*, never decide) |
+
+**Guard:** checks decide; the LLM only *explains* the final recommendation
+(reuse `/api/explain`), never gates.
+
+---
+
+## 7. Split scoring
+
+Never collapse into one number — a correct invoice is not a trustworthy
+counterparty.
+
+```jsonc
+{
+  "outputValidity": { "score": 98, "status": "pass" },   // from the checker reports
+  "agentTrust":     { "score": 31, "status": "weak" },   // from worker reputation (§8) + World backing
+  "paymentRisk":    { "score": 72, "status": "warn" },   // from the wallet-risk checker
+  "recommendation": "proceed_with_protection"            // proceed | proceed_with_protection | pause | reject
+}
+```
+
+- **outputValidity** ← hard-gate checker results (all pass = high).
+- **agentTrust** ← worker reputation (§8) + World human-backing baseline (§9, F).
+- **paymentRisk** ← wallet-risk checker (reused risk engine).
+- **recommendation** ← a deterministic policy over the three + the spec's `resolutionPolicy`.
+
+---
+
+## 8. Reputation model
+
+**Worker reputation — NOT naive "X of Y successful" (that's wash-trade/sybil
+gameable).** Compute it like the existing risk engine already does:
+
+- weight by **distinct counterparties** (500 self-loops = 1),
+- **discount** counterparties the worker funded (funding-graph check),
+- **money-weight** (a $500 settled job ≫ a $0.01 dust job),
+- count **resolved tasks only** (LOCKED/PENDING never count — no dust-poisoning),
+- **recency-decay**, and ideally **domain-scope** (good at code ≠ good at sourcing).
+
+**Auto-dinging a fraudster** is allowed **only** when the failure is *objective*
+(a hard-gate machine check failed), the ding is **evidence-linked** (points to the
+Walrus blob + failing reports), and **capped** so one angry buyer can't nuke a
+worker.
+
+**Checker meta-reputation (the wedge):** each checker accrues an accuracy score —
+did its report hold up vs. the finally-accepted outcome? Wrong checkers are
+weighted down in future decisions. **Accuracy earns influence, never money** (no
+false-flag profit motive).
+
+Both live on-chain in the **ERC-8004 ReputationRegistry** — *settlement-derived*
+feedback, not self-attestations. That's the differentiator.
+
+---
+
+## 9. Data architecture — where everything lives
+
+The load-bearing link is the **content hash**: bulky data lives off-chain on
+Walrus; the chain stores only the hash/URI + receipts + reputation.
+
+| Data | Lives on | Why |
+|---|---|---|
+| Locked funds, task state, **spec hash**, evidence hash | **Hedera EVM** (escrow contract) | settlement + tamper-evident pointers; cheap, USD-priced, deterministic. |
+| Audit receipt `{evidenceHash, score, recommendation}` | **Hedera HCS** topic | immutable, ordered audit trail; ≥1 real Hedera op. |
+| Agent identity; worker + checker reputation feedback (metadata URI → Walrus) | **ERC-8004 registries on Hedera Testnet** | standard agent identity + settlement-derived reputation. |
+| **Acceptance spec (manifest)** + **evidence blob** (taskSpec, worker output, checker reports, score) | **Walrus** | bulky, structured, content-addressed; the thing money resolves against. |
+| Reputation analytics / agent + checker leaderboard | **Google BigQuery** *(conditional — §11)* | query/rank over ERC-8004 + settlement data; the "score the scorers" surface. |
+
+**Flow (the spine):**
+```
+intent+spec ─hash→ Hedera   spec+evidence ─blob→ Walrus ─URI/hash→ Hedera/HCS/ERC-8004
+            checkers ─reports→ evidence blob → split scores → resolve → HCS receipt + ERC-8004 feedback
+```
+
+**Hedera gasless:** Hedera natively separates the **fee payer** from the tx
+initiator, so a sponsor account can pay an agent's fees (gasless from the agent's
+side); fees are sub-cent and USD-denominated regardless. → a fresh worker agent
+with **zero HBAR can still accept + submit** (cold-start win). *(Confirm exact SDK
+call at Hedera docs — capability is there.)*
+
+---
+
+## 10. Reuse map (already merged on `main`)
+
+| Built | Becomes |
+|---|---|
+| Risk/verdict engine (`web/lib/risk`) | the **wallet-risk-checker** + `paymentRisk`/`agentTrust` inputs |
+| LLM explainer (`web/lib/llm` + `/api/explain`) — explains, never decides | explains the **recommendation** (same guard) |
+| Verdict UI (🔴🟡🟢 + reasons, `web/app/buyer`) | the **split-score verification card** |
+| On-chain history reads (`web/lib/chain/history.ts`) | worker reputation input (re-point Arc → Hedera RPC) |
+| Escrow Solidity (`contracts/`, on Arc) | **redeploys to Hedera EVM** as lock/resolve |
+
+---
+
+## 11. Build phases & tiny tasks
+
+Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + **Guard**.
+
+### Phase A — Reframe core to verification · `NEVER` · web lane (reuse)
+| St | Part | Goal | Done when | Guard |
+|---|---|---|---|---|
+| `[ ]` | **A1** | Checker interface + report schema (§6); wrap risk engine as `wallet-risk-checker`. | A checker returns the report shape; risk engine plugs in unchanged. | Checks decide; LLM not in this path. |
+| `[ ]` | **A2** | Split-scoring engine (§7) → `{outputValidity, agentTrust, paymentRisk, recommendation}`. | Returns the 4-part object from reports + reputation. | Never collapse the three scores. |
+| `[ ]` | **A3** | Reframe `web/app/buyer` → task/verification page; render split scores + reasons; reuse `/api/explain`. | Page shows a task, runs checkers, renders split scores + explanation. | No raw 0x; LLM explains, doesn't decide. |
+
+### Phase B — Checkers + meta-reputation · `NEVER` · web lane
+| St | Part | Goal | Done when | Guard |
+|---|---|---|---|---|
+| `[ ]` | **B1** | Checker registry + runner (`check.type → checker`, run all, collect reports). | Runner executes registered checkers → reports[]. | Each check bounded + deterministic. |
+| `[ ]` | **B2** | Demo checkers: `schema`, `price` (≤700 USDC), `wallet-risk` (reuse), `source-listing`. | All 4 run on the demo invoice → pass/fail/uncertain. | Constraint-based, explainable. |
+| `[ ]` | **B3** | **Checker meta-reputation (wedge):** per-checker accuracy, weight future decisions, surface in UI. | A wrong checker shows reduced weight next decision. | Accuracy = influence, never money. |
+
+### Phase C — Hedera settlement + audit · `NEVER` · Hedera lane (Codex)
+| St | Part | Goal | Done when | Guard |
+|---|---|---|---|---|
+| `[ ]` | **C1** | Hedera Testnet setup + one real testnet financial op (sanity). | A real Hedera tx confirms from our code. | Demo MUST show ≥1 real Hedera op. |
+| `[ ]` | **C2** | Redeploy escrow Solidity to **Hedera EVM**; lock + resolve(pass→release/fail→refund); spec-hash + evidence-hash on-chain. | Lock+resolve work; address+ABI in `web/lib/contract.ts`. | Resolution driven by the verification result. |
+| `[ ]` | **C3** | HCS audit receipt `{evidenceHash, score, recommendation}` on resolution. | Resolving writes an HCS message; readable back. | Pointer only — no bulky data on-chain. |
+
+### Phase D — ERC-8004 identity + reputation · `Cut: reads + 1 write` · Hedera lane
+| St | Part | Goal | Done when | Guard |
+|---|---|---|---|---|
+| `[ ]` | **D1** | Register service + checker agents in IdentityRegistry `0x8004A818BFB912233c491871b3d84c89A494BD9e`. | Agent identities resolve. | Standard ERC-8004; don't reinvent identity. |
+| `[ ]` | **D2** | Write reputation feedback (worker outcome + checker accuracy) to ReputationRegistry `0x8004B663056A597Dffe9eCcC1965A193B7388713`, metadata URI → Walrus. | A resolution writes feedback pointing at the evidence. | Settlement-derived, not attestation-only. |
+
+### Phase E — Walrus evidence · `NEVER (hash-anchor); blob store = Walrus` · evidence lane
+| St | Part | Goal | Done when | Guard |
+|---|---|---|---|---|
+| `[ ]` | **E1** | Walrus client: store the **manifest** (spec) and the **evidence blob** → URI + hash; read back. | Both blobs round-trip to/from Walrus. | Content-addressed; chain holds only the pointer. |
+| `[ ]` | **E2** | Wire URI/hash into the spec commit, HCS receipt (C3), ERC-8004 feedback (D2). | All on-chain records carry the live Walrus pointer. | One evidence object, referenced everywhere. |
+
+### Phase F — World AgentKit gating · `Cut: policy + IDKit call` · auth lane
+| St | Part | Goal | Done when | Guard |
+|---|---|---|---|---|
+| `[ ]` | **F1** | Human-backed agent → first 3 verifications free; unknown → pay; backing raises baseline `agentTrust`. | Human-backed gets the trial; unknown is gated. | Backing raises baseline trust, NEVER replaces output checks. |
+
+### Phase G — Demo + submission · `NEVER` · Sun
+| St | Part | Goal | Done when | Guard |
+|---|---|---|---|---|
+| `[ ]` | **G1** | The one demo (§13), rehearse ×5, fallback where integrations are flaky. | Runs clean start-to-finish 5×. | Protect rehearsal above any feature. |
+| `[ ]` | **G2** | Video + diagram + README reframe + tick prize boxes (Hedera, World, Walrus[, Google]). | Submission complete. | List only what shipped. |
+
+---
+
+## 12. Cut lines (hard — obey under deadline)
+- **NEVER cut:** reframed verification page + split scores (A) · ≥2 checkers (B2) · ONE real Hedera op + lock/resolve (C1, C2) · evidence **hash anchor** (E) · the demo (G1).
+- **Walrus blob store:** committed as the evidence layer. If the SDK fights at hour 20, fall back to a local store **behind the same hash anchor** — the anchor is what's load-bearing; the store is swappable. (Walrus = the prize + the on-narrative store.)
+- **ERC-8004 (D):** reads + ONE write; if writes fight back, show reads + the registry, pitch the write as wired.
+- **World (F):** gating as policy/UI with the real IDKit verification call; degrade to "design" if the SDK fights.
+- **HCS (C3):** if the SDK stalls, receipt = a logged hash; the one real Hedera op (C1/C2) is non-negotiable.
+- **DISPUTED + appeal:** design-only. MVP states: LOCKED → ACCEPTED → SUBMITTED → VERIFIED_PASS/FAIL → PAID/REFUNDED (+ UNCERTAIN→PAUSED).
+
+---
+
+## 13. The one demo (don't demo every check)
+
+Buyer agent intent: **"Buy an RTX 4090 under 700 USDC from a seller with a valid
+wallet + shipping proof."**
+
+1. Buyer posts intent → **spec hash on Hedera, manifest on Walrus** → **locks payment** (real Hedera op).
+2. Worker agent **accepts the spec** (gasless — zero-HBAR worker).
+3. Worker submits the invoice/listing → **evidence blob → Walrus**.
+4. **Checkers run** — schema, price (≤700), wallet-risk (poisoning), source.
+5. **Split scores** render + LLM explains the recommendation.
+6. Resolve: pass → **release on Hedera**; the poisoned/over-price case → caught, **paused/refunded**.
+7. **HCS receipt** + **ERC-8004 feedback** update worker + **checker** reputation.
+8. Punchline: *"we score the checker too"* — show a checker's accuracy moving the next decision.
+
+| Beat | Needs |
+|---|---|
+| 1 lock + spec | C1, C2, E1 |
+| 2 worker accept (gasless) | C2, §8 |
+| 3 submit + checkers + split scores | A1–A3, B1, B2, E1 |
+| 4 poisoned/over-price caught | B2 (reuse risk engine) |
+| 5 evidence + receipt + feedback | E2, C3, D1, D2 |
+| 6 meta-reputation punchline | B3 |
+
+---
+
+## 14. Lanes & ownership
+- **Hedera/settlement lane** (C, D) — redeploy escrow to Hedera EVM + HCS + ERC-8004. *Codex, re-pointed off Arc.*
+- **Verify/web lane** (A, B) — checkers, split scoring, reframed UI. *Claude.*
+- **Evidence lane** (E) — Walrus client + wiring. *Claude or a worker.*
+- **Auth lane** (F) — World AgentKit. *Claude or a worker.*
+
+> **Codex re-point (user action):** move the contract lane from **Arc → Hedera
+> Testnet EVM** (same Solidity, new RPC/deploy) and add **HCS** + **ERC-8004
+> writes**. The Arc work is reusable — this is a relocation, not a rewrite.
+
+---
+
+## 15. Open decisions
+- **Google/BigQuery (§9, §11):** CONDITIONAL on the Sunday-morning sponsor answer — *does our Hedera-testnet ERC-8004 + settlement data qualify, or must BigQuery run over mainnet EF registry data?* If our data qualifies → build the reputation-analytics lane on it (complements Walrus, doesn't replace it). If mainnet-EF-only → it's a bolt-on; skip.
+- **Sui Move registry (stretch):** a tiny Move object as the canonical evidence/manifest registry would harden the Walrus/Sui story (Sui doing logic, not just storage) — stretch-only; don't take it unless ahead.
+- **Walrus Sites frontend (cheap bonus):** host the UI on Walrus Sites for extra Walrus surface — only if time.
+
+## Say-don't-build
+Full appeal/arbitration · multi-task marketplace · every checker category (GPU-invoice set only) · LI.FI/Chainlink/Arc/Circle as primary (Arc = prior-work reference; LI.FI/Chainlink = stretch) · Uniswap · Ledger.
