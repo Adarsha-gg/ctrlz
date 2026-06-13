@@ -29,6 +29,32 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 - **Next:** Run P1.11 create/claim phases with the settler key after this PR
   lands.
 
+## 2026-06-13 · agent (Claude) · On-chain history reads (P2.5)
+
+- **Did:** Added `web/lib/chain/history.ts` — a viem public client against Arc
+  (`arcTestnet.rpcUrl` / `NEXT_PUBLIC_ARC_RPC_URL`) that reads the deployed
+  escrow's reputation counters (`firstSeen`, `sealedCount`,
+  `distinctSenderCount`, `flagCount`) via `ctrlzEscrowAbi`/`ctrlzEscrowAddress`,
+  and derives `fraudRecallCount` from `Recalled` events with
+  `reason == FRAUD_SUSPECTED` (enum value 2; `WRONG_ADDRESS`/`WRONG_AMOUNT`
+  are neutral). Maps these into `RecipientHistory` and computes
+  `firstSeenDaysAgo`. Returns `undefined` when `firstSeen == 0` (no on-chain
+  presence) or on any RPC failure — never throws into the UI.
+- Wired into `web/app/buyer/VerdictCard.tsx`: an effect fetches history for the
+  resolved address and feeds it into `scoreRecipient({ ..., history })`; the LLM
+  explanation now re-fetches off the history-enriched verdict.
+- **Guards:** only **claimed** payments count (contract counters update on seal;
+  we only READ). Resilient: unreachable RPC / no presence → `undefined` →
+  engine degrades to "no history". Lane: only added `web/lib/chain/**` and
+  edited the buyer card; no `contracts/**`, `web/lib/risk/**`, or
+  `web/app/api/explain/**` touched.
+- **Verify:** `pnpm install` + `tsc --noEmit` exit 0. Live read of
+  `fetchRecipientHistory(ALICE_ADDRESS)` against Arc returned `undefined`
+  WITHOUT throwing — RPC reachable (block ~46.82M), but `firstSeen(alice)`/
+  `sealedCount(alice)` are `0` (seed script not yet executed on-chain).
+- **Next:** once Codex runs the Alice seed (P1.11), the same reader will surface
+  her sealed history and flip demo beat 2 to a green ESTABLISHED verdict.
+
 ## 2026-06-13 · agent (Codex) · Alice seed script (P1.11 blocked)
 
 - **Did:** Added `contracts/script/SeedAlice.s.sol`, a guarded Arc seed script
