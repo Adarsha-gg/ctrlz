@@ -1,75 +1,68 @@
-# CODEX.md — Codex's lane
+# CODEX.md — Codex's lane (CTRL+Z Verify)
 
-> Handoff doc for the **Codex** agent. Pairs with [CLAUDE.md](CLAUDE.md).
-> Part numbers (`P1.4`, etc.) are defined in [BUILD_PLAN.md](BUILD_PLAN.md) —
-> that file stays the single source of truth; this one routes ownership.
-> Ethos lives at the top of BUILD_PLAN — re-read it before each phase.
+> Pairs with [CLAUDE.md](CLAUDE.md). Tasks + ethos live in [BUILD_PLAN.md](BUILD_PLAN.md)
+> (source of truth; this routes ownership).
+>
+> ⚠️ **PIVOT — read this.** We moved off **Arc**. The settlement lane now targets
+> **Hedera Testnet EVM**. Your escrow Solidity is **reusable — relocate it, don't
+> rewrite** (Hedera is EVM-compatible via JSON-RPC relay). And **stay out of
+> `web/`** — that's Claude's lane. (Recent `web/app/api/seller/**` edits were the
+> old escrow seller flow; that product is deprecated — do not continue it.)
 
-## Lane
+## WHO DOES WHAT (shared separator — identical table in CLAUDE.md)
 
-**Contract core.** Branch prefix `codex/`.
+| Lane | Owner | BUILD_PLAN | Owns these paths |
+|---|---|---|---|
+| **Verify / web** — checkers, split scoring, verification UI | **Claude** | A, B | `web/lib/checkers/**`, `web/lib/scoring/**`, `web/app/verify/**` |
+| **Evidence** — Walrus blobs + hash anchor | **Claude** | E | `web/lib/walrus/**` (+ wiring) |
+| **Auth** — World AgentKit gating | **Claude** | F | `web/lib/world/**` |
+| **Hedera / settlement** — escrow on Hedera EVM, HCS, ERC-8004 | **Codex** | C, D | `contracts/**`, `scripts/**`, Hedera SDK / HCS / ERC-8004-write code |
 
-**I own these paths** (edit freely):
-- `contracts/**`, `scripts/**`, `test/**`, `foundry.toml`
+**One shared handoff file:** `web/lib/contract.ts` (you write the deployed Hedera
+address + ABI; Claude reads). Editing it requires a `log.md` entry first — it's
+the ONLY `web/` file you touch.
 
-**I do NOT touch** (Claude's lane — see [CLAUDE.md](CLAUDE.md)):
-- `web/app/**`, `web/components/**`, `web/lib/risk/**`, `web/lib/ledger/**`
+## I own (edit freely)
+`contracts/**` (escrow → Hedera EVM) · `scripts/**` (Hedera deploy/seed) ·
+Hedera SDK code (HCS receipts) · ERC-8004 read/write glue.
 
-## My build-plan parts
+## I do NOT touch (Claude's lane)
+`web/lib/checkers/**`, `web/lib/scoring/**`, `web/app/**`, `web/lib/walrus/**`,
+`web/lib/world/**`, `web/lib/risk/**`, `web/lib/llm/**`. (Only `web/lib/contract.ts`,
+as the logged handoff.)
 
-**P1.1–P1.11** (escrow state machine, tests, deploy, seed) · P0.2 contract-side
-chain reads (`scripts/balances`).
+## My parts
+C1 (Hedera setup + one real testnet financial op) · C2 (redeploy escrow to Hedera
+EVM; add `resolve()` driven by the verification result) · C3 (HCS audit receipts)
+· D1 (register service + checker agents in ERC-8004 Identity) · D2 (write
+settlement-derived reputation feedback to ERC-8004).
 
-## Done
+## Done (on Arc — now relocate to Hedera)
+Escrow Solidity: send / recall / reject / claim / claimFor / expire / on-chain
+tier / flag / events / tests / Arc deploy. Reuse the contract; redeploy to Hedera.
 
-- ✅ Workstream split docs (PR #1, merged).
-- ✅ Contract placeholder `contracts/src/CtrlZEscrow.sol` compiles (`forge build`).
-
-## Next (in order)
-
-Build the state machine in compiling slices — full spec per part in BUILD_PLAN:
-
-1. **P1.1** storage + `send()` → PENDING (`refundTo` locked to sender here).
-2. **P1.2** `recall(reason)` + `reject()` → REFUNDED.
-3. **P1.3** `claim()` → SEALED with the two-timer `max()` shape (`hold()` stub = 0).
-4. **P1.4** `claimFor(id, sig)` gasless + replay protection.
-5. **P1.5** `expire()` auto-refund.
-6. **P1.6** on-chain counters → real `hold(recipient)` (replaces P1.3 stub).
-7. **P1.7** `flag()` + `attachProof()` (signals, never move money).
-8. **P1.8** events for every transition.
-9. **P1.9** Foundry tests + invariants → `forge test` green.
-10. **P1.10** deploy to Arc → **write `web/lib/contract.ts`** (handoff).
-11. **P1.11** seed script — alice's sealed history.
+## Next
+**C1** (prove one real Hedera op) → **C2** (redeploy + `resolve()`) → **C3** (HCS)
+→ **D** (ERC-8004).
 
 ## Waiting on human
-
-- Arc testnet USDC on payer + settler (faucet — see `notes/PREP.md`).
-- `ARC_RPC_URL` + private keys in `.env` for deploy (P1.10) and seed (P1.11).
+- Hedera testnet account + JSON-RPC relay creds in `.env`.
 
 ## What I owe Claude (handoff outputs)
+| Provide | Via | Part |
+|---|---|---|
+| Deployed **Hedera** escrow address + ABI | `web/lib/contract.ts` (handoff — log first) | C2 |
+| `resolve(taskId, pass/fail)` entrypoint driven by the verification recommendation | contract ABI | C2 |
+| **HCS topic id** | `web/lib/contract.ts` or env | C3 |
+| ERC-8004 registry addresses (Identity `0x8004A818BFB912233c491871b3d84c89A494BD9e`, Reputation `0x8004B663056A597Dffe9eCcC1965A193B7388713`) + write hooks | contract glue / env | D |
 
-| I provide | Via | Part | Why it matters |
-|---|---|---|---|
-| Deployed escrow **address + deploy block + ABI** | `web/lib/contract.ts` (handoff file — log before editing) | P1.10 | Unblocks Claude's P2.5 history reads, P6.2 send/recall, P4 indexer |
-| **Event signatures** `Sealed(sender,recipient,amount)`, `Recalled(reason)`, `Expired`, `Flagged`, `ProofAttached` | contract source + ABI | P1.8 | Claude's indexer (P4) reconstructs the score from these — emit enough to do it |
-| **Seeded alice** | `scripts/` seed | P1.11 | **Must match `web/lib/risk/fixtures.ts` `ALICE_ADDRESS`** (`0x3695f9…7480C`, intentionally the owned `SETTLER_ADDRESS`) — drift here = demo beat 2 shows zeros |
-
-## Ethos guards that live in MY code (don't regress)
-
-- **No arbiters, no admin keys.** Only the sender can `recall()`, only before
-  claim. Nobody can touch a SEALED payment.
-- **The escrow IS the reputation system** — `hold()` derives the tier from the
-  contract's OWN counters. Never accept a UI-supplied tier (spoofable).
-- **Two timers via `max()`** — universal 5-min undo floor, unbuyable by any
-  tier; risk hold stacks on top.
-- **Unsolicited PENDING never updates counters** — only claimed payments do
-  (no dust-poisoning our own reputation system).
-- **`flag()` / `attachProof()` are signals** — they never move money.
+## Ethos guards in my code (BUILD_PLAN §3)
+- **No arbiters, no admin keys** — settlement resolves on the *verification result*, never a human override.
+- **Constraint-typed resolution** — `resolve(pass)` → release, `resolve(fail)` → refund; UNCERTAIN pauses for buyer-accept (don't auto-refund possibly-valid work).
+- **Hash pointers only on-chain** — spec hash + evidence hash; bulky data lives on Walrus (Claude's lane).
+- **ERC-8004 feedback is settlement-derived**, not attestation-only.
 
 ## Rules
-
-- One PR per lane checkpoint (e.g. PR: contract core + tests; separate PR: deploy
-  handoff). PR body lists: parts, paths, tests run, next owner.
-- Editing `web/lib/contract.ts` (handoff) requires a `log.md` entry first — it's
-  Claude's read surface.
-- Every finished part: flip its box in BUILD_PLAN.md and add a `log.md` entry.
+One PR per checkpoint; branch `codex/`; reviewer-gated merges; editing the
+`web/lib/contract.ts` handoff needs a `log.md` entry first. Flip BUILD_PLAN boxes
++ add a `log.md` entry per part.

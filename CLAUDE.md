@@ -1,72 +1,59 @@
-# CLAUDE.md — Claude's lane
+# CLAUDE.md — Claude's lane (CTRL+Z Verify)
 
-> Handoff doc for the **Claude** agent. Pairs with [CODEX.md](CODEX.md).
-> Part numbers (`P2.6`, etc.) are defined in [BUILD_PLAN.md](BUILD_PLAN.md) —
-> that file stays the single source of truth; this one routes ownership.
-> Ethos lives at the top of BUILD_PLAN — re-read it before each phase.
+> Pairs with [CODEX.md](CODEX.md). Tasks + ethos live in [BUILD_PLAN.md](BUILD_PLAN.md)
+> (that's the source of truth; this routes ownership). **Product pivoted** to
+> CTRL+Z Verify — agents safely hire/pay/verify other agents. We reuse the merged
+> escrow-build core (risk engine, explainer, verdict UI) and build the
+> verification spine on Hedera + Walrus + ERC-8004.
 
-## Lane
+## WHO DOES WHAT (shared separator — identical table in CODEX.md)
 
-**Web / risk / UI.** Branch prefix `claude/`.
+| Lane | Owner | BUILD_PLAN | Owns these paths |
+|---|---|---|---|
+| **Verify / web** — checkers, split scoring, verification UI | **Claude** | A, B | `web/lib/checkers/**`, `web/lib/scoring/**`, `web/app/verify/**` |
+| **Evidence** — Walrus blobs + hash anchor | **Claude** | E | `web/lib/walrus/**` (+ wiring) |
+| **Auth** — World AgentKit gating | **Claude** | F | `web/lib/world/**` |
+| **Hedera / settlement** — escrow on Hedera EVM, HCS, ERC-8004 | **Codex** | C, D | `contracts/**`, `scripts/**`, Hedera SDK / HCS / ERC-8004-write code |
 
-**I own these paths** (edit freely):
-- `web/app/**`, `web/components/**`
-- `web/lib/risk/**`, `web/lib/ledger/**`
-- `web/package.json`, `web/tsconfig.json`, web-only config
+**One shared handoff file:** `web/lib/contract.ts` (Codex writes the deployed
+Hedera address + ABI; Claude reads). Editing it requires a `log.md` entry first.
 
-**I do NOT touch** (Codex's lane — see [CODEX.md](CODEX.md)):
-- `contracts/**`, `scripts/**`, `test/**`, `foundry.toml`
+## I own (edit freely)
+`web/lib/checkers/**` · `web/lib/scoring/**` · `web/app/verify/**` ·
+`web/lib/walrus/**` · `web/lib/world/**` · verify-page UI + additive CSS.
 
-## My build-plan parts
+**Reuse, don't rewrite (consume as-is):** `web/lib/risk/**` (→ wallet-risk
+checker), `web/lib/llm/**` + `web/app/api/explain/**` (explains the
+recommendation), `web/lib/chain/**` (history reads; re-point to Hedera RPC).
 
-P0.1 (web shell) · **P2.1–P2.6** (risk engine) · P3.x (LLM explainer) ·
-P4.x (reputation indexer / rich score) · P5.x (Ledger clear-sign) ·
-P6.x (buyer + seller dApps).
+## I do NOT touch (Codex's lane)
+`contracts/**`, `scripts/**`, and any Hedera SDK / HCS / ERC-8004-write code.
 
-## Done
+## My parts
+A1/A2/A3 (checker interface + split scoring + `/verify` page) · B1/B2 (checker
+framework + demo checkers) · B3 (meta-reputation UI side — needs Codex's ERC-8004)
+· E1/E2 (Walrus evidence) · F1 (World gating).
 
-- ✅ **P0.1** scaffold (web side) — Next 15 + viem.
-- ✅ **P2.1 / P2.2 / P2.3 / P2.6** — deterministic risk engine in
-  `web/lib/risk/` (address + name poisoning + verdict aggregator). 11/11
-  self-checks pass via `node --experimental-strip-types web/lib/risk/selfcheck.ts`.
-  Shipped in PR #2 (merged to main).
+## Done (merged; reframed per BUILD_PLAN §10)
+Risk engine → wallet-risk checker · LLM explainer → recommendation explainer ·
+verdict UI → split-score card · on-chain history reads.
 
-## Next (in order)
+## Next
+**Phase A + B1/B2** — the verification core on a NEW `web/app/verify` route
+(don't touch `web/app/page.tsx`) → then E (Walrus) → F (World).
 
-1. **P3.1** LLM explainer — one Claude call turning `verdict.signals` into a
-   plain-English explanation. Check the `claude-api` skill for the current
-   model id. Must degrade to `reasons[]` bullets if the call fails — never
-   block a send on the LLM.
-2. **P6.1** buyer UI verdict card rendering the 🔴/🟡/🟢 verdict.
-3. **P6.2** send → PENDING → UNDO → refund (needs contract address — see Waiting).
-
-## Waiting on Codex (blocked until these land)
-
-| I need | For | Where it arrives |
-|---|---|---|
-| Deployed escrow **address + ABI** | P2.5 history reads, P6.2 send/recall, P4 indexer | `web/lib/contract.ts` (handoff file) — Codex writes on P1.10 |
-| **Event signatures** (`Sealed/Recalled/Expired/Flagged`…) | P4 indexer | contract source / ABI, set in P1.8 |
+## Waiting on Codex
+- Deployed **Hedera** escrow address + ABI in `web/lib/contract.ts` — to wire `resolve()` and re-point history reads to Hedera RPC.
+- **HCS topic id** + **ERC-8004 write hooks** — to anchor the evidence hash and write worker/checker feedback.
 
 ## Waiting on human
+- Hedera testnet creds (for Codex's deploy) · World AgentKit / IDKit app id (F) · Google qualification answer (conditional analytics lane).
 
-- **P2.0** manual ENS setup (issue `alice.ctrlz.eth`, set reverse record +
-  `ctrlz.score`) — needed before P2.4 ENS reads mean anything.
-- `SEPOLIA_RPC_URL` in `.env` — needed for P2.4 ENS resolution.
-
-## What I owe Codex
-
-- **The ALICE fixture is the sync point.** `web/lib/risk/fixtures.ts` pins
-  `ALICE_ADDRESS = 0x3695f9…7480C`, intentionally matching the owned
-  `SETTLER_ADDRESS`. Codex's seed script (**P1.11**) must seed THAT address
-  with sealed history. If these drift, demo beat 2 shows zeros.
-- **The verdict shape** `{ tier, reasons[], signals[] }` (`web/lib/risk/types.ts`)
-  is the contract the Ledger EIP-712 string (P5.2) and the UI both read. If
-  Codex needs a field for the clear-sign screen, ask here.
+## What I owe Codex (handoff outputs)
+- **The resolution decision** — the split-score `recommendation` + pass/fail that the contract's `resolve(taskId, …)` consumes (`web/lib/scoring`).
+- **The evidence + spec hash format** — what gets anchored on-chain / in HCS / in ERC-8004 (from the Walrus blob, `web/lib/walrus`).
+- **The `CheckerReport` schema** — so checker accuracy can be written to ERC-8004 (`web/lib/checkers/types.ts`).
 
 ## Rules
-
-- One PR per lane checkpoint; never batch risk + UI in one PR. PR body lists:
-  parts, paths, tests run, next owner.
-- Crossing into a handoff file (`web/lib/contract.ts`, root `package.json`,
-  `.env.example`) requires a `log.md` entry first.
-- Every finished part: flip its box in BUILD_PLAN.md and add a `log.md` entry.
+One PR per checkpoint; branch `claude/`; isolated worktrees; verify with `tsc`;
+reviewer-gated merges. Flip BUILD_PLAN boxes + add a `log.md` entry per part.
