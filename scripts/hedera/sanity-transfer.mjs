@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 import { AccountId, Hbar, TransferTransaction } from "@hashgraph/sdk";
-import { getHederaClient, optionalEnv, printJson, requireEnv } from "./env.mjs";
+import { getHederaClient, optionalEnv, printJson, requireEnvAny } from "./env.mjs";
 
 const { client, operatorId } = getHederaClient();
-const recipient = AccountId.fromString(requireEnv("HEDERA_SANITY_TO_ACCOUNT_ID"));
+const recipientEnv = requireEnvAny(["HEDERA_SANITY_TO_ACCOUNT_ID", "HEDERA_PAYER_ID"]);
+const recipient = AccountId.fromString(recipientEnv.value);
 const tinybars = Number(optionalEnv("HEDERA_SANITY_TINYBARS", "100000"));
 
 if (!Number.isSafeInteger(tinybars) || tinybars <= 0) {

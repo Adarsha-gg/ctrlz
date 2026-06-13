@@ -36,8 +36,27 @@ export const ctrlzEscrowAddress =
 
 export const ctrlzEscrowDeployBlock = ctrlzEscrowDeployment.deployBlock;
 
-export const ctrlzVerifyEscrowAddress = process.env
-  .NEXT_PUBLIC_CTRLZ_VERIFY_ESCROW_ADDRESS as Address | undefined;
+export const ctrlzVerifyEscrowDeployment = {
+  address: "0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4" as Address,
+  transactionHash:
+    "0xd4b09a50ae6ef7c733ccdcdcbba3399838d950836dc95712310eed9cd39db792",
+  demo: {
+    taskId: 1,
+    lockHash: "0x02f66f01c68c6db88d4250b4f128d5a0f71c4e7eaca8588e4717b7448d9d093c",
+    acceptHash: "0xa02682601b9fcbb530f88ff329d5d3000cb8e8f7af5e3a31ed1c85caab8a32c6",
+    submitHash: "0x162cef8266683f44fe54af946e63c0bd68e4cdb1eb77e539f9b899e71cd8c184",
+    resolveHash: "0x78c20ab96742a69f1d599109142f51d702cab12edaa4f1310a0bc0081239519f",
+    specHash: "0xc4dab248f10ba4e5028308d2768503432834e4015f0fdd86c12cbdb2261335b9",
+    evidenceHash: "0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02",
+    recommendationHash:
+      "0x51c1f255c050c58e5c543aa089d63ba99581e984e1b9ecc80f4a4e576ab77996",
+    hashSource: "demo-fixture"
+  }
+} as const;
+
+export const ctrlzVerifyEscrowAddress =
+  (process.env.NEXT_PUBLIC_CTRLZ_VERIFY_ESCROW_ADDRESS as Address | undefined) ??
+  ctrlzVerifyEscrowDeployment.address;
 
 export const ctrlzVerifyEscrowAbi = [
   {

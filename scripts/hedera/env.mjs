@@ -11,7 +11,7 @@ export function loadDotenv(path = ".env") {
     if (!match) continue;
     const [, key, rawValue] = match;
     if (process.env[key] !== undefined) continue;
-    process.env[key] = rawValue.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
+    process.env[key] = rawValue.trim().replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
   }
 }
 
@@ -19,6 +19,27 @@ export function requireEnv(name) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env ${name}`);
   return value;
+}
+
+export function requireEnvAny(names) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value && value.length > 0) return { name, value };
+  }
+  throw new Error(`Missing required env: one of ${names.join(", ")}`);
+}
+
+export function requireEnvPair(pairs) {
+  for (const [idName, keyName] of pairs) {
+    const id = process.env[idName];
+    const key = process.env[keyName];
+    if (id && key) return { idName, id, keyName, key };
+  }
+  throw new Error(
+    `Missing required paired Hedera credentials: one of ${pairs
+      .map(([idName, keyName]) => `${idName}+${keyName}`)
+      .join(", ")}`,
+  );
 }
 
 export function optionalEnv(name, fallback) {
@@ -39,8 +60,13 @@ export function parseArgs(argv = process.argv.slice(2)) {
 
 export function getHederaClient() {
   loadDotenv();
-  const operatorId = AccountId.fromString(requireEnv("HEDERA_OPERATOR_ID"));
-  const operatorKey = PrivateKey.fromString(requireEnv("HEDERA_OPERATOR_KEY"));
+  const operatorEnv = requireEnvPair([
+    ["HEDERA_OPERATOR_ID", "HEDERA_OPERATOR_KEY"],
+    ["HEDERA_RESOLVER_ID", "HEDERA_RESOLVER_PRIVATE_KEY"],
+    ["HEDERA_PAYER_ID", "HEDERA_PAYER_PRIVATE_KEY"]
+  ]);
+  const operatorId = AccountId.fromString(operatorEnv.id);
+  const operatorKey = PrivateKey.fromString(operatorEnv.key);
   const network = optionalEnv("HEDERA_NETWORK", "testnet");
 
   let client;

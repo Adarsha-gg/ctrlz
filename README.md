@@ -53,10 +53,11 @@ later outcomes.
    Human-backed agents get a limited free verification quota and a capped
    baseline trust lift. Unknown agents are pay-gated. Human backing never
    replaces output checks.
-7. **Settlement and reputation are wired for Hedera/ERC-8004.**
-   The Solidity verify escrow, HCS receipt script, ERC-8004 agent registration
-   script, and ERC-8004 feedback script are present. Live writes are blocked
-   until funded Hedera credentials are provided.
+7. **Settlement is live on Hedera; reputation writes are wired.**
+   The Solidity verify escrow is deployed on Hedera testnet and the demo
+   lock/accept/submit/resolve path has real tx hashes. HCS receipt,
+   ERC-8004 agent registration, and ERC-8004 feedback scripts are present but
+   still need live completion.
 
 ## Architecture
 
@@ -64,11 +65,11 @@ later outcomes.
 |---|---|---|
 | Web verification UI | `/verify` demo flow with clean and bad submissions, split scores, checker reports, World gate, and LLM explanation | Shipped |
 | Checkers | Schema, price, wallet-risk, source/listing; registry + runner | Shipped |
-| Checker meta-reputation | Seeded outcome history, replay comparison, influence weighting in scoring/UI | Shipped locally; ERC-8004 write path blocked |
+| Checker meta-reputation | Seeded outcome history, replay comparison, influence weighting in scoring/UI | Shipped locally; ERC-8004 write path still incomplete |
 | Walrus evidence | Manifest/evidence hashing, publisher/aggregator support, local fallback on failure | Shipped |
-| Hedera EVM escrow | Verify lifecycle contract and deployment script | Built/tested; live deploy blocked |
-| Hedera HCS | Receipt topic/message script | Built; live write blocked |
-| ERC-8004 | Hedera testnet IdentityRegistry and ReputationRegistry scripts | Built; live writes blocked |
+| Hedera EVM escrow | Verify lifecycle contract, live deploy, and live lock/resolve demo | Shipped live on Hedera testnet |
+| Hedera HCS | Receipt topic/message script | Built; live write still incomplete |
+| ERC-8004 | Hedera testnet IdentityRegistry and ReputationRegistry scripts | Built; live writes still incomplete |
 | Google BigQuery | Reputation analytics/leaderboard over settlement + ERC-8004 data | Conditional; not shipped |
 
 ## Shipped vs Blocked
@@ -87,22 +88,21 @@ later outcomes.
   Walrus, with a local hash fallback.
 - World AgentKit-style policy gate: human-backed agents get three free
   verification uses; unknown/exhausted agents are pay-gated.
-- Hedera verify escrow contract and scripts for HCS receipts, ERC-8004 agent
-  registration, and ERC-8004 reputation feedback.
+- Hedera EVM sanity transfer plus live verify escrow deploy/lock/accept/submit/resolve
+  txs on testnet.
+- Scripts for HCS receipts, ERC-8004 agent registration, and ERC-8004
+  reputation feedback.
 - Prior Arc escrow work exists as reference/stretch, including the old
   sender-undo state machine and risk engine history reads.
 
 ### Blocked / Not Shipped
 
-- **C1 Hedera sanity write:** blocked on funded `HEDERA_OPERATOR_ID` /
-  `HEDERA_OPERATOR_KEY` and recipient testnet account.
-- **C2 Hedera EVM escrow deployment and live lock/resolve:** blocked on funded
-  `HEDERA_EVM_PRIVATE_KEY`.
-- **C3 HCS receipt write:** blocked on funded Hedera operator credentials.
-- **D1 ERC-8004 IdentityRegistry registration:** blocked on funded Hedera EVM
-  private key.
-- **D2 ERC-8004 ReputationRegistry feedback:** blocked on funded Hedera EVM
-  private key and a live or seeded agent id.
+- **C3 HCS receipt write:** script exists, but native Hedera SDK writes are
+  currently timing out from this environment.
+- **D1 ERC-8004 IdentityRegistry registration:** script exists; live registry tx
+  still needs a real service/checker registration URI.
+- **D2 ERC-8004 ReputationRegistry feedback:** script exists; live tx still
+  needs D1 agent ids and the evidence URI/hash.
 - **Google BigQuery:** conditional and not shipped. It should only be claimed if
   the sponsor approves analytics over this Hedera testnet ERC-8004/settlement
   data; otherwise it remains a roadmap analytics layer.
@@ -123,16 +123,19 @@ node --experimental-strip-types web/lib/scoring/selfcheck.ts
 # World gate selfcheck
 node --experimental-strip-types web/lib/world/selfcheck.ts
 
-# Hedera scripts dry-run / fail-fast env checks
-pnpm hedera:sanity
+# Hedera live EVM txs
+npm run hedera:evm-sanity
+npm run hedera:verify-demo
+
+# Hedera scripts still needing live completion
 pnpm hedera:hcs -- --task-id=demo --evidence-hash=0x0 --score-bps=9200 --recommendation=proceed
 pnpm hedera:agent -- --agent-uri=https://example.com/ctrlz-agent.json
 pnpm hedera:feedback -- --agent-id=1 --feedback-uri=walrus://demo --feedback-hash=0x0000000000000000000000000000000000000000000000000000000000000000
 ```
 
-Without funded Hedera credentials, the Hedera commands are expected to fail
-early with missing-env or funding errors. That is intentional; the docs should
-not claim live Hedera transactions until those commands confirm real tx hashes.
+`npm run hedera:evm-sanity` and `npm run hedera:verify-demo` return real
+Hedera testnet tx hashes with the current env. Do not claim live HCS/ERC-8004
+registry writes until the C3/D1/D2 commands confirm their own tx hashes.
 
 ## Local Development
 
@@ -147,8 +150,8 @@ Open the web app and use `/verify` for the current CTRL+Z Verify demo.
 
 Use this phrasing:
 
-- **Hedera:** settlement, HCS receipts, and ERC-8004 scripts are implemented;
-  live writes are blocked on funded credentials.
+- **Hedera:** C1 sanity transfer and C2 verify escrow deploy/lock/resolve are
+  live on testnet; HCS/ERC-8004 scripts are implemented but not live-completed.
 - **World:** World AgentKit-style gating is implemented as policy plus IDKit
   plumbing with deterministic fallback when credentials are absent.
 - **Walrus:** evidence hashing and Walrus storage/read support are implemented;
