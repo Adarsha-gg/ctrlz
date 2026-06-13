@@ -254,6 +254,39 @@ as optimistic-rollup fraud proofs / reproducible builds; it extends the in-proce
 `replayChecks()` we already have to be reproducible across machines + time.
 **This is the key build dependency for Phase R4.**
 
+### 8f. Held-out tests (commit-reveal) — anti-gaming **(built: `web/lib/checkers/heldout.ts`)**
+If the worker sees every check it can do the minimum to pass them (Goodhart). Fix:
+hold some checks out. On-chain is public, so you can't put hidden checks in the
+lock txn — you put a **hash commitment** of them.
+
+- **Lock:** buyer publishes a `HeldoutManifest` on Walrus = `publicChecks` (clear)
+  + `hiddenChecksCommit = sha256({hiddenChecks, salt})`. Its hash is the on-chain
+  `specHash`. **No contract change** — `lockTask(worker, resolver, specHash)`
+  already commits the whole manifest, so the hidden checks are bound at lock without
+  being revealed. The worker sees the public checks and that N hidden checks exist.
+- **Reveal:** at resolution the buyer/resolver publishes `{hiddenChecks, salt}` into
+  the evidence blob; `verifyReveal` recomputes the commit. Any change to the checks,
+  salt, or count breaks it — so the buyer **cannot swap in different/unfair hidden
+  checks after seeing the work** (they committed before delivery).
+- **Dispute:** a verifier re-derives the commit from the evidence and re-runs all
+  checks; the integrity chains back to the single on-chain `specHash`.
+
+**Fairness rule (load-bearing):** held-out *inputs*, not held-out *requirements*.
+The worker must know **what** is required from the public spec; only **which**
+specific cases get checked is hidden. A revealed hidden check that introduces a new
+requirement (not derivable from the public intent) is **unfair** → voided at dispute,
+worker paid.
+
+**Satisfiability / griefing-buyer guard:** because the buyer authors held-out cases
+with known-good answers, the buyer inherently holds a **reference solution** — proof
+the spec is satisfiable. A spec no deliverable can pass (contradictory / impossible)
+is caught by (1) the worker declining `acceptTask` on an obviously-broken public
+spec, (2) the unfair-hidden-check dispute path, and (3) the buyer's own
+reputation/stake (two-sided). The worker can also **self-run the public checks to
+green before submitting** (they're deterministic + published, §8e), so even a large
+spec is a checklist the worker grinds, not a black box. For very large jobs, use
+**milestone escrow** (lock + resolve in phases) so payment isn't one all-or-nothing gate.
+
 ## 9. Validation — two distinct layers (need both)
 
 1. **Identity / binding validation** (who's behind the agent):
