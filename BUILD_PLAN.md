@@ -192,13 +192,45 @@ gameable).** Compute it like the existing risk engine already does:
 Walrus blob + failing reports), and **capped** so one angry buyer can't nuke a
 worker.
 
-**Checker meta-reputation (the wedge):** each checker accrues an accuracy score —
-did its report hold up vs. the finally-accepted outcome? Wrong checkers are
-weighted down in future decisions. **Accuracy earns influence, never money** (no
-false-flag profit motive).
+Worker reputation lives on-chain in the **ERC-8004 ReputationRegistry** —
+*settlement-derived* feedback, not self-attestations. That's the differentiator.
 
-Both live on-chain in the **ERC-8004 ReputationRegistry** — *settlement-derived*
-feedback, not self-attestations. That's the differentiator.
+### 8a. Checker meta-reputation — how it's computed (the wedge)
+
+**No LLM grades the reviewers.** Grading reviews with a model would be the exact
+subjective-oracle anti-pattern we reject — non-deterministic, gameable, and it
+would make the *meta*-reputation itself unaccountable. The principle instead:
+**you don't grade the checker's opinion — you check whether reality agreed with
+it.** Reputation is computed mechanically from outcomes. Signals, strongest first:
+
+1. **Re-execution (deterministic checkers).** schema / price / wallet-risk /
+   code-tests are *replayable* — anyone re-runs them against the Walrus evidence
+   and gets the same verdict. For these you barely need reputation: *don't trust
+   the checker, re-run it.* **Meta-reputation matters most for the checkers you
+   CAN'T replay** (LLM-ish source / attestation checkers).
+2. **Outcome match.** On a settled task (PAID & undisputed in-window / REFUNDED /
+   buyer-accepted), compare each past report to what actually happened →
+   true-pass / true-fail / **false-pass (missed bad work)** / **false-fail (cried
+   wolf)** → a precision/recall accuracy. Time + money are the oracle.
+3. **Confidence calibration.** Each report carries `confidence`; wrong-at-0.99 is
+   penalized harder than wrong-at-0.6 (Brier-style). Punishes overconfidence.
+4. **Inter-checker consensus / early detection.** Lone-wrong → weighted down;
+   early detector later confirmed by others → weighted up.
+5. **Dispute outcomes** (stretch): a verdict overturned on appeal → strong negative.
+
+The score is stored in the **ERC-8004 ReputationRegistry**, money-weighted,
+distinct-counterparty-weighted, recency-decayed (same anti-gaming as worker rep).
+**Accuracy earns influence, never money** — no false-flag profit. An LLM may live
+*inside* a single non-deterministic checker (producing that checker's report and
+explaining its reasoning) — its correctness is then judged by outcomes like
+everyone else's, **never by another model**.
+
+**MVP cut:** (a) deterministic checkers → demo **replayability** (re-run against
+the Walrus blob → identical verdict; that IS the accountability story); (b) one
+**outcome-match accuracy counter** per checker, recency-weighted, written to
+ERC-8004, **seeded** with a couple of historical tasks so the demo shows a wrong
+checker get down-weighted on the next decision (demo beat 5). Calibration +
+dispute-overturns = roadmap.
 
 ---
 
@@ -257,7 +289,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 |---|---|---|---|---|
 | `[ ]` | **B1** | Checker registry + runner (`check.type → checker`, run all, collect reports). | Runner executes registered checkers → reports[]. | Each check bounded + deterministic. |
 | `[ ]` | **B2** | Demo checkers: `schema`, `price` (≤700 USDC), `wallet-risk` (reuse), `source-listing`. | All 4 run on the demo invoice → pass/fail/uncertain. | Constraint-based, explainable. |
-| `[ ]` | **B3** | **Checker meta-reputation (wedge):** per-checker accuracy, weight future decisions, surface in UI. | A wrong checker shows reduced weight next decision. | Accuracy = influence, never money. |
+| `[ ]` | **B3** | **Checker meta-reputation (wedge, §8a):** outcome-match accuracy counter per checker (true/false pass-fail vs the settled outcome), money + recency weighted, written to ERC-8004; deterministic checkers expose **re-execution** (re-run vs the Walrus blob → identical verdict). Seed with a couple of historical tasks; surface in UI. | Re-running a deterministic checker reproduces its verdict; a wrong checker shows reduced weight on the next decision. | No LLM grades reviewers; accuracy = influence, never money. |
 
 ### Phase C — Hedera settlement + audit · `NEVER` · Hedera lane (Codex)
 | St | Part | Goal | Done when | Guard |
