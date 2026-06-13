@@ -307,8 +307,8 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 ### Phase E — Walrus evidence · `NEVER (hash-anchor); blob store = Walrus` · evidence lane
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
-| `[ ]` | **E1** | Walrus client: store the **manifest** (spec) and the **evidence blob** → URI + hash; read back. | Both blobs round-trip to/from Walrus. | Content-addressed; chain holds only the pointer. |
-| `[ ]` | **E2** | Wire URI/hash into the spec commit, HCS receipt (C3), ERC-8004 feedback (D2). | All on-chain records carry the live Walrus pointer. | One evidence object, referenced everywhere. |
+| `[x]` | **E1** | Walrus client: store the **manifest** (spec) and the **evidence blob** → URI + hash; read back. | Both blobs round-trip to/from Walrus. | Content-addressed; chain holds only the pointer. |
+| `[x]` | **E2** | Wire URI/hash into the spec commit, HCS receipt (C3), ERC-8004 feedback (D2). | All on-chain records carry the live Walrus pointer. | One evidence object, referenced everywhere. |
 
 ### Phase F — World AgentKit gating · `Cut: policy + IDKit call` · auth lane
 | St | Part | Goal | Done when | Guard |

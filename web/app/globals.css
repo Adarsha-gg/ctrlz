@@ -427,3 +427,49 @@ dd {
   color: var(--muted);
   line-height: 1.4;
 }
+
+/* Evidence anchor block (E2 — Walrus evidence layer) */
+.evidence-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #e3ddd0);
+  border-radius: 10px;
+  background: #faf8f3;
+}
+
+.evidence-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.evidence-key {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--muted, #7a7264);
+  min-width: 168px;
+}
+
+.evidence-hash {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  word-break: break-all;
+  color: #3a352c;
+}
+
+.evidence-link {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #1d6f42;
+  text-decoration: none;
+}
+
+.evidence-link:hover {
+  text-decoration: underline;
+}

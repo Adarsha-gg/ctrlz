@@ -9,7 +9,12 @@ import {
   DEMO_SUBMISSIONS,
   type DemoSubmission
 } from "./fixtures";
-import { verifySubmission, type VerificationResult } from "./run";
+import {
+  verifySubmission,
+  anchorEvidence,
+  type VerificationResult,
+  type EvidenceAnchors
+} from "./run";
 
 /**
  * /verify (A3) — the verification surface. Shows the GPU-invoice demo task +
@@ -95,6 +100,8 @@ export default function VerifyPage() {
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [explanation, setExplanation] = useState<string>("");
   const [explaining, setExplaining] = useState(false);
+  const [anchors, setAnchors] = useState<EvidenceAnchors | null>(null);
+  const [anchoring, setAnchoring] = useState(false);
 
   async function run(demo: DemoSubmission) {
     const verification = verifySubmission(demo);
@@ -102,6 +109,14 @@ export default function VerifyPage() {
     setResult(verification);
     setExplanation("");
     setExplaining(true);
+    setAnchors(null);
+    setAnchoring(true);
+
+    // E2: anchor the evidence (Walrus → local fallback). Never throws; the
+    // hash is always computed, so the evidence card always renders something.
+    void anchorEvidence(verification)
+      .then(setAnchors)
+      .finally(() => setAnchoring(false));
 
     try {
       const res = await fetch("/api/explain", {
@@ -212,6 +227,59 @@ export default function VerifyPage() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          <div>
+            <p className="field-label">Evidence anchor (Walrus)</p>
+            {anchoring && !anchors && (
+              <p className="muted-text" style={{ fontSize: "0.82rem", margin: 0 }}>
+                Anchoring evidence…
+              </p>
+            )}
+            {anchors && (
+              <div className="evidence-block">
+                <p className="evidence-row">
+                  <span className="evidence-key">Evidence hash (sha256)</span>
+                  <code className="evidence-hash">{anchors.evidence.hash}</code>
+                </p>
+                <p className="evidence-row">
+                  <span className="evidence-key">Acceptance-spec hash</span>
+                  <code className="evidence-hash">{anchors.manifestHash}</code>
+                </p>
+                <p className="evidence-row">
+                  <span className="evidence-key">Storage</span>
+                  {anchors.evidence.store === "walrus" ? (
+                    <span className="gate-badge gate-hard">Walrus</span>
+                  ) : (
+                    <span className="gate-badge gate-advisory">local (Walrus unavailable)</span>
+                  )}
+                </p>
+                {anchors.evidence.store === "walrus" && anchors.evidence.blobId && (
+                  <>
+                    <p className="evidence-row">
+                      <span className="evidence-key">Blob ID</span>
+                      <code className="evidence-hash">{anchors.evidence.blobId}</code>
+                    </p>
+                    {anchors.evidence.uri && (
+                      <p className="evidence-row">
+                        <a
+                          className="evidence-link"
+                          href={anchors.evidence.uri}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View evidence on Walrus ↗
+                        </a>
+                      </p>
+                    )}
+                  </>
+                )}
+                <p className="muted-text" style={{ fontSize: "0.78rem", margin: "4px 0 0" }}>
+                  The sha256 hash is the load-bearing anchor — always computed. Walrus is the
+                  swappable store behind it; if it&apos;s down we keep the hash and degrade locally.
+                </p>
+              </div>
+            )}
           </div>
         </section>
       )}
