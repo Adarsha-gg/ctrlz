@@ -26,6 +26,11 @@ import {
 } from "@/lib/world";
 import { CHECKER_HISTORY, DEMO_ACCEPTANCE_SPEC, type DemoSubmission } from "./fixtures";
 
+export type AcceptanceSpecInput = {
+  intent: string;
+  checks: CheckSpec[];
+};
+
 export type VerificationResult = {
   scored: ScoredCheck[];
   reports: CheckerReport[];
@@ -49,11 +54,14 @@ export type EvidenceAnchors = {
   manifestHash: string;
 };
 
-/** Run the demo acceptance spec over a submission and produce the split score. */
-export function verifySubmission(demo: DemoSubmission): VerificationResult {
+/** Run an acceptance spec over a submission and produce the split score. */
+export function verifySubmission(
+  demo: DemoSubmission,
+  spec: AcceptanceSpecInput = DEMO_ACCEPTANCE_SPEC
+): VerificationResult {
   // Inject the demo's wallet history onto the wallet_risk check so the risk
   // engine sees the seeded settlement counters.
-  const checks: CheckSpec[] = DEMO_ACCEPTANCE_SPEC.checks.map((c) =>
+  const checks: CheckSpec[] = spec.checks.map((c) =>
     c.type === "wallet_risk" && demo.recipientHistory
       ? { ...c, history: demo.recipientHistory }
       : c
@@ -88,7 +96,7 @@ export function verifySubmission(demo: DemoSubmission): VerificationResult {
   // Assemble the verifiable manifest + evidence blob (E2). The manifest uses the
   // injected checks (so its hash reflects exactly what was evaluated); the
   // evidence blob bundles spec + worker output + reports + the split score.
-  const manifest = buildManifest({ intent: DEMO_ACCEPTANCE_SPEC.intent, checks });
+  const manifest = buildManifest({ intent: spec.intent, checks });
   const evidence = buildEvidenceBlob({
     taskSpec: manifest,
     workerOutput: demo.submission,

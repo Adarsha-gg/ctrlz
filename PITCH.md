@@ -120,6 +120,94 @@ nameable attack walks straight through the hole.
   real money each time, is identity-linked and publicly clustered, and the work
   actually got done — the weakest possible "fraud." Conceded openly.
 
+## BigQuery findings — why the marketplace needs trust ranking
+
+We queried the live Ethereum ERC-8004 registries in Google BigQuery
+(`2026-02-01` through `2026-06-13`). The data says the ecosystem already has
+agents, but it does **not** yet have a trustworthy marketplace.
+
+### 1. There is agent supply, but most of it is inventory, not proven agents
+
+- Since Feb 1: **11,861** newly registered ERC-8004 agents.
+- Only **469** of those newly registered agents received any feedback at all —
+  about **3.95% coverage**.
+- Translation: raw registration count is not a marketplace. It is a directory.
+  Buyers still need ranking, filtering, and trust policy.
+
+### 2. Agent supply is highly clustered
+
+- **3,692** owner wallets registered agents in the window.
+- Wallets minting **100+ agents** produced **6,723 / 11,861** registrations —
+  **56.7%** of new supply.
+- The top minter alone created **4,778** agents; the second created **1,468**.
+- Those high-volume minters had only **90** feedback-bearing agents.
+- Translation: a good marketplace must distinguish "many minted agents" from
+  "agents with real usage." Cluster-aware ranking is not optional.
+
+### 3. Feedback exists, but it is concentrated enough to be gameable
+
+- ReputationRegistry emitted **2,669** `NewFeedback` events in the window.
+- They covered **1,649** total agent IDs and came from only **341** feedback
+  client wallets.
+- Rater concentration is extreme:
+  - Top 1 client: **45.5%** of all feedback.
+  - Top 3 clients: **71.1%**.
+  - Top 5 clients: **81.4%**.
+  - Top 10 clients: **85.0%**.
+- Translation: naive average rating is not a trust signal. It is too dependent
+  on a few raters. CTRL+Z should rank by rater diversity, rater credibility,
+  repeated-pair penalties, and validation-backed work.
+
+### 4. Some "popular" agents look suspicious without time/rater context
+
+- Agent `22721` has the most raw feedback: **129** feedback events from **127**
+  clients with a **91.43** average.
+- But all 129 arrived in about **77 minutes**.
+- A raw leaderboard would rank it #1. A trust marketplace should flag that as a
+  burst and downweight it until there is more time-spread evidence.
+- Prototype trust-rank moves longer-lived agents above it by weighting feedback
+  by rater quality and penalizing bursts/repeated pairs.
+
+### 5. The validation pillar is basically empty on mainnet
+
+- IdentityRegistry has real activity.
+- ReputationRegistry has some activity.
+- ValidationRegistry has only proxy/admin/init events in the observed data — no
+  meaningful validation market yet.
+- Translation: this is the opening. Google/ERC-8004 already has identity and
+  raw reputation. CTRL+Z adds the missing column: **validated work outcomes**.
+
+### Product implication
+
+CTRL+Z should be pitched as:
+
+> **The marketplace for ERC-8004 agents, ranked like Google search but scored like
+> a credit bureau: registration data, rater diversity, feedback graph quality,
+> cluster risk, and validation-backed work all feed the trust score.**
+
+The number then does something tangible:
+
+- High trust → direct payment / faster settlement.
+- Medium trust → escrow.
+- Thin or bursty trust → stricter held-out validation.
+- Suspicious trust → reject or manual review.
+- Work category → filter the directory by what the agent claims or proves it can
+  do (finance, data, payments, commerce, etc.) before applying the trust score.
+
+Escrow is therefore not the whole product; it is the settlement mode used when
+the trust score says direct payment is too risky.
+
+That is the value prop: **BigQuery discovers the agent economy; CTRL+Z ranks who
+is worth hiring; escrow + validation make the ranking improve every time money
+moves.**
+
+Live proof: CTRL+Z has now written the validation pillar on Hedera ERC-8004 for
+agent `101` — request
+`0x58127f902d18df683efb23f50674fb549ebf111b3fae462cf5a798b683366bf4`,
+response `0x3ee62f1cc9c848a809ffb5bc46a3f2e2b55f8a1038afc93a9ab7b67c78a6fd51`,
+score `92`, tag `ctrlz.verify`, evidence hash
+`0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7`.
+
 ## The pitch
 
 **One-liner:** *CTRL+Z is the trust layer for the agent economy — agents pay each

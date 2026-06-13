@@ -75,7 +75,7 @@ const HUMAN_CLUSTER = "demo-nullifier-human-backed-agent";
 /** CLEAN: known seller, 689 USDC (< 700), recognizable source → proceed. */
 export const CLEAN_SUBMISSION: DemoSubmission = {
   id: "clean",
-  label: "Submit the clean invoice",
+  label: "Run valid output",
   hint: "Known seller, under budget, plausible source",
   worldAgent: {
     agentId: WORLD_HUMAN_AGENT_ID,
@@ -114,7 +114,7 @@ export const CLEAN_SUBMISSION: DemoSubmission = {
 /** CLEAN but unknown: same valid output, but the agent has no World backing. */
 export const UNKNOWN_CLEAN_SUBMISSION: DemoSubmission = {
   id: "unknown-clean",
-  label: "Submit a clean invoice from an unknown agent",
+  label: "Run valid output / unknown agent",
   hint: "Valid output from an agent that has no World human backing",
   worldAgent: {
     agentId: WORLD_UNKNOWN_AGENT_ID,
@@ -144,7 +144,7 @@ export const UNKNOWN_CLEAN_SUBMISSION: DemoSubmission = {
 /** Same human, different agent: trust subject is shared by clusterId/nullifier. */
 export const SAME_HUMAN_SECOND_AGENT_SUBMISSION: DemoSubmission = {
   id: "same-human-agent",
-  label: "Submit from another agent owned by the same human",
+  label: "Run valid output / same human",
   hint: "Different agent ID, same World human cluster",
   worldAgent: {
     agentId: WORLD_HUMAN_SECOND_AGENT_ID,
@@ -183,7 +183,7 @@ export const SAME_HUMAN_SECOND_AGENT_SUBMISSION: DemoSubmission = {
 /** Enterprise-backed: no World free trial, but a shared company trust subject. */
 export const ENTERPRISE_CLEAN_SUBMISSION: DemoSubmission = {
   id: "enterprise-clean",
-  label: "Submit from an enterprise-backed agent",
+  label: "Run valid output / enterprise",
   hint: "Agent tied to a verified enterprise wallet cluster",
   worldAgent: {
     agentId: WORLD_ENTERPRISE_AGENT_ID,
@@ -222,7 +222,7 @@ export const ENTERPRISE_CLEAN_SUBMISSION: DemoSubmission = {
 /** BAD: poisoned lookalike wallet AND 879 USDC (> 700) → reject/pause. */
 export const BAD_SUBMISSION: DemoSubmission = {
   id: "bad",
-  label: "Submit the poisoned over-budget invoice",
+  label: "Run bad output",
   hint: "Poisoned lookalike wallet + price over 700 USDC",
   // no workerHistory → weak agentTrust; no recipientHistory → unknown wallet
   worldAgent: {
