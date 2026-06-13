@@ -9,6 +9,31 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · Alice seed script (P1.11 blocked)
+
+- **Did:** Added `contracts/script/SeedAlice.s.sol`, a guarded Arc seed script
+  for the deployed escrow `0x2f2B5C26de74aA7307A5b946B025ce1A13255f45` and
+  fixture alice `0xA11cE0000000000000000000000000000000a5e1`. It creates small
+  payments and can later claim an id range with `claimFor` after the contract's
+  hold expires. The script refuses to broadcast unless `ALICE_PRIVATE_KEY`
+  derives exactly to the fixture address, so it cannot fake alice history or
+  seed the wrong recipient.
+- **Blocked:** Local `.env` does not contain `ALICE_PRIVATE_KEY`; dry-run failed
+  before broadcast with `environment variable "ALICE_PRIVATE_KEY" not found`.
+  Alice's current Arc counters are still `sealedCount=0` and
+  `distinctSenderCount=0`, verified with `cast call` against the P1.10 deploy.
+  No seed txs were sent, and P1.11 remains `[ ]`.
+- **Fixture note:** The poisoned lookalike is already planted in
+  `web/lib/risk/fixtures.ts` as `POISONED_LOOKALIKE`; no `web/**` edits were
+  needed.
+- **Verified:** `forge fmt --root contracts`; `forge test --root contracts`
+  passes 41 tests.
+- **Next:** Add a real `ALICE_PRIVATE_KEY` for
+  `0xA11cE0000000000000000000000000000000a5e1` or change the fixture in the web
+  lane, then run the seed in timed phases: create payments first, wait for the
+  unknown-recipient hold, claim the created ids, then repeat after the shorter
+  holds until `sealedCount` and `distinctSenderCount` are non-zero.
+
 ## 2026-06-13 · agent (Codex) · Arc deploy handoff (P1.10)
 
 - **Did:** Deployed `CtrlZEscrow` to Arc testnet from the configured payer.
