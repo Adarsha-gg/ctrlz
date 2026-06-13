@@ -11,6 +11,7 @@
     "hedera:evm-sanity": "node scripts/hedera/evm-sanity-transfer.mjs",
     "hedera:sanity": "node scripts/hedera/sanity-transfer.mjs",
     "hedera:verify-demo": "node scripts/hedera/verify-escrow-demo.mjs",
+    "demo:hashes": "node --experimental-strip-types scripts/demo/verify-hashes.mjs",
     "demo:check": "node scripts/demo/check.mjs",
     "web:dev": "pnpm --filter web dev"
   },

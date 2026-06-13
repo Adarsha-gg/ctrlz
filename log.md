@@ -9,6 +9,28 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Claude) · Google/ERC-8004 validator lane (GOOGLE.md)
+
+- **Did:** Wrote [GOOGLE.md](GOOGLE.md) — the Google Cloud / ERC-8004 prize plan.
+  Strategy: don't build "another leaderboard"; implement ERC-8004's **unsolved
+  third pillar (validation)**. **Verified on-chain** that the canonical ERC-8004
+  **Validation Registry is already live on Hedera testnet** at
+  `0x8004Cb1BF31DAf7788923b405b754f57acEB4272` (EIP-1967 proxy; `getValidationStatus`
+  reverts `"unknown"` per source; `getAgentValidations(101)` → `[]`). So **no deploy
+  needed** — CTRL+Z just calls `validationRequest`/`validationResponse`. Mapping:
+  `response`=score/100, `responseURI`=Walrus URI, `responseHash`=evidence hash.
+  Floor = BigQuery explorer over **mainnet/Base** ERC-8004 (Identity
+  `0x8004A169…`/Reputation `0x8004BAa1…`/Validation `0x8004Cc84…`); plan does NOT
+  depend on Google indexing Hedera. Also: the ERC-8004 spec's own well-known domain
+  verification == our enterprise domain proof (REPUTATION.md §4a) — adopt theirs.
+- **Next:** Phase VAL (Codex) — copy `ValidationRegistry.json` ABI to
+  `scripts/hedera/abis/`, add `erc8004-validation-request.mjs` +
+  `erc8004-validation-respond.mjs`, wire resolve → on-chain validationResponse.
+  Phase GQ (Claude/human) — GCP coupon + BigQuery explorer over mainnet registries.
+  Booth Sunday: ask if Hedera is in BigQuery (bonus, not a blocker).
+
+---
+
 ## 2026-06-13 · agent (Claude) · Reputation system design (REPUTATION.md)
 
 - **Did:** Wrote [REPUTATION.md](REPUTATION.md) — the agent validation + reputation
@@ -28,6 +50,30 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
   flat tier boost with earned+shared operator standing (`floor()`). See §11 plan.
   Key remaining build risk = the §8e deterministic runner (R4 depends on it; also
   constrains checkers to use no live data on the dispute path).
+
+---
+
+## 2026-06-13 · agent (Codex) · Exact `/verify` hashes pinned on Hedera
+
+- **Did:** Added `scripts/demo/verify-hashes.mjs` to compute the clean `/verify`
+  manifest/evidence sha256 anchors through the same deterministic checkers,
+  split scoring, World backing boost, checker meta-reputation, and Walrus
+  evidence shapes used by the UI.
+- **C2 exact run:** redeployed `CtrlZVerifyEscrow` at
+  `0xa2ac71dd9e7835af08e6be33ec047c47a35b2462`; deploy tx
+  `0xcd4b8b44fb3292a932a2e40b7f4c08a49847dc9c56f8419b825ccd28d23843f0`;
+  resolve tx `0xdbdb8f5236d1a1473bebb7f95c0e12683bebfbdf9f857628e62e69e9fbbeeb10`.
+  The on-chain `specHash` is
+  `0xc558bf1d075e6d7c622aaba021c8409b1cbbdf17c8cc527aa59c7326e9279d84`;
+  `evidenceHash` is
+  `0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7`.
+- **Walrus + HCS:** stored the exact-run evidence record on Walrus:
+  `https://aggregator.walrus-testnet.walrus.space/v1/blobs/eDxE69ZD3dua2R7xO8Z1KlYa9RvKgpNZHzXIkO63frk`;
+  emitted HCS receipt `0.0.9222066@1781356716.807172813` on topic
+  `0.0.9222881`.
+- **State:** the previous deterministic demo-fixture C2/C3 records remain valid
+  historical receipts but are superseded for submission by the exact `/verify`
+  C2/C3 run.
 
 ---
 

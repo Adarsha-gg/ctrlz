@@ -59,8 +59,8 @@ Set `HEDERA_HCS_TOPIC_ID=new` to create a new topic, then submit the receipt
 message.
 
 Live C3 topic: `0.0.9222881`. Canonical receipt tx:
-`0.0.9222066@1781350379.095328969` (seq 3) — references the real Walrus
-evidence blob.
+`0.0.9222066@1781356716.807172813` — references the exact clean `/verify`
+evidence hash and real Walrus evidence blob.
 
 `--walrus-uri` must be a genuine Walrus reference: a `walrus://` ref or a Walrus
 aggregator `/v1/blobs/<id>` URL. A GitHub or other non-Walrus link is rejected.
@@ -71,19 +71,19 @@ on Walrus via the same code path as the `/verify` page:
 # 1. Store the evidence on Walrus → prints walrusUri + sha256 anchor
 node --experimental-strip-types scripts/hedera/store-evidence.mjs \
   --task-id=1 \
-  --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
-  --spec-hash=0xc4dab248f10ba4e5028308d2768503432834e4015f0fdd86c12cbdb2261335b9 \
-  --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
+  --contract=0xa2ac71dd9e7835af08e6be33ec047c47a35b2462 \
+  --spec-hash=0xc558bf1d075e6d7c622aaba021c8409b1cbbdf17c8cc527aa59c7326e9279d84 \
+  --evidence-hash=0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7 \
   --score-bps=9200 --recommendation=proceed
 
 # 2. Submit the HCS receipt with the real Walrus URI from step 1
 node scripts/hedera/hcs-receipt.mjs \
   --task-id=1 \
-  --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
-  --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
+  --contract=0xa2ac71dd9e7835af08e6be33ec047c47a35b2462 \
+  --evidence-hash=0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7 \
   --score-bps=9200 \
   --recommendation=proceed \
-  --walrus-uri=https://aggregator.walrus-testnet.walrus.space/v1/blobs/OnRmhrt8o-olmw4DJj5K6_WUFYjFR9Qir_A7ehyctds
+  --walrus-uri=https://aggregator.walrus-testnet.walrus.space/v1/blobs/eDxE69ZD3dua2R7xO8Z1KlYa9RvKgpNZHzXIkO63frk
 ```
 
 ## D1 ERC-8004 agent registration
