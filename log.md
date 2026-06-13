@@ -9,6 +9,35 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Claude) · A1/A2/A3 + B1/B2 verification core
+
+- **Did:** Built the web-side verification core on a NEW `/verify` route
+  (did not touch `web/app/page.tsx`).
+  - **A1** checker framework: `web/lib/checkers/types.ts`
+    (`CheckerReport`, `CheckSpec`, `Checker`, `TaskContext`, `WorkerSubmission`).
+  - **B1** registry + runner: `web/lib/checkers/registry.ts`
+    (`check.type → checker`, `runChecks`); unknown types degrade to `uncertain`.
+  - **B2** demo checkers: `schema.ts`, `price.ts` (≤700 USDC),
+    `walletRisk.ts` (REUSES `scoreRecipient` from `@/lib/risk`, tier→result),
+    `sourceListing.ts` (advisory heuristic, no LLM decision).
+  - **A2** split-scoring engine: `web/lib/scoring/score.ts` →
+    `{outputValidity, agentTrust, paymentRisk, recommendation}`; deterministic
+    policy (hard-gate fail → reject; uncertain/advisory-flag → pause; else
+    proceed/proceed_with_protection). Three scores never collapsed.
+  - **A3** UI: `web/app/verify/page.tsx` (client) + `run.ts` + `fixtures.ts`
+    (CLEAN + BAD one-click submissions); renders split scores + each checker
+    report; calls existing `/api/explain` to explain the recommendation.
+    Additive CSS only in `web/app/globals.css`.
+- **Verify:** `node_modules/.bin/tsc --noEmit` → exit 0. `selfcheck.ts`
+  (`node --experimental-strip-types web/lib/scoring/selfcheck.ts`) → all checks
+  pass: CLEAN → proceed/proceed_with_protection (all checks pass); BAD
+  (POISONED_LOOKALIKE wallet + price 879 > 700) → reject.
+- **Ethos:** checks decide; LLM only explains; three scores never collapsed;
+  checkers pure/replayable; recipients shown by name in card copy.
+- **Lane:** only added `web/lib/checkers/**`, `web/lib/scoring/**`,
+  `web/app/verify/**` + additive `globals.css`. Reused risk/llm as-is.
+- **Next:** B3 (meta-reputation UI — needs Codex's ERC-8004) → E (Walrus).
+
 ## 2026-06-13 · agent (Codex) · P1.11 on-chain alice seed complete
 
 - **Did:** Recorded orchestrator-completed P1.11 seed for alice

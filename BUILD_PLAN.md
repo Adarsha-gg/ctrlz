@@ -280,15 +280,15 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 ### Phase A — Reframe core to verification · `NEVER` · web lane (reuse)
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
-| `[ ]` | **A1** | Checker interface + report schema (§6); wrap risk engine as `wallet-risk-checker`. | A checker returns the report shape; risk engine plugs in unchanged. | Checks decide; LLM not in this path. |
-| `[ ]` | **A2** | Split-scoring engine (§7) → `{outputValidity, agentTrust, paymentRisk, recommendation}`. | Returns the 4-part object from reports + reputation. | Never collapse the three scores. |
-| `[ ]` | **A3** | Reframe `web/app/buyer` → task/verification page; render split scores + reasons; reuse `/api/explain`. | Page shows a task, runs checkers, renders split scores + explanation. | No raw 0x; LLM explains, doesn't decide. |
+| `[x]` | **A1** | Checker interface + report schema (§6); wrap risk engine as `wallet-risk-checker`. | A checker returns the report shape; risk engine plugs in unchanged. | Checks decide; LLM not in this path. |
+| `[x]` | **A2** | Split-scoring engine (§7) → `{outputValidity, agentTrust, paymentRisk, recommendation}`. | Returns the 4-part object from reports + reputation. | Never collapse the three scores. |
+| `[x]` | **A3** | Reframe `web/app/buyer` → task/verification page; render split scores + reasons; reuse `/api/explain`. | Page shows a task, runs checkers, renders split scores + explanation. | No raw 0x; LLM explains, doesn't decide. |
 
 ### Phase B — Checkers + meta-reputation · `NEVER` · web lane
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
-| `[ ]` | **B1** | Checker registry + runner (`check.type → checker`, run all, collect reports). | Runner executes registered checkers → reports[]. | Each check bounded + deterministic. |
-| `[ ]` | **B2** | Demo checkers: `schema`, `price` (≤700 USDC), `wallet-risk` (reuse), `source-listing`. | All 4 run on the demo invoice → pass/fail/uncertain. | Constraint-based, explainable. |
+| `[x]` | **B1** | Checker registry + runner (`check.type → checker`, run all, collect reports). | Runner executes registered checkers → reports[]. | Each check bounded + deterministic. |
+| `[x]` | **B2** | Demo checkers: `schema`, `price` (≤700 USDC), `wallet-risk` (reuse), `source-listing`. | All 4 run on the demo invoice → pass/fail/uncertain. | Constraint-based, explainable. |
 | `[ ]` | **B3** | **Checker meta-reputation (wedge, §8a):** outcome-match accuracy counter per checker (true/false pass-fail vs the settled outcome), money + recency weighted, written to ERC-8004; deterministic checkers expose **re-execution** (re-run vs the Walrus blob → identical verdict). Seed with a couple of historical tasks; surface in UI. | Re-running a deterministic checker reproduces its verdict; a wrong checker shows reduced weight on the next decision. | No LLM grades reviewers; accuracy = influence, never money. |
 
 ### Phase C — Hedera settlement + audit · `NEVER` · Hedera lane (Codex)
