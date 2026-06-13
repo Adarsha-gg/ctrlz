@@ -7,6 +7,7 @@
 # deps / builds
 node_modules/
 .pnpm-store/
+.next/
 dist/
 out/
 cache/
