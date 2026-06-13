@@ -6,6 +6,7 @@
     "contracts:build": "forge build --root contracts",
     "hedera:agent": "node scripts/hedera/erc8004-register-agent.mjs",
     "hedera:feedback": "node scripts/hedera/erc8004-feedback.mjs",
+    "hedera:store-evidence": "node --experimental-strip-types scripts/hedera/store-evidence.mjs",
     "hedera:hcs": "node scripts/hedera/hcs-receipt.mjs",
     "hedera:evm-sanity": "node scripts/hedera/evm-sanity-transfer.mjs",
     "hedera:sanity": "node scripts/hedera/sanity-transfer.mjs",

@@ -41,6 +41,18 @@ if (!["proceed", "proceed_with_protection", "pause", "reject"].includes(recommen
   );
 }
 
+// The receipt's `walrusUri` must actually point at Walrus — a `walrus://` ref or
+// a Walrus aggregator `/v1/blobs/<id>` URL. Anything else (e.g. a GitHub link to
+// the README) is NOT evidence storage and gets rejected, so the field stays
+// honest. Use scripts/hedera/store-evidence.mjs to mint a real one. Empty = omit.
+const walrusUri = optionalArg("walrus-uri", "");
+if (walrusUri && !isWalrusUri(walrusUri)) {
+  throw new Error(
+    "Invalid --walrus-uri; expected a walrus:// ref or a Walrus aggregator /v1/blobs/<id> URL. " +
+      "Run scripts/hedera/store-evidence.mjs to store the evidence and obtain a real Walrus URI.",
+  );
+}
+
 const { client, operatorId } = getHederaClient();
 const topicId = await getOrCreateTopic();
 const payload = {
@@ -50,7 +62,7 @@ const payload = {
   evidenceHash,
   scoreBps,
   recommendation,
-  walrusUri: optionalArg("walrus-uri", ""),
+  walrusUri,
   createdAt: new Date().toISOString()
 };
 
@@ -91,4 +103,16 @@ async function createTopic() {
 function optionalArg(name, fallback) {
   const value = args.get(name);
   return value && value.length > 0 ? value : fallback;
+}
+
+function isWalrusUri(uri) {
+  if (uri.startsWith("walrus://")) return true;
+  try {
+    const url = new URL(uri);
+    // A Walrus aggregator read URL: host contains "walrus" and the path is the
+    // versioned blob read route. Keeps us from labelling arbitrary links as Walrus.
+    return /walrus/i.test(url.hostname) && /\/v\d+\/blobs\//.test(url.pathname);
+  } catch {
+    return false;
+  }
 }

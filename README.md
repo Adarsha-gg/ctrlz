@@ -121,14 +121,22 @@ node --experimental-strip-types web/lib/world/selfcheck.ts
 npm run hedera:evm-sanity
 npm run hedera:verify-demo
 
-# Hedera HCS receipt
+# Store evidence on Walrus → prints a real aggregator URI + sha256 anchor
+node --experimental-strip-types scripts/hedera/store-evidence.mjs \
+  --task-id=1 \
+  --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
+  --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
+  --score-bps=9200 --recommendation=proceed
+
+# Hedera HCS receipt — --walrus-uri must be a real Walrus URI (printed above);
+# a GitHub or other non-Walrus link is rejected.
 npm run hedera:hcs -- \
   --task-id=1 \
   --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
   --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
   --score-bps=9200 \
   --recommendation=proceed \
-  --walrus-uri=https://github.com/Adarsha-gg/ctrlz/blob/main/SUBMISSION.md
+  --walrus-uri=https://aggregator.walrus-testnet.walrus.space/v1/blobs/OnRmhrt8o-olmw4DJj5K6_WUFYjFR9Qir_A7ehyctds
 ```
 
 `npm run hedera:evm-sanity` and `npm run hedera:verify-demo` return real

@@ -9,6 +9,31 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Claude) · Stress test + walrusUri terminology fix
+
+- **Did:** Inspected/stress-tested all 30 merged PRs. `forge test` 47/47 pass;
+  web `tsc --noEmit` clean; risk/scoring/walrus/world selfchecks all pass; full
+  `next build` passes. Verified every live claim on-chain via read-only RPC +
+  mirror node (C1/C2/C3/D1/D2 all `status=0x1`; verify-escrow task 1 reads back
+  `state=PAID`, `scoreBps=9200`, matching specHash/evidenceHash/recommendationHash).
+- **Fixed terminology:** the HCS receipt's `walrusUri` had been a hand-typed
+  **GitHub link**, not a Walrus URI. Added `scripts/hedera/store-evidence.mjs`
+  (reuses `web/lib/walrus/store.ts`) to store the evidence record on Walrus and
+  print a real aggregator URI + sha256 anchor; hardened `hcs-receipt.mjs` to
+  **reject** any non-Walrus `--walrus-uri`. Stored a real blob
+  (`OnRmhrt8o-olmw4DJj5K6_WUFYjFR9Qir_A7ehyctds`) and re-emitted the canonical
+  receipt on topic `0.0.9222881` — tx `0.0.9222066@1781350379.095328969`
+  (seq 3, `taskId:1`, real Walrus URI). Seq 1 (GitHub link) + seq 2 (placeholder
+  taskId) remain on the append-only topic, superseded. Updated SUBMISSION/README/
+  scripts docs. Added `ARCHITECTURE.md` and `STATUS.md`.
+- **Note:** on-chain demo hashes are deterministic keccak256 demo-fixtures
+  (`keccak256("ctrlz-demo-evidence-v1")`), distinct from the sha256 Walrus anchor.
+  Both are now stored + cross-referenced in the receipt.
+- **Next:** if exact `/verify` sha256 anchors are wanted on-chain, rerun
+  `hedera:verify-demo` with `HEDERA_VERIFY_SPEC_HASH`/`HEDERA_VERIFY_EVIDENCE_HASH`.
+
+---
+
 ## 2026-06-13 · agent (Codex) · Hedera HCS live C3
 
 - **Did:** Fixed native Hedera SDK private-key parsing for portal-style ECDSA
