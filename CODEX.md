@@ -52,7 +52,7 @@ Build the state machine in compiling slices — full spec per part in BUILD_PLAN
 |---|---|---|---|
 | Deployed escrow **address + deploy block + ABI** | `web/lib/contract.ts` (handoff file — log before editing) | P1.10 | Unblocks Claude's P2.5 history reads, P6.2 send/recall, P4 indexer |
 | **Event signatures** `Sealed(sender,recipient,amount)`, `Recalled(reason)`, `Expired`, `Flagged`, `ProofAttached` | contract source + ABI | P1.8 | Claude's indexer (P4) reconstructs the score from these — emit enough to do it |
-| **Seeded alice** | `scripts/` seed | P1.11 | **Must match `web/lib/risk/fixtures.ts` `ALICE_ADDRESS`** (`0xA11cE0…a5e1`) — or tell Claude the real address. Drift here = demo beat 2 shows zeros |
+| **Seeded alice** | `scripts/` seed | P1.11 | **Must match `web/lib/risk/fixtures.ts` `ALICE_ADDRESS`** (`0x3695f9…7480C`, intentionally the owned `SETTLER_ADDRESS`) — drift here = demo beat 2 shows zeros |
 
 ## Ethos guards that live in MY code (don't regress)
 

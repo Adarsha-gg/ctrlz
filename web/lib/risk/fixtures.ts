@@ -8,15 +8,15 @@
 import type { AddressBookEntry } from "./types";
 
 /** alice — trusted seller with seeded sealed history on Arc */
-export const ALICE_ADDRESS = "0xA11cE0000000000000000000000000000000a5e1";
+export const ALICE_ADDRESS = "0x3695f9A1A29b66ddbA90cD9069c65921C17b480C";
 export const ALICE_NAME = "alice.ctrlz.eth";
 
 /**
  * The attack: vanity-generated to match alice's visible prefix + suffix
- * (0xA11cE0…a5e1) with a different middle — what a poisoner plants in your
+ * (0x3695f9…7480C) with a different middle — what a poisoner plants in your
  * tx history hoping you copy it.
  */
-export const POISONED_LOOKALIKE = "0xA11cE0ffee00000000000000000000000000a5e1";
+export const POISONED_LOOKALIKE = "0x3695f9000000000000000000000000000007480C";
 
 export const DEMO_ADDRESS_BOOK: AddressBookEntry[] = [
   { name: ALICE_NAME, address: ALICE_ADDRESS },
