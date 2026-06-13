@@ -9,6 +9,16 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · blocker runbook
+
+- **Did:** Added [BLOCKERS.md](BLOCKERS.md) with exact missing env vars and
+  commands for C1/C2/C3/D1/D2, plus the G1 demo rehearsal completion checklist.
+- **State:** No code path changed. Remaining incomplete work is external-state
+  blocked (funded Hedera credentials) or manual submission work (five rehearsals
+  + video).
+- **Next:** Provide/fund Hedera credentials and run the commands in
+  [BLOCKERS.md](BLOCKERS.md), or run G1 rehearsals/video.
+
 ## 2026-06-13 · agent (Codex) · G1 rehearsal readiness helper
 
 - **Did:** Added `npm run demo:check`, a local readiness script that runs the
