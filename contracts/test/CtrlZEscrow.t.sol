@@ -116,6 +116,8 @@ contract CtrlZEscrowTest {
     function testRecallIsSenderOnlyAndRefundsSender() public {
         uint256 id = _send(3 ether, 5 minutes);
         uint256 senderBefore = sender.balance;
+        uint256 recipientBefore = recipient.balance;
+        uint256 strangerBefore = stranger.balance;
 
         vm.prank(stranger);
         vm.expectRevert(CtrlZEscrow.NotSender.selector);
@@ -127,6 +129,8 @@ contract CtrlZEscrowTest {
         (,,,,,, CtrlZEscrow.State state,) = escrow.payments(id);
         _assertEq(uint256(state), uint256(CtrlZEscrow.State.REFUNDED), "state");
         _assertEq(sender.balance, senderBefore + 3 ether, "sender refund");
+        _assertEq(recipient.balance, recipientBefore, "recipient unchanged");
+        _assertEq(stranger.balance, strangerBefore, "caller unchanged");
     }
 
     function testRecallEmitsIndexableRefundEventWithReason() public {
@@ -142,6 +146,8 @@ contract CtrlZEscrowTest {
     function testRejectIsRecipientOnlyAndRefundsSender() public {
         uint256 id = _send(4 ether, 5 minutes);
         uint256 senderBefore = sender.balance;
+        uint256 recipientBefore = recipient.balance;
+        uint256 strangerBefore = stranger.balance;
 
         vm.prank(stranger);
         vm.expectRevert(CtrlZEscrow.NotRecipient.selector);
@@ -153,6 +159,8 @@ contract CtrlZEscrowTest {
         (,,,,,, CtrlZEscrow.State state,) = escrow.payments(id);
         _assertEq(uint256(state), uint256(CtrlZEscrow.State.REFUNDED), "state");
         _assertEq(sender.balance, senderBefore + 4 ether, "sender refund");
+        _assertEq(recipient.balance, recipientBefore, "recipient unchanged");
+        _assertEq(stranger.balance, strangerBefore, "caller unchanged");
     }
 
     function testRejectEmitsIndexableRefundEvent() public {
@@ -206,6 +214,63 @@ contract CtrlZEscrowTest {
         escrow.recall(id, CtrlZEscrow.RecallReason.FRAUD_SUSPECTED);
     }
 
+    function testClaimAfterRecallRejectOrClaimRevertsOnState() public {
+        uint256 recalledId = _send(1 ether, 5 minutes);
+        _warpToClaimable(recalledId);
+        vm.prank(sender);
+        escrow.recall(recalledId, CtrlZEscrow.RecallReason.OTHER);
+
+        vm.prank(recipient);
+        vm.expectRevert(CtrlZEscrow.InvalidState.selector);
+        escrow.claim(recalledId);
+
+        uint256 rejectedId = _send(1 ether, 5 minutes);
+        _warpToClaimable(rejectedId);
+        vm.prank(recipient);
+        escrow.reject(rejectedId);
+
+        vm.prank(recipient);
+        vm.expectRevert(CtrlZEscrow.InvalidState.selector);
+        escrow.claim(rejectedId);
+
+        uint256 claimedId = _send(1 ether, 5 minutes);
+        _claimAsRecipient(claimedId);
+
+        vm.prank(recipient);
+        vm.expectRevert(CtrlZEscrow.InvalidState.selector);
+        escrow.claim(claimedId);
+    }
+
+    function testSameBlockRecallThenClaimResolvesByState() public {
+        uint256 id = _send(1 ether, 5 minutes);
+        _warpToClaimable(id);
+
+        vm.prank(sender);
+        escrow.recall(id, CtrlZEscrow.RecallReason.WRONG_ADDRESS);
+
+        vm.prank(recipient);
+        vm.expectRevert(CtrlZEscrow.InvalidState.selector);
+        escrow.claim(id);
+
+        (,,,,,, CtrlZEscrow.State state,) = escrow.payments(id);
+        _assertEq(uint256(state), uint256(CtrlZEscrow.State.REFUNDED), "state");
+    }
+
+    function testSameBlockClaimThenRecallResolvesByState() public {
+        uint256 id = _send(1 ether, 5 minutes);
+        _warpToClaimable(id);
+
+        vm.prank(recipient);
+        escrow.claim(id);
+
+        vm.prank(sender);
+        vm.expectRevert(CtrlZEscrow.InvalidState.selector);
+        escrow.recall(id, CtrlZEscrow.RecallReason.WRONG_ADDRESS);
+
+        (,,,,,, CtrlZEscrow.State state,) = escrow.payments(id);
+        _assertEq(uint256(state), uint256(CtrlZEscrow.State.SEALED), "state");
+    }
+
     function testClaimForLetsRelayerClaimForRecipient() public {
         uint256 id = _send(2 ether, 5 minutes);
         bytes memory sig = _signClaimFor(recipientKey, id);
@@ -246,6 +311,19 @@ contract CtrlZEscrowTest {
         vm.prank(relayer);
         vm.expectRevert(CtrlZEscrow.SignatureAlreadyUsed.selector);
         escrow.claimFor(id, sig);
+    }
+
+    function testClaimForAfterDirectClaimRevertsOnStateWithoutBurningSignature() public {
+        uint256 id = _send(1 ether, 5 minutes);
+        bytes memory sig = _signClaimFor(recipientKey, id);
+
+        _claimAsRecipient(id);
+
+        vm.prank(relayer);
+        vm.expectRevert(CtrlZEscrow.InvalidState.selector);
+        escrow.claimFor(id, sig);
+
+        _assertTrue(!escrow.claimForHashUsed(escrow.claimForDigest(id)), "signature unused");
     }
 
     function testClaimForWrongSignerReverts() public {
