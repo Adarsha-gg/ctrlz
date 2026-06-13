@@ -9,6 +9,21 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-12 ~21:50 · agent (Claude) · per-agent handoff docs
+
+- **Did:** Added [CLAUDE.md](CLAUDE.md) (web/risk/UI lane) and [CODEX.md](CODEX.md)
+  (contract lane) — mirror-structured: Owns / Done / Next / Waiting-on /
+  What-I-owe-the-other / Rules. BUILD_PLAN.md stays the part-list source of
+  truth; these route ownership + the handoff contract. Added a pointer from
+  WORKSTREAMS.md.
+- **Handoff contract captured (the interface points):** (1) `web/lib/contract.ts`
+  = Codex writes deployed address+ABI on P1.10, Claude reads; (2) `fixtures.ts`
+  `ALICE_ADDRESS` = Claude defines, Codex's P1.11 seed must match; (3) event
+  signatures = Codex emits P1.8, Claude's P4 indexer consumes; (4) verdict
+  shape = Claude defines, Ledger/UI read.
+- **State:** docs-lane change only; code unchanged. main still green.
+- **Next:** Claude → P3.1 LLM explainer. Codex → P1.1 `send()`.
+
 ## 2026-06-12 ~21:30 · agent (Claude) · scaffold + risk engine (P0.1, P2.1–P2.3, P2.6)
 
 - **Did:** Brought up my lane (web/risk per WORKSTREAMS) — scaffold (P0.1) plus

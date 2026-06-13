@@ -4,6 +4,11 @@ Use this when Codex and Claude are both working. The goal is path ownership:
 one agent owns a lane, one branch, and one PR at a time. Do not share files
 unless they are listed as handoff files below.
 
+> **Per-agent handoff docs:** [CLAUDE.md](CLAUDE.md) (web/risk/UI lane) ·
+> [CODEX.md](CODEX.md) (contract lane). Each lists what that agent owns, is
+> blocked on, and owes the other. Read your own file first; this file is the
+> shared rulebook.
+
 ## Active Lanes
 
 | Lane | Owner | Branch prefix | Build-plan parts | Primary paths |
