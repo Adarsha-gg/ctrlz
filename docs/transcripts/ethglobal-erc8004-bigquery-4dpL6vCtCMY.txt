@@ -1,0 +1,571 @@
+Building for the On-Chain Agent Economy — Goutham Deva, Nalin Mittal (Google Cloud)
+ETHGlobal New York 2026 workshop
+https://www.youtube.com/watch?v=4dpL6vCtCMY
+Length: ~25:45
+
+---
+
+Kind: captions
+Language: en
+Hello everybody. How's everyone doing?
+Thanks for attending our workshop. So,
+my name is Nolan. Uh, I lead a lot of
+our product efforts in Google Cloud
+around Web 3. Um, we've been building
+web 3 products and services since 2018,
+believe it or not, starting with
+BigQuery data sets. Um, and we'll walk
+you through a few of the things that
+we're building, but we have data sets
+for over 40 different blockchains. We
+have faucets for a bunch of different
+test networks. Um and uh yeah, we're
+building a lot of agentic access to
+these things as well. Um but one of the
+things we're really focused on is
+agents, agentic payments, and one of the
+big things is the is trust between
+agents. We think that's a big gap. So
+we'll get into that. I also have Gotham
+here.
+&gt;&gt; Hello. Hello everyone. Uh my name is
+Gotham. I work on the engineering side
+for the Google Web 3 uh team. uh we
+helped support a lot of different ser
+offings offerings like bigquery faucets
+and uh we're excited to talk to you
+about ERC 80004 which is a really
+exciting um ERC especially in this space
+of gentic commerce and the future of it.
+So the the way we're going to structure
+this today is we'll talk about the
+product like why trust matters among
+agents um how 80004 is really a great
+solution for trust um and then how you
+can get access to that 80004 data using
+BigQuery because we have all of the
+Ethereum data from Genesis to the ch tip
+of the chain indexed in BigQuery. Um and
+then we'll walk you through some live
+like SQL queries and how you can pull
+that data out. Um, and we'll talk about
+like what a winning application might
+look like. So, we're offering $5,000
+cash prize to to to the winner. Um, so,
+you know, like right now there's agents
+are doing more and more, right? They're
+we're giving them more autonomy. They're
+able to now purchase and interact with
+other agents. Um, but it's really hard
+to give more and more trust or autonomy
+to these agents unless you know like who
+you're dealing with, right? If agents I
+I don't know about you guys, but I
+envision a world where agents are going
+to delegate to agents that are going to
+delegate to more agents, right? And real
+time markets are going to be created on
+the fly, these kinds of things. In that
+world, it's important to know who you're
+working with or at least have some idea
+of the reputation around this um agent.
+Um and we have a lot of different uh
+standards and protocols that have come
+about like MCP obviously everyone's
+using MCP to talk to different tools and
+services. We have A toa A. So Google
+worked on an agent to agent protocol
+which standardizes communication between
+agents. Um but one of the things that's
+still missing is uh is this like trust
+piece here, right? And just give me one
+second here. I'm actually on the wrong
+slide deck. So I'm just going to back up
+here for a minute. Um if you want to
+take me off for a second,
+um I apologize. Give me a second here.
+It's going to look very different, but
+it's going to be awesome.
+All right.
+Um, yeah, we can get started again. All
+right.
+Dark mode for everybody. All right. Um,
+so as I was talking about like we have
+different ways of communicating between
+uh agents and services and agents and
+agents. So, we know like how to do that,
+but how do you actually trust an agent
+across organizational boundaries, right?
+If your agent's going to hire something
+else within your organization, this
+isn't a problem. Your agents can talk to
+other agents, you trust them inherently.
+But if you're going to go to third party
+agents, you actually need an answer for
+this, right? And so 804 bridges that gap
+by establishing three different pieces
+here. So, identity, who is this agent,
+right? So uh we'll dive deep into these
+but basically it's issuing an NFT to the
+agent um which then you can um verify
+with uh reputation. So allowing anybody
+to leave feedback on a different on an
+agent and its quality and score it. And
+then validation. And this is still a
+work in progress, but how do you prove
+that the agent did the work that it says
+it's going to do or at least um have
+like a a ZK proof or some verifiable way
+to know like the usage of this agent
+over time, right? And we built this 804
+standard with uh a collaboration between
+MetaMask, Ethereum Foundation, and
+Coinbase. Um and it's been live on the
+Ethereum mainet since Jan 29. And it's
+on a bunch of other chains. And if you
+go to the GitHub repo, you can see all
+of the different chains that it's uh
+live on. Um so the first part of this is
+identity, right? Um how do you manage
+that? So uh we have uh a mechanism here
+where you call uh a register event on
+this smart contract. And when you do
+that, you basically submit some key
+pieces of data about your agent, which
+I'll walk through on the second slide
+here. Um, and what happens in the
+background is an NFT gets minted, it
+gets associated with your agent, and you
+get an agent ID. Um, and then you're
+able to use that ID going forward um, to
+prove who you are. Um, obviously you can
+hold the NFT. So only the wallet that
+that called this register event um, will
+hold that NFT and it'll prove that it's
+the owner of this agent. Um so if we
+look a little bit more deeply into like
+what that file looks like is it's a name
+a description and then the most
+important part are these services right
+so it's like the endpoints with which
+you access this agent um so it could be
+your ADA endpoint if you have like an
+MCP server on top of it could be that um
+you're also able to um mark whether this
+supports X42 um whether it's active and
+then like what trust models it supports
+reputation being the primary one. Um,
+this registrations field is actually
+something that happens post registration
+and it updates the the the agent URI.
+Um, but you don't submit with that. You
+submit with all these other pieces. Um,
+and you get you get back an agent ID and
+a global identifier from the registry.
+Um, so that's the first part and
+establishing an identity. The second
+part is reputation, right? So there's a
+contract method called give feedback
+where you pass in an agent ID um a a
+pairing of values and and the decimal
+places and then tags. Um so this is
+meant to be open-ended right now because
+it's still very early. We felt like it
+didn't make sense to be very
+prescriptive about which tags to
+support. Um but you know like we for by
+for example you can do things like a
+star rating, the uptime rating, response
+times, things like that. Um, and now
+when you give a feedback with an to an
+agent that you've been working with,
+other people are able to look at that
+because it's onchain and it's public.
+So, it's some construct for establishing
+a reputational system for your agents.
+Um, and we'll have we'll leave a lot of
+time at the end of this for questions
+and answers um, if you have any. Um, so
+that's the second part. The third part
+is still very much being worked on, but
+the idea is that uh you could request a
+proof or validate that this agent by
+giving in an ID um an URI and like a
+validator and a hash that this agent did
+the work that it said it was going to
+do, right? So, uh a third party
+validator would prove that. Um and
+there's different ways you can score
+that. And so this is still being worked
+on. This is not really part of the spec.
+There's no registry for this yet. Um, if
+you have ideas, I think that would be a
+cool thing to work on, although it's not
+really part of the um, bounty, if you
+will. Um, but it's it's something that
+um, needs work and that we're looking
+for collaborators on. So, um, if you
+have strong ideas about how to do this
+proof proof of work, um, let us know.
+Um, these are the different smart
+contracts on the Ethereum mainet for the
+identity registry and the reputation
+registry. They're two different smart
+contracts. um that you can look at and
+from our prize page, this is all linked
+um as well as the sample queries that
+we're going to go through in a second
+here. Um and so what we have um
+available for you guys to use is our
+BigQuery Ethereum data set, right? So
+this is from Genesis to the tip of the
+chain uh available to you. Um it's as a
+public good. It's not free per se, but
+we do have a generous free tier of 1
+TBTE um a month. Um, and anybody who's
+uh entering this track will issue a
+$1,000 coupon to build over the course
+of this weekend. It'll actually extend,
+I think, for a few weeks past that,
+maybe for a month. Uh, you can check
+with us at the booth and I can give you
+an exact time frame. Um, but we don't
+want you to spend a lot of money,
+obviously, building for the hackathon.
+So, we're giving you a $1,000 coupon.
+Um, you probably don't even need to use
+a lot of that, frankly, because we give
+you a terabyte for free. Um, and that
+should be sufficient for a lot of this.
+But, um, we have the full Ethereum, uh,
+you know, all of the data. You're only
+going to be looking at a subset of it
+for this purposes of this hackathon. If
+you enter this track, um, which is the
+804 data, which is why we listed these
+um, smart contracts. Um, to I'll go
+really quick on how to do this because
+it's not always obvious. You have you do
+have to set up a Google Cloud um, ID or
+account. Um, it does require a billing
+ID. Um, so you have to associate it with
+some form of payment, but we're going to
+give you a coupon that you'll add by
+going to this URL. Um, and then you can
+go to our web3 portal and find our
+Ethereum data set. Um, and then from
+there you can open up BigQuery Studio
+and start querying. And Gotham's going
+to show you how to do that in just a few
+minutes here. Um, but we'll make it we
+made it pretty easy to get access to
+this 804 data. Um, so yeah, do you want
+to take it away?
+&gt;&gt; Uh, sure. Yeah. Yeah. Thanks, Dalan. Um
+so we have a couple queries here to kind
+of demonstrate. Um and Nolan if if it's
+possible we it might be good to um show
+it on BigQuery, right? So um if you guys
+go to the the the prize card, there's
+actually a link to the BigQuery product
+&gt;&gt; and if we go there
+&gt;&gt; Oh, let's go to the Yeah, let's go to
+the card. Yep.
+&gt;&gt; And if you scroll down to the bottom,
+you should see a link for Yep. BigQuery
+Ethereum data set. So this kind of shows
+the documentation of like what these
+fields are. So we're going to go to
+Ethereum mainet.
+&gt;&gt; Yep. Click on data set.
+&gt;&gt; These are internal URLs. Don't worry
+about those. Yours will say
+console.cloud.google.com.
+&gt;&gt; And these are the different tables
+available to you.
+&gt;&gt; Yep. And if you want to know what the
+fields are, if you go up to the
+supported data sets, uh the middle tab,
+middle tab, uh like high like the tab,
+&gt;&gt; uh you want to just come over here.
+&gt;&gt; Oh, yeah, sure.
+&gt;&gt; All good. I'm stepping in. Uh yeah. So,
+if you want to know about the
+documentation of what these mean, you
+can click on here uh to understand what
+these fields represent. Um
+&gt;&gt; they're also in line in the schema
+itself.
+&gt;&gt; Mhm.
+Right.
+&gt;&gt; And then you click on details.
+&gt;&gt; Oh, maybe schema. You're right. Maybe
+maybe the documentation is the best
+place to go.
+&gt;&gt; Mhm. Uh but yeah, let's say uh you
+wanted to filter through. Um so this one
+says registration per day.
+So,
+&gt;&gt; so those are the number of agents that
+registered themselves as an agent using
+the identity registry.
+&gt;&gt; Correct. We're just going to let it run
+for example. So now we have like a row
+of the number of new agents that have
+been registered. So given that this uh
+ERC was made back at you know uh was
+released back in January of uh 29,
+there's obviously a lot of new agents
+that got registered here. Um and we can
+see through here. Uh, another really
+good one to check out is um the second
+one decoding a registered event.
+So if we go here
+and um also all of these queries uh you
+don't have to take a picture of this but
+all of these queries can be found here
+in this gist with comments explaining um
+&gt;&gt; from the prize page.
+&gt;&gt; From the prize page. Yep. Um, but going
+over here. So, this one shows a row of
+like agent ID, the owner of that ID, uh,
+and then the agent URI. Um, so the agent
+URI can either be like a file, uh, like
+file length of where a directory of
+where it's pointed to, or it can also be
+B 64 typically if it's onchain. So, um,
+yep, we can do that. Uh, I think it'd be
+fun to do a B 64 one, just a random one.
+Go for it.
+&gt;&gt; Yeah. Um, and another way to also look
+at this too actually is if you go to uh
+the
+uh contracts, right? We have one for Oh,
+this is the ETH global page.
+&gt;&gt; Oh, we'll get that fixed. ERC80004
+GitHub. Yep.
+And we can click on, you know, obviously
+we've got a bunch of data sets, but the
+we want one we want to focus on is the
+Ethereum mainet for identity and
+registries, which is what Nolan was
+talking about. Um, and you can actually
+see like the uh identity contract. And
+one thing you can do is you can click on
+these transaction hash, look at for more
+details, and actually like be able to
+decode some of the input data. So maybe
+we could do view through decoder.
+and kind of see like oh okay this is a
+agent ID and this is sort of the string
+that's associated with that. So that's
+another way of looking at it as well
+too. Um
+uh let's see another way another query
+you can do is reputational leaderboard.
+So I'll let
+&gt;&gt; So this is the other smart contract that
+manages reputation.
+So we'll see that. Yep. So we have an
+agent ID and then we have the feedback
+count associated with it along with the
+unique clients and like the average
+score associated with them um for
+validity purp you know for ranking
+purposes. Um and then the last query
+that would be good to know is
+uh x42 join.
+So I will raw
+&gt;&gt; do the raw
+and hit run.
+Yep. And this will show us the agent ID
+associated with the agent URI, the
+average score associated with it. Um but
+ideally also whether it's onchain,
+offchain, and whether it's X4 or 2
+supported. So you can actually filter um
+whether it's true or false whe whether
+an agent has X42 support or not. So if I
+have to send it,
+&gt;&gt; so there's like three values, null,
+true, and false.
+&gt;&gt; Yeah. So um but yeah, these are some
+pretty useful queries to find um which
+we have saved on here.
+&gt;&gt; And if you need help with any of these,
+we're at the booth. You can come and
+talk to us. We can walk you through
+these.
+&gt;&gt; Um see, I think there's a few other
+things here. Um just a little bit more
+details on the prize. Thanks, Gotham.
+Um, it's $5,000 cash, not credits on
+Google Cloud or anything. You actually
+get dollars. Um, and we're looking for,
+you know, applications that leverage the
+data set. Um, the ones that like, you
+know, leverage like the reputation data
+as well as the identity um from from the
+from the smart contract. So like pulling
+that data out and then some sort of
+front end on top of it. That's not
+required, but um it's always nice to
+visualize those things. So maybe like an
+explorer is one example, analytics um to
+see like you know what's happening over
+time, different ways to slice and dice
+that data. Um and then you know more
+information about which ones support X42
+and what they're doing, right? Then you
+can once you know it supports X42, then
+you can do more downstream queries and
+figure out how many transactions they've
+done and the volumes there. Um and so
+those are just some of the ideas, but
+you can really build anything you want.
+Um, you know, I think, uh, I'll be there
+on Sunday morning judging. So, excited
+to see what you guys are building. And
+if you want to brainstorm some things,
+uh, I'm at the booth. We'll open it up
+to some questions. Uh, let me see if
+there's anything else here. There's a
+bunch of resources here. Um, I think
+most of these are linked from the prize
+page on the portal uh, inside the ETH
+global, you know, portal. So, check it
+out and, uh, if you have any questions,
+let me know. I'm happy to answer
+questions right now. Yeah, go ahead.
+&gt;&gt; Thank you for building 804.
+&gt;&gt; You're welcome.
+&gt;&gt; What are your plans?
+&gt;&gt; I don't think there's a plan to monetize
+80004, right? It's meant to be an open
+registry. Um, we want agents
+to get adoption. We want more agents
+being built. We feel like probably
+you'll use some form of Gemini if you
+build agents or maybe you'll host them
+on Google Cloud, right? So, that's our
+goal. Um but there's no direct
+monetization plan here.
+&gt;&gt; Um there aren't currently
+official data sets for for base and
+currently correct.
+&gt;&gt; I believe there are. Yeah, the question
+was are there official data sets for
+bass and BNB. Um let me just check the
+um 804 GitHub.
+I know the vertical is supposed to
+&gt;&gt; Oh, got you. Um, I think we have base
+available as a data set. Um, if you
+don't see it, come let me know and I
+I'll help you there. Okay. Um, I'm not
+sure about BNB. That's a good question.
+But I believe we have base.
+&gt;&gt; Yes.
+what is 8,04
+&gt;&gt; so I think what the the payload which
+you register with
+is like the name the description and
+then the key things are the service
+endpoints right so if you sell tell me
+like oh you're this agent one I can
+verify that you are the owner of that
+agent because um that's a reg that's a
+part of the registration event right it
+gets emitted is the owner's wallet
+address and the agent ID, then I can
+look up what the the service URLs are
+and I can make calls to those service
+URLs.
+&gt;&gt; Does that make sense?
+&gt;&gt; Okay. Well, let's talk about it after
+maybe at the booth.
+&gt;&gt; Yeah.
+patterns.
+&gt;&gt; No, we haven't had anybody build a cool
+analytics uh explorer. So, that's that's
+the job.
+That's what we're paying $5,000 for.
+&gt;&gt; Yeah. So the idea is if you're
+interacting with an agent that's
+registered I think there's a dependency
+that it's registered in the identity
+registry then you can go ahead and leave
+feedback for it based on your experience
+with it so other people can leverage
+that right the reputation right now like
+we have some examples that people are
+using like stars and latency and things
+like that but really you can you leave
+feedback on any facet like we've left
+that open-ended so depending on what
+that agent does it might be interesting
+to leave feedback on different aspect
+aspects of it and so we intentionally
+left that open. Um but we think you know
+over time there'll be like certain
+things that people use um and more
+standardization around that. Maybe the
+standard evolves itself to like
+accommodate the mainstream use cases.
+It's just so early right now like it's
+hard to know what to what to make as the
+values.
+&gt;&gt; No, we're not we're not um breaking up
+the the judging or the criteria based on
+verticals, but you're more than welcome
+to do that. Um, if you want to find like
+categorize and index all of the agents
+based on their descriptions, I think
+that'd be a really cool thing to do.
+Yeah, I think right now I don't know if
+there's a good answer to that.
+Technically, anybody can leave uh
+feedback. Um, so I don't think that part
+has been solved. I think that's maybe
+leads into some that third piece that
+hasn't been figured out yet, which is
+actually the validation of what work was
+actually done, right? And then the
+combination of those two things can
+actually lead to a stronger signal.
+&gt;&gt; Um, one thing you could technically do
+is if there are unique identifier
+fields, like filter for once, so if you
+know if there's like a repeating actor
+that's just like potentially spammy, you
+could like filter by that as a way.
+&gt;&gt; Any other questions?
+the the part of the vision is to index
+agents behavior and the future of what
+happens in AI.
+Are there behaviors outside of agents in
+the cluster of AI or is it mostly agent?
+&gt;&gt; That's a good question. Um, I think this
+particular spec was built with agents in
+mind, but you make a good point that the
+scope of AI and reputation probably goes
+beyond agents. Um, so yeah, maybe
+that's, you know, feel free to
+contribute to the spec.
+We can we we know the right people to
+talk to.
+Any other questions?
+Awesome.
+Well, you know, uh, Amelia's in the back
+there. She'll be working on the booth
+and can help you get coupon codes. I can
+help you get coupon codes. So, come talk
+to us. One more question over here.
+&gt;&gt; Oh, yeah. I'm just curious about how you
+guys think about.
+&gt;&gt; I'm not sure I have a I'm not familiar
+with what you're talking about, so I
+probably shouldn't speak on it, but I'm
+happy to talk about it at the booth.
+&gt;&gt; Awesome, guys. Well, thanks for coming.
+I hope you participate and uh looking
+forward to what you guys build.

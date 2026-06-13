@@ -70,7 +70,7 @@ later outcomes.
 | Hedera EVM escrow | Verify lifecycle contract, live deploy, and live lock/resolve demo | Shipped live on Hedera testnet |
 | Hedera HCS | Receipt topic/message script | Shipped live on topic `0.0.9222881` |
 | ERC-8004 | Hedera testnet IdentityRegistry and ReputationRegistry scripts | Shipped live for worker/checker identity and feedback |
-| Google BigQuery | Reputation analytics/leaderboard over settlement + ERC-8004 data | Conditional; not shipped |
+| Google / ERC-8004 validation | BigQuery explorer over mainnet ERC-8004 data + CTRL+Z as a live ERC-8004 **validator** (the unsolved 3rd pillar) | Planned; Validation Registry confirmed live on Hedera — see [GOOGLE.md](GOOGLE.md) |
 
 ## Shipped vs Blocked
 
@@ -97,9 +97,13 @@ later outcomes.
 
 ### Blocked / Not Shipped
 
-- **Google BigQuery:** conditional and not shipped. It should only be claimed if
-  the sponsor approves analytics over this Hedera testnet ERC-8004/settlement
-  data; otherwise it remains a roadmap analytics layer.
+- **Google / ERC-8004 validation lane:** planned, not yet built. The angle is the
+  *validation pillar* (see [GOOGLE.md](GOOGLE.md)): a BigQuery explorer over
+  **mainnet/Base** ERC-8004 data, plus CTRL+Z writing verdicts to the canonical
+  ERC-8004 **Validation Registry** — confirmed live on Hedera testnet at
+  `0x8004Cb1BF31DAf7788923b405b754f57acEB4272`. Does **not** depend on Google
+  indexing Hedera. Forward design lives in [REPUTATION.md](REPUTATION.md) +
+  [GOOGLE.md](GOOGLE.md); open work is tracked in [TODO.md](TODO.md).
 - **Arc and Ledger:** prior/stretch material, not the primary G2 submission.
   Do not pitch live Arc transactions or Ledger signing as the current core.
 

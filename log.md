@@ -9,6 +9,24 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Claude) · Docs cleanup + TODO consolidation
+
+- **Did:** Pruned stale docs and synced the rest to current reality. **Deleted**
+  `NEW_DIRECTION.md` (frozen pivot snapshot, superseded), `WORKSTREAMS.md`
+  (pre-pivot escrow lanes → now in CLAUDE/CODEX), `STATUS.md` (→ TODO.md),
+  `WORLDCHAIN_AGENTKIT_TASKLIST.md` + `BLOCKERS.md` (live items folded into TODO;
+  tx record preserved in SUBMISSION + contract.ts). **Added** [TODO.md](TODO.md) —
+  the single open-work list (G1 demo, F4/F5 AgentKit, reputation R-phases, Google
+  GQ/VAL). **Updated** ARCHITECTURE (fixed stale escrow addr → `0xa2ac71dd…`,
+  corrected the keccak→sha256 note now that PR #35 pins exact anchors, added
+  ValidationRegistry row), README (Google reframed to the validation-pillar
+  angle), BUILD_PLAN + SUBMISSION (fixed links to deleted files). Committed
+  GOOGLE.md.
+- **Next:** see [TODO.md](TODO.md). Top: G1 rehearsal/video; then R1.1 reputation
+  engine and the Google VAL/GQ lanes.
+
+---
+
 ## 2026-06-13 · agent (Claude) · Google/ERC-8004 validator lane (GOOGLE.md)
 
 - **Did:** Wrote [GOOGLE.md](GOOGLE.md) — the Google Cloud / ERC-8004 prize plan.
