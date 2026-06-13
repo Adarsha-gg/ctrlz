@@ -37,20 +37,20 @@ export const ctrlzEscrowAddress =
 export const ctrlzEscrowDeployBlock = ctrlzEscrowDeployment.deployBlock;
 
 export const ctrlzVerifyEscrowDeployment = {
-  address: "0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4" as Address,
+  address: "0xa2ac71dd9e7835af08e6be33ec047c47a35b2462" as Address,
   transactionHash:
-    "0xd4b09a50ae6ef7c733ccdcdcbba3399838d950836dc95712310eed9cd39db792",
+    "0xcd4b8b44fb3292a932a2e40b7f4c08a49847dc9c56f8419b825ccd28d23843f0",
   demo: {
     taskId: 1,
-    lockHash: "0x02f66f01c68c6db88d4250b4f128d5a0f71c4e7eaca8588e4717b7448d9d093c",
-    acceptHash: "0xa02682601b9fcbb530f88ff329d5d3000cb8e8f7af5e3a31ed1c85caab8a32c6",
-    submitHash: "0x162cef8266683f44fe54af946e63c0bd68e4cdb1eb77e539f9b899e71cd8c184",
-    resolveHash: "0x78c20ab96742a69f1d599109142f51d702cab12edaa4f1310a0bc0081239519f",
-    specHash: "0xc4dab248f10ba4e5028308d2768503432834e4015f0fdd86c12cbdb2261335b9",
-    evidenceHash: "0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02",
+    lockHash: "0x999d96c91d0863d52708197d332c824745facb5b2503290503557a9c962bdcd6",
+    acceptHash: "0x319750b9d724d737cd9529cab8177176d5ae68ad7b2b1261d08902b486cf0488",
+    submitHash: "0x7fc38c32ce7b4d908e3d5d4e356f0bfc461fc3ee5e821ed852726954b738b0db",
+    resolveHash: "0xdbdb8f5236d1a1473bebb7f95c0e12683bebfbdf9f857628e62e69e9fbbeeb10",
+    specHash: "0xc558bf1d075e6d7c622aaba021c8409b1cbbdf17c8cc527aa59c7326e9279d84",
+    evidenceHash: "0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7",
     recommendationHash:
       "0x51c1f255c050c58e5c543aa089d63ba99581e984e1b9ecc80f4a4e576ab77996",
-    hashSource: "demo-fixture"
+    hashSource: "verify-ui-sha256"
   }
 } as const;
 

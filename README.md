@@ -124,19 +124,20 @@ npm run hedera:verify-demo
 # Store evidence on Walrus → prints a real aggregator URI + sha256 anchor
 node --experimental-strip-types scripts/hedera/store-evidence.mjs \
   --task-id=1 \
-  --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
-  --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
+  --contract=0xa2ac71dd9e7835af08e6be33ec047c47a35b2462 \
+  --spec-hash=0xc558bf1d075e6d7c622aaba021c8409b1cbbdf17c8cc527aa59c7326e9279d84 \
+  --evidence-hash=0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7 \
   --score-bps=9200 --recommendation=proceed
 
 # Hedera HCS receipt — --walrus-uri must be a real Walrus URI (printed above);
 # a GitHub or other non-Walrus link is rejected.
 npm run hedera:hcs -- \
   --task-id=1 \
-  --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
-  --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
+  --contract=0xa2ac71dd9e7835af08e6be33ec047c47a35b2462 \
+  --evidence-hash=0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7 \
   --score-bps=9200 \
   --recommendation=proceed \
-  --walrus-uri=https://aggregator.walrus-testnet.walrus.space/v1/blobs/OnRmhrt8o-olmw4DJj5K6_WUFYjFR9Qir_A7ehyctds
+  --walrus-uri=https://aggregator.walrus-testnet.walrus.space/v1/blobs/eDxE69ZD3dua2R7xO8Z1KlYa9RvKgpNZHzXIkO63frk
 ```
 
 `npm run hedera:evm-sanity` and `npm run hedera:verify-demo` return real

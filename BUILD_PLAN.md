@@ -295,8 +295,8 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
 | `[x]` | **C1** | Hedera Testnet setup + one real testnet financial op (sanity). | EVM sanity transfer confirmed: `0x9236c06cbd4021ce15c531a4d184d325b88c8ab852585bcf69c2a63733b09e97`. | Demo MUST show ≥1 real Hedera op. |
-| `[x]` | **C2** | Redeploy escrow Solidity to **Hedera EVM**; lock + resolve(pass→release/fail→refund); spec-hash + evidence-hash on-chain. | `CtrlZVerifyEscrow` deployed at `0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4`; lock/accept/submit/resolve txs recorded in `web/lib/contract.ts`. Current live run used deterministic demo-fixture bytes32 hashes; rerun with `HEDERA_VERIFY_SPEC_HASH`/`HEDERA_VERIFY_EVIDENCE_HASH` to pin exact `/verify` sha256 anchors. | Resolution driven by the verification result. |
-| `[x]` | **C3** | HCS audit receipt `{evidenceHash, score, recommendation}` on resolution. | HCS topic `0.0.9222881`; receipt tx `0.0.9222066@1781349565.367938628` writes the C2 evidence hash, score `9200`, and recommendation `proceed`. | Pointer only — no bulky data on-chain. |
+| `[x]` | **C2** | Redeploy escrow Solidity to **Hedera EVM**; lock + resolve(pass→release/fail→refund); spec-hash + evidence-hash on-chain. | `CtrlZVerifyEscrow` deployed at `0xa2ac71dd9e7835af08e6be33ec047c47a35b2462`; lock/accept/submit/resolve txs recorded in `web/lib/contract.ts`; spec/evidence hashes are exact clean `/verify` sha256 anchors. | Resolution driven by the verification result. |
+| `[x]` | **C3** | HCS audit receipt `{evidenceHash, score, recommendation}` on resolution. | HCS topic `0.0.9222881`; receipt tx `0.0.9222066@1781356716.807172813` writes the exact `/verify` evidence hash, score `9200`, recommendation `proceed`, and real Walrus URI. | Pointer only — no bulky data on-chain. |
 
 ### Phase D — ERC-8004 identity + reputation · `Cut: reads + 1 write` · Hedera lane
 | St | Part | Goal | Done when | Guard |

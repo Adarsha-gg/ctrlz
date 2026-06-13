@@ -22,9 +22,9 @@ confirmed via read-only RPC + the Hedera mirror node.
 | Risk engine (wallet-risk checker) | reuse | ✅ | `risk/selfcheck.ts` 11/11 (homoglyph, poisoning, fwd/rev) |
 | Walrus evidence (hash anchor + store/read) | E1, E2 | ✅ | `walrus/selfcheck.ts` 9/9 + **live blob stored & read back** |
 | World gating + human-backing boost | F1 | ✅ | `world/selfcheck.ts` 6/6 (fail-closed paths covered) |
-| Verify escrow contract | C2 | ✅ | `forge test` 47/47; on-chain task 1 reads `state=PAID`, `score=9200` |
+| Verify escrow contract | C2 | ✅ | `forge test` 47/47; exact `/verify` sha256 anchors pinned on-chain; task 1 reads `state=PAID`, `score=9200` |
 | Hedera sanity op | C1 | ✅ | tx `0x9236…b09e97`, `status=0x1` |
-| HCS audit receipt | C3 | ✅ | topic `0.0.9222881`, canonical receipt seq 3 with real Walrus URI |
+| HCS audit receipt | C3 | ✅ | topic `0.0.9222881`, receipt `0.0.9222066@1781356716.807172813` with exact evidence hash + real Walrus URI |
 | ERC-8004 identity | D1 | ✅ | worker `101`, checker `102` registration txs `status=0x1` |
 | ERC-8004 reputation feedback | D2 | ✅ | worker + checker feedback txs `status=0x1` |
 | Docs / submission framing | G2 | ✅ | README + SUBMISSION + this file + ARCHITECTURE.md |
@@ -37,22 +37,22 @@ confirmed via read-only RPC + the Hedera mirror node.
   return `status=0x1`. Verify escrow + ERC-8004 registries have live bytecode.
   Verify-escrow task 1 reads back `specHash` / `evidenceHash` / `scoreBps=9200` /
   `recommendationHash` identical to `web/lib/contract.ts`; `state=PAID`.
-- **HCS:** topic `0.0.9222881` has the receipt with matching evidence hash, score,
-  and recommendation.
+- **HCS:** topic `0.0.9222881` has the receipt with matching exact evidence
+  hash, score, recommendation, and Walrus URI.
 
 ## Fixed in this pass
 - **`walrusUri` terminology.** The HCS receipt had been pointing `walrusUri` at a
   **GitHub link**, not a Walrus blob. Added `scripts/hedera/store-evidence.mjs`
   (reuses the web Walrus store), hardened `hcs-receipt.mjs` to reject non-Walrus
-  URIs, stored a real evidence blob, and re-emitted the canonical receipt (seq 3)
-  with the genuine Walrus URI. Updated SUBMISSION / README / scripts docs.
+  URIs, stored a real evidence blob, and re-emitted a receipt with the genuine
+  Walrus URI. The latest exact `/verify` receipt is sequence 4:
+  `0.0.9222066@1781356716.807172813`. Updated SUBMISSION / README / scripts docs.
 
 ## What's left
 
 | Priority | Item | Notes |
 |---|---|---|
 | **P0** | **G1 — demo rehearsal ×5 + video** | The only open BUILD_PLAN box. Run `npm run demo:check`, rehearse the §13 demo end-to-end 5×, record the video, line up fallbacks for flaky integrations. Nothing in code blocks this. |
-| P2 | Pin exact sha256 anchors on-chain (optional) | Current live `evidenceHash` is a deterministic keccak demo-fixture. Rerun `hedera:verify-demo` with `HEDERA_VERIFY_SPEC_HASH` / `HEDERA_VERIFY_EVIDENCE_HASH` to commit the real `/verify` sha256 anchors. |
 | P2 | Wire the buyer-decision path live | Contract supports `buyerAcceptPaused` / `buyerRefundPaused` for the UNCERTAIN→pause branch; only the PASS path has a live demo tx so far. |
 | P3 | Google BigQuery lane | Conditional — only pursue if the sponsor approves Hedera ERC-8004/settlement data as an eligible source. |
 
