@@ -7,6 +7,8 @@ interface Vm {
     function addr(uint256 privateKey) external returns (address);
     function deal(address account, uint256 newBalance) external;
     function expectRevert(bytes4 selector) external;
+    function expectEmit(bool checkTopic1, bool checkTopic2, bool checkTopic3, bool checkData)
+        external;
     function prank(address sender) external;
     function sign(uint256 privateKey, bytes32 digest)
         external
@@ -16,6 +18,35 @@ interface Vm {
 
 contract CtrlZEscrowTest {
     Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+    event Sent(
+        uint256 indexed id,
+        address indexed sender,
+        address indexed recipient,
+        uint256 amount,
+        uint64 claimableAt,
+        uint64 expiresAt
+    );
+    event Recalled(
+        uint256 indexed id,
+        address indexed sender,
+        address indexed recipient,
+        uint256 amount,
+        CtrlZEscrow.RecallReason reason
+    );
+    event Rejected(
+        uint256 indexed id, address indexed sender, address indexed recipient, uint256 amount
+    );
+    event Sealed(
+        uint256 indexed id, address indexed sender, address indexed recipient, uint256 amount
+    );
+    event Expired(
+        uint256 indexed id, address indexed sender, address indexed recipient, uint256 amount
+    );
+    event Flagged(uint256 indexed id, address indexed sender, address indexed recipient);
+    event ProofAttached(
+        uint256 indexed id, address indexed sender, address indexed recipient, bytes32 proofHash
+    );
 
     CtrlZEscrow private escrow;
     address private sender = address(0xA11CE);
@@ -61,6 +92,20 @@ contract CtrlZEscrowTest {
         _assertEq(sealedAt, 0, "sealedAt");
     }
 
+    function testSendEmitsIndexablePaymentEvent() public {
+        vm.expectEmit(true, true, true, true);
+        emit Sent(
+            1,
+            sender,
+            recipient,
+            2 ether,
+            uint64(block.timestamp + 1 hours),
+            uint64(block.timestamp + 72 hours)
+        );
+
+        _send(2 ether, 1 hours);
+    }
+
     function testSendUsesRiskHoldWhenLongerThanUndoFloor() public {
         uint256 id = _send(1 ether, 1 seconds);
         (,,, uint64 claimableAt,,,,) = escrow.payments(id);
@@ -84,6 +129,16 @@ contract CtrlZEscrowTest {
         _assertEq(sender.balance, senderBefore + 3 ether, "sender refund");
     }
 
+    function testRecallEmitsIndexableRefundEventWithReason() public {
+        uint256 id = _send(3 ether, 5 minutes);
+
+        vm.expectEmit(true, true, true, true);
+        emit Recalled(id, sender, recipient, 3 ether, CtrlZEscrow.RecallReason.FRAUD_SUSPECTED);
+
+        vm.prank(sender);
+        escrow.recall(id, CtrlZEscrow.RecallReason.FRAUD_SUSPECTED);
+    }
+
     function testRejectIsRecipientOnlyAndRefundsSender() public {
         uint256 id = _send(4 ether, 5 minutes);
         uint256 senderBefore = sender.balance;
@@ -98,6 +153,16 @@ contract CtrlZEscrowTest {
         (,,,,,, CtrlZEscrow.State state,) = escrow.payments(id);
         _assertEq(uint256(state), uint256(CtrlZEscrow.State.REFUNDED), "state");
         _assertEq(sender.balance, senderBefore + 4 ether, "sender refund");
+    }
+
+    function testRejectEmitsIndexableRefundEvent() public {
+        uint256 id = _send(4 ether, 5 minutes);
+
+        vm.expectEmit(true, true, true, true);
+        emit Rejected(id, sender, recipient, 4 ether);
+
+        vm.prank(recipient);
+        escrow.reject(id);
     }
 
     function testClaimRequiresRecipientAndClaimableAtThenSeals() public {
@@ -118,6 +183,17 @@ contract CtrlZEscrowTest {
         _assertEq(uint256(state), uint256(CtrlZEscrow.State.SEALED), "state");
         _assertEq(sealedAt, uint64(block.timestamp), "sealedAt");
         _assertEq(recipient.balance, recipientBefore + 5 ether, "recipient paid");
+    }
+
+    function testClaimEmitsIndexableSealedEvent() public {
+        uint256 id = _send(5 ether, 5 minutes);
+        _warpToClaimable(id);
+
+        vm.expectEmit(true, true, true, true);
+        emit Sealed(id, sender, recipient, 5 ether);
+
+        vm.prank(recipient);
+        escrow.claim(id);
     }
 
     function testRecallAfterClaimRevertsOnState() public {
@@ -145,6 +221,18 @@ contract CtrlZEscrowTest {
         _assertEq(sealedAt, uint64(block.timestamp), "sealedAt");
         _assertEq(recipient.balance, recipientBefore + 2 ether, "recipient paid");
         _assertEq(relayer.balance, relayerBefore, "relayer unpaid");
+    }
+
+    function testClaimForEmitsIndexableSealedEvent() public {
+        uint256 id = _send(2 ether, 5 minutes);
+        bytes memory sig = _signClaimFor(recipientKey, id);
+
+        _warpToClaimable(id);
+        vm.expectEmit(true, true, true, true);
+        emit Sealed(id, sender, recipient, 2 ether);
+
+        vm.prank(relayer);
+        escrow.claimFor(id, sig);
     }
 
     function testClaimForReplayReverts() public {
@@ -204,6 +292,17 @@ contract CtrlZEscrowTest {
         (,,,,,, CtrlZEscrow.State state,) = escrow.payments(id);
         _assertEq(uint256(state), uint256(CtrlZEscrow.State.REFUNDED), "state");
         _assertEq(sender.balance, senderBefore + 2 ether, "sender refund");
+    }
+
+    function testExpireEmitsIndexableRefundEvent() public {
+        uint256 id = _send(2 ether, 5 minutes);
+
+        vm.warp(block.timestamp + 72 hours);
+        vm.expectEmit(true, true, true, true);
+        emit Expired(id, sender, recipient, 2 ether);
+
+        vm.prank(stranger);
+        escrow.expire(id);
     }
 
     function testExpireTooEarlyReverts() public {
@@ -337,6 +436,8 @@ contract CtrlZEscrowTest {
         uint256 id = _send(1 ether, 5 minutes);
         _claimAsRecipient(id);
 
+        vm.expectEmit(true, true, true, true);
+        emit Flagged(id, sender, recipient);
         vm.prank(sender);
         escrow.flag(id);
 
@@ -395,6 +496,8 @@ contract CtrlZEscrowTest {
         _claimAsRecipient(id);
         bytes32 hash = keccak256("tracking-hash");
 
+        vm.expectEmit(true, true, true, true);
+        emit ProofAttached(id, sender, recipient, hash);
         vm.prank(recipient);
         escrow.attachProof(id, hash);
 
