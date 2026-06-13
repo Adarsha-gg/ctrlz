@@ -20,6 +20,8 @@ import {
 import type { CheckSpec, WorkerSubmission } from "../../lib/checkers/index.ts";
 import type { CheckerOutcomeRecord } from "../../lib/checkers/metaReputation.ts";
 import type { RecipientHistory } from "../../lib/risk/index.ts";
+import { WORLD_HUMAN_AGENT_ID } from "../../lib/world/policy.ts";
+import type { WorldAgentIdentity } from "../../lib/world/policy.ts";
 
 export const DEMO_INTENT =
   "Buy an RTX 4090 under 700 USDC from a seller with a valid wallet + shipping proof.";
@@ -53,17 +55,29 @@ export type DemoSubmission = {
   label: string;
   hint: string;
   submission: WorkerSubmission;
+  worldAgent: {
+    agentId: string;
+    usedVerifications: number;
+    identity?: WorldAgentIdentity;
+  };
   /** worker history for the split-score agentTrust input (undefined → weak) */
   workerHistory?: RecipientHistory;
   /** wallet-risk history override, passed through on the wallet_risk check */
   recipientHistory?: RecipientHistory;
 };
 
+export const WORLD_UNKNOWN_AGENT_ID = "agent:unknown-demo";
+
 /** CLEAN: known seller, 689 USDC (< 700), recognizable source → proceed. */
 export const CLEAN_SUBMISSION: DemoSubmission = {
   id: "clean",
   label: "Submit the clean invoice",
   hint: "Known seller, under budget, plausible source",
+  worldAgent: {
+    agentId: WORLD_HUMAN_AGENT_ID,
+    usedVerifications: 0,
+    identity: { agentId: WORLD_HUMAN_AGENT_ID, humanBacked: true, source: "demo" }
+  },
   workerHistory: ALICE_HISTORY,
   recipientHistory: ALICE_HISTORY,
   submission: {
@@ -86,12 +100,47 @@ export const CLEAN_SUBMISSION: DemoSubmission = {
   }
 };
 
+/** CLEAN but unknown: same valid output, but the agent has no World backing. */
+export const UNKNOWN_CLEAN_SUBMISSION: DemoSubmission = {
+  id: "unknown-clean",
+  label: "Submit a clean invoice from an unknown agent",
+  hint: "Valid output from an agent that has no World human backing",
+  worldAgent: {
+    agentId: WORLD_UNKNOWN_AGENT_ID,
+    usedVerifications: 0
+  },
+  recipientHistory: ALICE_HISTORY,
+  submission: {
+    recipientAddress: ALICE_ADDRESS,
+    recipientName: ALICE_NAME,
+    invoice: {
+      invoiceId: "INV-4090-0003",
+      seller: ALICE_NAME,
+      item: "NVIDIA GeForce RTX 4090 Founders Edition",
+      amount: 689,
+      currency: "USDC"
+    },
+    sourceListing: {
+      url: "https://www.newegg.com/p/rtx-4090-fe",
+      marketplace: "Newegg",
+      title: "NVIDIA GeForce RTX 4090 24GB GDDR6X Founders Edition"
+    },
+    shippingProof: { carrier: "UPS", tracking: "1Z999AA10123456784" },
+    evidenceHash: "0xunknown000000000000000000000000000000000000000000000000unknown"
+  }
+};
+
 /** BAD: poisoned lookalike wallet AND 879 USDC (> 700) → reject/pause. */
 export const BAD_SUBMISSION: DemoSubmission = {
   id: "bad",
   label: "Submit the poisoned over-budget invoice",
   hint: "Poisoned lookalike wallet + price over 700 USDC",
   // no workerHistory → weak agentTrust; no recipientHistory → unknown wallet
+  worldAgent: {
+    agentId: WORLD_HUMAN_AGENT_ID,
+    usedVerifications: 1,
+    identity: { agentId: WORLD_HUMAN_AGENT_ID, humanBacked: true, source: "demo" }
+  },
   submission: {
     recipientAddress: POISONED_LOOKALIKE,
     recipientName: ALICE_NAME,
@@ -111,7 +160,11 @@ export const BAD_SUBMISSION: DemoSubmission = {
   }
 };
 
-export const DEMO_SUBMISSIONS: DemoSubmission[] = [CLEAN_SUBMISSION, BAD_SUBMISSION];
+export const DEMO_SUBMISSIONS: DemoSubmission[] = [
+  CLEAN_SUBMISSION,
+  UNKNOWN_CLEAN_SUBMISSION,
+  BAD_SUBMISSION
+];
 
 export const CHECKER_HISTORY: CheckerOutcomeRecord[] = [
   {

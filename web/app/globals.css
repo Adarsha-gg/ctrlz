@@ -378,6 +378,31 @@ dd {
   text-transform: uppercase;
 }
 
+.world-gate-panel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.world-gate-title {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 750;
+  color: #2f2a23;
+}
+
+.world-boost-note {
+  margin: -2px 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .status-pass,
 .status-strong {
   color: #1a7f5a;

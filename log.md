@@ -9,6 +9,22 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · World AgentKit gating (F1)
+
+- **Did:** Added deterministic World-style gating under `web/lib/world/**`: human-backed
+  agents get 3 free verification uses, unknown agents and exhausted trials require
+  payment. Added IDKit portal verification plumbing with `rp_id` preferred over
+  `app_id`, plus deterministic demo fallback when World credentials are absent.
+- **UI/API:** `/verify` now surfaces the World gate and capped `agentTrust` baseline
+  boost without changing output checks. Added `/api/world/verify` for AgentBook/IDKit
+  lookup and policy decisions.
+- **Verify:** `node --experimental-strip-types web/lib/world/selfcheck.ts` passes:
+  first 3 human-backed uses free, 4th pay-gated, unknown pay-gated, trust boost
+  capped, and hard-gate rejection remains reject.
+- **State:** F1 `[x]`.
+- **Next:** Wire real AgentBook lookup calldata once the deployed World Chain registry
+  ABI/address is finalized; demo fallback is deterministic meanwhile.
+
 ## 2026-06-13 · agent (Codex) · checker meta-reputation (B3)
 
 - **Did:** Added checker replay comparison, seeded checker outcome history, and

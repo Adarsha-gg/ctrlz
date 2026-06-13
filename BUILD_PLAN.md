@@ -313,7 +313,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 ### Phase F — World AgentKit gating · `Cut: policy + IDKit call` · auth lane
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
-| `[ ]` | **F1** | Human-backed agent → first 3 verifications free; unknown → pay; backing raises baseline `agentTrust`. | Human-backed gets the trial; unknown is gated. | Backing raises baseline trust, NEVER replaces output checks. |
+| `[x]` | **F1** | Human-backed agent → first 3 verifications free; unknown → pay; backing raises baseline `agentTrust`. | Human-backed gets the trial; unknown is gated. | Backing raises baseline trust, NEVER replaces output checks. |
 
 ### Phase G — Demo + submission · `NEVER` · Sun
 | St | Part | Goal | Done when | Guard |
