@@ -7,7 +7,12 @@ Required native Hedera operator env for HCS and sanity transfer:
 ```txt
 HEDERA_OPERATOR_ID=0.0.x
 HEDERA_OPERATOR_KEY=...
+HEDERA_OPERATOR_KEY_TYPE=ecdsa
 ```
+
+Set `HEDERA_OPERATOR_KEY_TYPE=ecdsa` for portal-generated 32-byte ECDSA private
+keys. Use `ed25519` for raw ED25519 keys, or `auto`/unset for SDK-formatted
+keys.
 
 Required Hedera EVM env for ERC-8004 writes:
 
@@ -32,7 +37,7 @@ Optional:
 
 ```txt
 HEDERA_NETWORK=testnet
-HEDERA_HCS_TOPIC_ID=0.0.x
+HEDERA_HCS_TOPIC_ID=0.0.9222881
 HEDERA_SANITY_TO_ACCOUNT_ID=0.0.y
 HEDERA_SANITY_TINYBARS=100000
 ERC8004_IDENTITY_REGISTRY=0x8004A818BFB912233c491871b3d84c89A494BD9e
@@ -49,15 +54,21 @@ node scripts/hedera/sanity-transfer.mjs
 
 ## C3 HCS receipt
 
-Creates `HEDERA_HCS_TOPIC_ID` if missing, then submits a CTRL+Z Verify receipt
+Uses the default CTRL+Z receipt topic unless `HEDERA_HCS_TOPIC_ID` is set.
+Set `HEDERA_HCS_TOPIC_ID=new` to create a new topic, then submit the receipt
 message.
+
+Live C3 topic: `0.0.9222881`. Confirmed receipt tx:
+`0.0.9222066@1781349565.367938628`.
 
 ```sh
 node scripts/hedera/hcs-receipt.mjs \
   --task-id=1 \
-  --evidence-hash=0xabc \
+  --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
+  --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
   --score-bps=9200 \
-  --recommendation=proceed
+  --recommendation=proceed \
+  --walrus-uri=https://github.com/Adarsha-gg/ctrlz/blob/main/SUBMISSION.md
 ```
 
 ## D1 ERC-8004 agent registration

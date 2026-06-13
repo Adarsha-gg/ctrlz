@@ -33,7 +33,7 @@ scores the checkers by whether later outcomes agreed with them.
 - Checker meta-reputation in scoring/UI using seeded outcome history and replay
   checks.
 - Hedera EVM sanity transfer, live verify escrow deployment, and lock/accept/submit/resolve transaction flow.
-- Scripts for C3 HCS.
+- HCS receipt topic/message for the C2 evidence hash, score, and recommendation.
 - ERC-8004 IdentityRegistry registrations and ReputationRegistry feedback writes
   for the worker and checker agents on Hedera testnet.
 
@@ -47,15 +47,15 @@ scores the checkers by whether later outcomes agreed with them.
 | B3 checker meta-reputation | Shipped + persisted | Influence weighting is in scoring/UI; checker accuracy feedback is written to ERC-8004 agent `102`. |
 | C1 Hedera sanity write | Shipped live | EVM sanity transfer tx: `0x9236c06cbd4021ce15c531a4d184d325b88c8ab852585bcf69c2a63733b09e97`. |
 | C2 Hedera EVM escrow deploy + live lock/resolve | Shipped live | Escrow: `0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4`; deploy `0xd4b09a50ae6ef7c733ccdcdcbba3399838d950836dc95712310eed9cd39db792`; resolve `0x78c20ab96742a69f1d599109142f51d702cab12edaa4f1310a0bc0081239519f`. Current run used deterministic demo-fixture hashes; rerun with `HEDERA_VERIFY_SPEC_HASH`/`HEDERA_VERIFY_EVIDENCE_HASH` for exact `/verify` sha256 anchors. |
-| C3 HCS receipt | Blocked | Script exists; native Hedera SDK writes are currently timing out from this environment. |
+| C3 HCS receipt | Shipped live | Topic `0.0.9222881`; tx `0.0.9222066@1781349565.367938628`; payload references the C2 evidence hash, score `9200`, and recommendation `proceed`. |
 | D1 ERC-8004 identity registration | Shipped live | Worker agent `101` tx `0xd4912aef78fb8f76a0e77e583516bcf0f84ac3e14de5d46d5c78c39dd0863c94`; checker agent `102` tx `0xff802ef5cd713ab8075e3b195329ac3664633dfa648f61fff156e84582d8f80f`. |
 | D2 ERC-8004 reputation feedback | Shipped live | Worker outcome feedback tx `0x3745fa1efa69f725481f5798d3e2d76d856123510569f09f2a59c277f3e0fb0f`; checker accuracy feedback tx `0xa42eb5c0142e0fd26362c900357fd4def575691d91800040147bec7ee6078bbc`. |
 | Google BigQuery | Conditional / not shipped | Only claim if sponsor approves Hedera testnet ERC-8004/settlement data as an eligible source. |
 | Arc / Ledger | Prior or stretch | Do not pitch as the primary G2 product. |
 
-Do not overclaim live Hedera transactions. C1/C2/D1/D2 now have real Hedera
-testnet tx hashes. C3 does not yet, so keep HCS claims at "implemented, not
-completed live."
+C1/C2/C3/D1/D2 now have real Hedera testnet confirmations. Do not claim the C2
+demo-fixture hashes are the exact `/verify` sha256 anchors unless the flow is
+rerun with `HEDERA_VERIFY_SPEC_HASH` and `HEDERA_VERIFY_EVIDENCE_HASH`.
 
 ## Demo Commands
 
@@ -76,27 +76,34 @@ node --experimental-strip-types web/lib/world/selfcheck.ts
 npm run hedera:evm-sanity
 npm run hedera:verify-demo
 
-# Hedera script still needing live completion
+# Hedera HCS receipt
 pnpm hedera:sanity
-pnpm hedera:hcs -- --task-id=demo --evidence-hash=0x0 --score-bps=9200 --recommendation=proceed
+npm run hedera:hcs -- \
+  --task-id=1 \
+  --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
+  --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
+  --score-bps=9200 \
+  --recommendation=proceed \
+  --walrus-uri=https://github.com/Adarsha-gg/ctrlz/blob/main/SUBMISSION.md
 ```
 
 Expected current behavior: web/scoring/world checks should pass if dependencies
 are installed; `npm run hedera:evm-sanity` and `npm run hedera:verify-demo`
 return real Hedera testnet tx hashes with the current env. The ERC-8004
-registration and feedback scripts have already produced live tx hashes. Native
-SDK/HCS may still time out from this environment.
+registration and feedback scripts have already produced live tx hashes. The HCS
+script now works with portal-style ECDSA private keys and has produced a live
+receipt on topic `0.0.9222881`.
 
 `npm run demo:check` bundles the scoring selfcheck, World selfcheck, and `npm run
 build` in `web/`, then reports Hedera environment readiness by variable presence
 only. It does not print secrets, submit transactions, or mark G1 complete.
 
-See [BLOCKERS.md](BLOCKERS.md) for the exact remaining C3 command.
+See [BLOCKERS.md](BLOCKERS.md) for the remaining G1 rehearsal/video checklist.
 
 ## Prize Box Language
 
-- **Hedera:** live C1 sanity transfer plus C2 verify escrow deploy/lock/resolve
-  txs are complete; HCS remains incomplete.
+- **Hedera:** live C1 sanity transfer, C2 verify escrow deploy/lock/resolve, and
+  C3 HCS receipt are complete.
 - **World:** implemented World-style human-backed agent gating and capped trust
   lift.
 - **Walrus:** implemented content-addressed manifest/evidence storage and read
@@ -110,4 +117,4 @@ See [BLOCKERS.md](BLOCKERS.md) for the exact remaining C3 command.
 
 - **G1:** leave undone until the demo runs clean start-to-finish five times.
 - **G2:** complete for docs/submission framing. The shipped-vs-blocked boundary
-  now includes live C1/C2/D1/D2 Hedera tx hashes and does not claim C3.
+  now includes live C1/C2/C3/D1/D2 Hedera confirmations.

@@ -9,6 +9,17 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · Hedera HCS live C3
+
+- **Did:** Fixed native Hedera SDK private-key parsing for portal-style ECDSA
+  hex keys, then submitted the CTRL+Z Verify HCS receipt. Topic:
+  `0.0.9222881`; tx: `0.0.9222066@1781349565.367938628`; payload references
+  verify escrow `0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4`, evidence hash
+  `0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02`,
+  score `9200`, and recommendation `proceed`.
+- **State:** C3 `[x]`. Remaining build-plan work is G1 manual rehearsal/video.
+- **Next:** Run the `/verify` demo five times and record the submission video.
+
 ## 2026-06-13 · agent (Codex) · ERC-8004 live D1/D2
 
 - **Did:** Registered the CTRL+Z worker and checker agent metadata in the

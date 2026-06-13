@@ -66,7 +66,10 @@ export function getHederaClient() {
     ["HEDERA_PAYER_ID", "HEDERA_PAYER_PRIVATE_KEY"]
   ]);
   const operatorId = AccountId.fromString(operatorEnv.id);
-  const operatorKey = PrivateKey.fromString(operatorEnv.key);
+  const operatorKey = parsePrivateKey(
+    operatorEnv.key,
+    optionalEnv("HEDERA_OPERATOR_KEY_TYPE", defaultKeyType(operatorEnv.keyName)),
+  );
   const network = optionalEnv("HEDERA_NETWORK", "testnet");
 
   let client;
@@ -76,6 +79,24 @@ export function getHederaClient() {
 
   client.setOperator(operatorId, operatorKey);
   return { client, operatorId };
+}
+
+export function parsePrivateKey(value, keyType = "auto") {
+  const trimmed = value.trim();
+  if (keyType === "ecdsa") {
+    return PrivateKey.fromStringECDSA(trimmed.replace(/^0x/, ""));
+  }
+  if (keyType === "ed25519") {
+    return PrivateKey.fromStringED25519(trimmed.replace(/^0x/, ""));
+  }
+  return PrivateKey.fromString(trimmed);
+}
+
+function defaultKeyType(envName) {
+  if (envName === "HEDERA_RESOLVER_PRIVATE_KEY" || envName === "HEDERA_PAYER_PRIVATE_KEY") {
+    return "ecdsa";
+  }
+  return "auto";
 }
 
 export function printJson(value) {
