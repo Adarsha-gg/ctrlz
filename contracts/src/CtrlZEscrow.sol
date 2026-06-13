@@ -59,9 +59,20 @@ contract CtrlZEscrow {
         uint64 claimableAt,
         uint64 expiresAt
     );
-    event Recalled(uint256 indexed id, RecallReason reason);
-    event Rejected(uint256 indexed id);
+    event Recalled(
+        uint256 indexed id,
+        address indexed sender,
+        address indexed recipient,
+        uint256 amount,
+        RecallReason reason
+    );
+    event Rejected(
+        uint256 indexed id, address indexed sender, address indexed recipient, uint256 amount
+    );
     event Sealed(
+        uint256 indexed id, address indexed sender, address indexed recipient, uint256 amount
+    );
+    event Expired(
         uint256 indexed id, address indexed sender, address indexed recipient, uint256 amount
     );
     event Flagged(uint256 indexed id, address indexed sender, address indexed recipient);
@@ -119,7 +130,7 @@ contract CtrlZEscrow {
         address refundTo = payment.refundTo;
         payment.state = State.REFUNDED;
 
-        emit Recalled(id, reason);
+        emit Recalled(id, payment.sender, payment.recipient, amount, reason);
         _sendValue(refundTo, amount);
     }
 
@@ -132,7 +143,7 @@ contract CtrlZEscrow {
         address refundTo = payment.refundTo;
         payment.state = State.REFUNDED;
 
-        emit Rejected(id);
+        emit Rejected(id, payment.sender, payment.recipient, amount);
         _sendValue(refundTo, amount);
     }
 
@@ -182,6 +193,7 @@ contract CtrlZEscrow {
         address refundTo = payment.refundTo;
         payment.state = State.REFUNDED;
 
+        emit Expired(id, payment.sender, payment.recipient, amount);
         _sendValue(refundTo, amount);
     }
 

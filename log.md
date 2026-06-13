@@ -9,6 +9,18 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · contract transition events (P1.8)
+
+- **Did:** Added indexer-ready event payloads across the escrow state machine:
+  `Recalled`, `Rejected`, and `Expired` now include indexed sender/recipient
+  plus amount, `Expired` is emitted on expiry refunds, and existing `Sent`,
+  `Sealed`, `Flagged`, and `ProofAttached` events are covered with
+  `expectEmit` tests.
+- **ABI note:** Foundry regenerates the ABI under `contracts/out` during
+  build/test, but committing it to `web/lib/contract.ts` is the P1.10 handoff
+  surface. This worker did not edit `web/**`.
+- **State:** P1.8 `[x]`. Next Codex contract part is P1.9 invariants.
+
 ## 2026-06-13 · agent (Codex) · flag and proof signals (P1.7)
 
 - **Did:** Added `flag(id)` for the original sender of a SEALED payment,
