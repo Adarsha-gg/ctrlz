@@ -9,6 +9,28 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-12 ~21:30 · agent (Claude) · scaffold + risk engine (P0.1, P2.1–P2.3, P2.6)
+
+- **Did:** Brought up my lane (web/risk per WORKSTREAMS) — scaffold (P0.1) plus
+  the deterministic risk engine in `web/lib/risk/`: `types.ts`, `lookalike.ts`
+  (address poisoning: visible prefix+suffix match + Levenshtein), `names.ts`
+  (Cyrillic/Greek/capital-I homoglyph fold + name edit distance), `verdict.ts`
+  (ordered-rules aggregator — signals decide, LLM only explains), `fixtures.ts`
+  (demo address book + **planted poisoned lookalike**), `selfcheck.ts`
+  (11 checks under plain `node --experimental-strip-types`, **all passing**).
+  Added `allowImportingTsExtensions` to `web/tsconfig.json`.
+- **Shipped:** PR #2 (`claude/risk-engine` → main). Rebased clean onto main
+  after Codex's PR #1 squash-merged (the squash and my branch carried the same
+  plan/workstream content under different hashes → add/add conflicts; resolved
+  by reapplying only the additive code files on top of main + redoing the doc
+  edits here).
+- **Handoff → Codex:** `web/lib/risk/fixtures.ts` pins a placeholder
+  `ALICE_ADDRESS` (`0xA11cE0…a5e1`). The P1.11 seed script must seed THAT alice,
+  or update the fixture and ping here.
+- **State:** P2.1/P2.2/P2.3/P2.6 `[x]`. P2.0 (manual ENS) human-blocked;
+  P2.4 needs `SEPOLIA_RPC_URL`; P2.5 needs the deployed contract (Codex lane).
+- **Next (Claude lane):** P3.1 LLM explainer → P6.1 buyer UI verdict card.
+
 ## 2026-06-12 · agent (Codex) · workstream split
 
 - **Did:** Added [WORKSTREAMS.md](WORKSTREAMS.md) to separate Codex vs Claude
