@@ -46,3 +46,43 @@ export function runChecks(checks: CheckSpec[], ctx: TaskContext): CheckerReport[
     return checker ? checker(check, ctx) : unknownReport(check, ctx);
   });
 }
+
+export type ReplayStatus = "match" | "mismatch" | "unregistered";
+
+export type ReplayCheck = {
+  checker: string;
+  status: ReplayStatus;
+  replayable: boolean;
+};
+
+function comparableReport(report: CheckerReport) {
+  return {
+    checker: report.checker,
+    result: report.result,
+    confidence: report.confidence,
+    detail: report.detail,
+    evidenceHash: report.evidenceHash
+  };
+}
+
+/** Re-run reports against the same input and compare stable report fields. */
+export function replayChecks(
+  checks: CheckSpec[],
+  ctx: TaskContext,
+  previousReports: CheckerReport[]
+): ReplayCheck[] {
+  const rerun = runChecks(checks, ctx);
+  return rerun.map((report, index) => {
+    const check = checks[index];
+    const registered = Boolean(getChecker(check.type));
+    if (!registered) {
+      return { checker: report.checker, status: "unregistered", replayable: false };
+    }
+    const previous = previousReports[index];
+    const status =
+      previous && JSON.stringify(comparableReport(previous)) === JSON.stringify(comparableReport(report))
+        ? "match"
+        : "mismatch";
+    return { checker: report.checker, status, replayable: true };
+  });
+}

@@ -4,8 +4,9 @@
  * submission → same result, so the page is replayable.
  */
 
-import { runChecks } from "@/lib/checkers";
+import { replayChecks, runChecks } from "@/lib/checkers";
 import type { CheckSpec, CheckerReport, TaskContext } from "@/lib/checkers";
+import { computeCheckerMetas, type CheckerMeta } from "@/lib/checkers/metaReputation";
 import { scoreSplit } from "@/lib/scoring/score";
 import type { ScoredCheck, SplitScore } from "@/lib/scoring/score";
 import {
@@ -17,12 +18,13 @@ import {
   type EvidenceBlob,
   type StoreResult
 } from "@/lib/walrus";
-import { DEMO_ACCEPTANCE_SPEC, type DemoSubmission } from "./fixtures";
+import { CHECKER_HISTORY, DEMO_ACCEPTANCE_SPEC, type DemoSubmission } from "./fixtures";
 
 export type VerificationResult = {
   scored: ScoredCheck[];
   reports: CheckerReport[];
   split: SplitScore;
+  checkerMeta: CheckerMeta[];
   /** the acceptance-spec manifest this submission was judged against (E2) */
   manifest: AcceptanceManifest;
   /** the assembled evidence blob (E2) — the thing money resolves against */
@@ -54,7 +56,13 @@ export function verifySubmission(demo: DemoSubmission): VerificationResult {
   };
 
   const reports = runChecks(checks, ctx);
-  const scored: ScoredCheck[] = checks.map((c, i) => ({ check: c, report: reports[i] }));
+  const replays = replayChecks(checks, ctx, reports);
+  const checkerMeta = computeCheckerMetas({ reports, history: CHECKER_HISTORY, replays });
+  const scored: ScoredCheck[] = checks.map((c, i) => ({
+    check: c,
+    report: reports[i],
+    metaWeight: checkerMeta[i]?.weight
+  }));
   const split = scoreSplit({ checks: scored, workerHistory: demo.workerHistory });
 
   // Assemble the verifiable manifest + evidence blob (E2). The manifest uses the
@@ -66,10 +74,11 @@ export function verifySubmission(demo: DemoSubmission): VerificationResult {
     workerOutput: demo.submission,
     checkerReports: reports,
     splitScore: split,
-    recommendation: split.recommendation
+    recommendation: split.recommendation,
+    checkerMeta
   });
 
-  return { scored, reports, split, manifest, evidence };
+  return { scored, reports, split, checkerMeta, manifest, evidence };
 }
 
 /**

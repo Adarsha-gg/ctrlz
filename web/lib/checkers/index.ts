@@ -10,7 +10,10 @@ export type {
 export {
   CHECKER_REGISTRY,
   getChecker,
-  runChecks
+  replayChecks,
+  runChecks,
+  type ReplayCheck,
+  type ReplayStatus
 } from "./registry.ts";
 export { schemaChecker } from "./schema.ts";
 export { priceChecker } from "./price.ts";

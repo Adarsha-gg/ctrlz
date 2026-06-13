@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { CheckerReport } from "@/lib/checkers";
+import type { CheckerMeta } from "@/lib/checkers/metaReputation";
 import type { Recommendation, SplitScore, SubScore } from "@/lib/scoring/score";
 import {
   DEMO_INTENT,
@@ -54,6 +55,20 @@ const RESULT_EMOJI: Record<CheckerReport["result"], string> = {
   fail: "❌",
   uncertain: "⚠️"
 };
+
+function CheckerMetaLine({ meta }: { meta?: CheckerMeta }) {
+  if (!meta) return null;
+  return (
+    <div className="checker-meta-line">
+      <span>accuracy {Math.round(meta.accuracy * 100)}%</span>
+      <span>weight {Math.round(meta.weight * 100)}%</span>
+      <span>replay {meta.replay.status}</span>
+      <span>
+        wrong {meta.falsePass + meta.falseFail}/{meta.sampleCount}
+      </span>
+    </div>
+  );
+}
 
 /**
  * Build the RiskVerdict-shaped payload the existing /api/explain route accepts,
@@ -211,8 +226,8 @@ export default function VerifyPage() {
           <div>
             <p className="field-label">Checker reports</p>
             <ul className="report-list">
-              {result.scored.map(({ check, report }) => (
-                <li key={`${report.checker}`} className="report-item">
+              {result.scored.map(({ check, report }, index) => (
+                <li key={`${report.checker}-${index}`} className="report-item">
                   <span className="report-result">{RESULT_EMOJI[report.result]}</span>
                   <div>
                     <p className="report-head">
@@ -222,6 +237,7 @@ export default function VerifyPage() {
                       </span>{" "}
                       <span className="muted-text">conf {report.confidence}</span>
                     </p>
+                    <CheckerMetaLine meta={result.checkerMeta[index]} />
                     <p className="report-detail">{report.detail}</p>
                   </div>
                 </li>
