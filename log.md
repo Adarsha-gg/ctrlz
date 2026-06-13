@@ -9,6 +9,24 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · Hedera verify escrow skeleton (C1/C2 prep)
+
+- **Did:** Started the Codex-owned Hedera lane from the new build plan. Added
+  `contracts/src/CtrlZVerifyEscrow.sol` and
+  `contracts/script/DeployCtrlZVerifyEscrow.s.sol`.
+- **Contract:** The new verify escrow models the MVP lifecycle: buyer locks
+  funds with a `specHash`, worker accepts, worker submits an `evidenceHash`,
+  resolver/checker runner posts `PASS`/`FAIL`/`UNCERTAIN`, pass pays worker,
+  objective fail refunds buyer, uncertain pauses for buyer accept/refund.
+- **Handoff:** Added Hedera testnet config, ERC-8004 Hedera registry addresses,
+  and the verify escrow ABI/address placeholder to `web/lib/contract.ts`.
+- **Verified:** `forge test --root contracts` passes 47 tests, including 6 for
+  the new verify escrow. `npm run build` in `web/` passes.
+- **Blocked:** C1 real Hedera financial op and C2 deployment need a funded
+  Hedera EVM account/private key.
+- **Next:** Fund `HEDERA_EVM_PRIVATE_KEY`/`HEDERA_PAYER_ADDRESS`, deploy
+  `CtrlZVerifyEscrow`, then record the deployed address in `web/lib/contract.ts`.
+
 ## 2026-06-13 · agent (Claude) · A1/A2/A3 + B1/B2 verification core
 
 - **Did:** Built the web-side verification core on a NEW `/verify` route
