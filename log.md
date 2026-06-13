@@ -9,6 +9,21 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · contract core P1.1-P1.3
+
+- **Did:** Implemented the first escrow state-machine slice in
+  `contracts/src/CtrlZEscrow.sol`: native-value `send()` creates PENDING
+  payments with `refundTo` locked to sender, `recall(reason)` and `reject()`
+  refund only to `refundTo`, and `claim()` seals after
+  `claimableAt = now + max(clamped undoWin, hold(recipient))` with `hold()` as
+  the planned P1.6 stub. Added self-contained Foundry tests for readable
+  storage, undo-floor clamp, sender-only recall, recipient-only reject/claim,
+  early-claim rejection, sealing, and recall-after-claim state rejection.
+- **State:** P1.1/P1.2/P1.3 `[x]`. `forge test --root contracts` passes
+  6 tests.
+- **Next:** Codex → P1.4 `claimFor(id, recipientSig)` with replay protection
+  and recipient-only payout.
+
 ## 2026-06-12 ~21:50 · agent (Claude) · per-agent handoff docs
 
 - **Did:** Added [CLAUDE.md](CLAUDE.md) (web/risk/UI lane) and [CODEX.md](CODEX.md)

@@ -3,4 +3,147 @@ pragma solidity ^0.8.24;
 
 contract CtrlZEscrow {
     string public constant NAME = "CTRL+Z Escrow";
+
+    uint256 public constant MIN_UNDO_WINDOW = 5 minutes;
+    uint256 public constant MAX_UNDO_WINDOW = 24 hours;
+    uint256 public constant EXPIRY_WINDOW = 72 hours;
+
+    enum State {
+        NONE,
+        PENDING,
+        REFUNDED,
+        SEALED
+    }
+
+    enum RecallReason {
+        WRONG_ADDRESS,
+        WRONG_AMOUNT,
+        FRAUD_SUSPECTED,
+        OTHER
+    }
+
+    struct Payment {
+        address sender;
+        address recipient;
+        uint256 amount;
+        uint64 claimableAt;
+        uint64 expiresAt;
+        address refundTo;
+        State state;
+        uint64 sealedAt;
+    }
+
+    uint256 public nextPaymentId = 1;
+    mapping(uint256 => Payment) public payments;
+
+    event Sent(
+        uint256 indexed id,
+        address indexed sender,
+        address indexed recipient,
+        uint256 amount,
+        uint64 claimableAt,
+        uint64 expiresAt
+    );
+    event Recalled(uint256 indexed id, RecallReason reason);
+    event Rejected(uint256 indexed id);
+    event Sealed(
+        uint256 indexed id, address indexed sender, address indexed recipient, uint256 amount
+    );
+
+    error InvalidRecipient();
+    error InvalidAmount();
+    error InvalidState();
+    error NotSender();
+    error NotRecipient();
+    error ClaimTooEarly();
+    error TransferFailed();
+
+    function send(address recipient, uint256 amount, uint256 undoWin)
+        external
+        payable
+        returns (uint256 id)
+    {
+        if (recipient == address(0)) revert InvalidRecipient();
+        if (amount == 0 || msg.value != amount) revert InvalidAmount();
+
+        uint256 undoWindow = _clampUndoWindow(undoWin);
+        uint256 riskHold = hold(recipient);
+        uint64 claimableAt = uint64(block.timestamp + _max(undoWindow, riskHold));
+        uint64 expiresAt = uint64(block.timestamp + EXPIRY_WINDOW);
+
+        id = nextPaymentId++;
+        payments[id] = Payment({
+            sender: msg.sender,
+            recipient: recipient,
+            amount: amount,
+            claimableAt: claimableAt,
+            expiresAt: expiresAt,
+            refundTo: msg.sender,
+            state: State.PENDING,
+            sealedAt: 0
+        });
+
+        emit Sent(id, msg.sender, recipient, amount, claimableAt, expiresAt);
+    }
+
+    function recall(uint256 id, RecallReason reason) external {
+        Payment storage payment = payments[id];
+        if (payment.state != State.PENDING) revert InvalidState();
+        if (msg.sender != payment.sender) revert NotSender();
+
+        uint256 amount = payment.amount;
+        address refundTo = payment.refundTo;
+        payment.state = State.REFUNDED;
+
+        emit Recalled(id, reason);
+        _sendValue(refundTo, amount);
+    }
+
+    function reject(uint256 id) external {
+        Payment storage payment = payments[id];
+        if (payment.state != State.PENDING) revert InvalidState();
+        if (msg.sender != payment.recipient) revert NotRecipient();
+
+        uint256 amount = payment.amount;
+        address refundTo = payment.refundTo;
+        payment.state = State.REFUNDED;
+
+        emit Rejected(id);
+        _sendValue(refundTo, amount);
+    }
+
+    function claim(uint256 id) external {
+        Payment storage payment = payments[id];
+        if (payment.state != State.PENDING) revert InvalidState();
+        if (msg.sender != payment.recipient) revert NotRecipient();
+        if (block.timestamp < payment.claimableAt) revert ClaimTooEarly();
+
+        uint256 amount = payment.amount;
+        address recipient = payment.recipient;
+        address sender = payment.sender;
+        payment.state = State.SEALED;
+        payment.sealedAt = uint64(block.timestamp);
+
+        emit Sealed(id, sender, recipient, amount);
+        _sendValue(recipient, amount);
+    }
+
+    function hold(address) public pure returns (uint256) {
+        return 0;
+    }
+
+    function _clampUndoWindow(uint256 undoWin) private pure returns (uint256) {
+        if (undoWin < MIN_UNDO_WINDOW) return MIN_UNDO_WINDOW;
+        if (undoWin > MAX_UNDO_WINDOW) return MAX_UNDO_WINDOW;
+        return undoWin;
+    }
+
+    function _max(uint256 a, uint256 b) private pure returns (uint256) {
+        return a >= b ? a : b;
+    }
+
+    function _sendValue(address to, uint256 amount) private {
+        (bool ok,) = payable(to).call{ value: amount }("");
+        if (!ok) revert TransferFailed();
+    }
 }
