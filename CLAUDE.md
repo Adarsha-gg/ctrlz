@@ -56,9 +56,9 @@ P6.x (buyer + seller dApps).
 ## What I owe Codex
 
 - **The ALICE fixture is the sync point.** `web/lib/risk/fixtures.ts` pins
-  `ALICE_ADDRESS = 0xA11cE0…a5e1` (placeholder). Codex's seed script (**P1.11**)
-  must seed THAT address with sealed history, **or** tell me the real demo
-  address and I'll update the fixture. If these drift, demo beat 2 shows zeros.
+  `ALICE_ADDRESS = 0x3695f9…7480C`, intentionally matching the owned
+  `SETTLER_ADDRESS`. Codex's seed script (**P1.11**) must seed THAT address
+  with sealed history. If these drift, demo beat 2 shows zeros.
 - **The verdict shape** `{ tier, reasons[], signals[] }` (`web/lib/risk/types.ts`)
   is the contract the Ledger EIP-712 string (P5.2) and the UI both read. If
   Codex needs a field for the clear-sign screen, ask here.

@@ -19,7 +19,7 @@ contract SeedAlice {
     Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     address public constant DEFAULT_ESCROW = 0x2f2B5C26de74aA7307A5b946B025ce1A13255f45;
-    address public constant ALICE = 0xa11CE0000000000000000000000000000000a5e1;
+    address public constant ALICE = 0x3695f9A1A29b66ddbA90cD9069c65921C17b480C;
     uint256 public constant DEFAULT_AMOUNT = 1e13; // 0.00001 native Arc USDC-as-gas.
     uint256 public constant DEFAULT_CREATE_COUNT = 3;
     uint256 public constant MIN_UNDO_WINDOW = 5 minutes;
@@ -30,7 +30,8 @@ contract SeedAlice {
 
     function run() external {
         uint256 payerKey = vm.envUint("PAYER_PRIVATE_KEY");
-        uint256 aliceKey = vm.envUint("ALICE_PRIVATE_KEY");
+        uint256 aliceKey = vm.envOr("ALICE_PRIVATE_KEY", uint256(0));
+        if (aliceKey == 0) aliceKey = vm.envUint("SETTLER_PRIVATE_KEY");
         address aliceFromKey = vm.addr(aliceKey);
         if (aliceFromKey != ALICE) revert AliceKeyMismatch(ALICE, aliceFromKey);
 

@@ -9,6 +9,26 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · Alice fixture uses owned settler wallet
+
+- **Did:** Replaced the fake vanity alice placeholder with the owned settler
+  wallet for the demo sync point. `web/lib/risk/fixtures.ts` now sets
+  `ALICE_ADDRESS` to `0x3695f9A1A29b66ddbA90cD9069c65921C17b480C`, and
+  `contracts/script/SeedAlice.s.sol` seeds that same address.
+- **Why:** P1.11 was blocked because the previous fixture alice
+  `0xA11cE0000000000000000000000000000000a5e1` was not controlled. Making alice
+  equal to `SETTLER_ADDRESS` lets the seed/demo use an owned wallet and avoids
+  the fake vanity placeholder.
+- **Seed key behavior:** The seed script still accepts `ALICE_PRIVATE_KEY` when
+  present, but safely falls back to `SETTLER_PRIVATE_KEY`; it derives the
+  address and refuses to run unless the key matches alice. No secrets are logged
+  or committed.
+- **Fixture note:** The poisoned lookalike now matches the new alice visible
+  prefix/suffix but uses a different middle:
+  `0x3695f9000000000000000000000000000007480C`.
+- **Next:** Run P1.11 create/claim phases with the settler key after this PR
+  lands.
+
 ## 2026-06-13 · agent (Codex) · Alice seed script (P1.11 blocked)
 
 - **Did:** Added `contracts/script/SeedAlice.s.sol`, a guarded Arc seed script
