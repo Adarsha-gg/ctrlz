@@ -9,6 +9,22 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · G2 docs/submission reframe
+
+- **Did:** Reframed [README.md](README.md) from the old Arc undo-payment story
+  to the current CTRL+Z Verify submission: Hedera settlement hooks, World
+  AgentKit-style gating, Walrus evidence, and ERC-8004 worker/checker
+  reputation. Added [SUBMISSION.md](SUBMISSION.md) with explicit prize-box
+  language, demo commands, and a shipped-vs-blocked table.
+- **Honesty boundary:** C1/C2/C3/D1/D2 remain blocked on funded Hedera
+  credentials; Google BigQuery is conditional/not shipped unless the sponsor
+  approves the Hedera data source; Arc/Ledger are prior/stretch, not primary.
+  No live Hedera transactions are claimed.
+- **State:** G2 `[x]` for docs/submission framing only. G1 remains `[ ]` until
+  the demo runs clean start-to-finish five times.
+- **Next:** Rehearse G1; if funded Hedera credentials arrive, run C1/C2/C3/D1/D2
+  and replace blocked language with real tx hashes only after confirmation.
+
 ## 2026-06-13 · agent (Codex) · World AgentKit gating (F1)
 
 - **Did:** Added deterministic World-style gating under `web/lib/world/**`: human-backed
