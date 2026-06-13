@@ -296,7 +296,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 |---|---|---|---|---|
 | `[x]` | **C1** | Hedera Testnet setup + one real testnet financial op (sanity). | EVM sanity transfer confirmed: `0x9236c06cbd4021ce15c531a4d184d325b88c8ab852585bcf69c2a63733b09e97`. | Demo MUST show ≥1 real Hedera op. |
 | `[x]` | **C2** | Redeploy escrow Solidity to **Hedera EVM**; lock + resolve(pass→release/fail→refund); spec-hash + evidence-hash on-chain. | `CtrlZVerifyEscrow` deployed at `0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4`; lock/accept/submit/resolve txs recorded in `web/lib/contract.ts`. Current live run used deterministic demo-fixture bytes32 hashes; rerun with `HEDERA_VERIFY_SPEC_HASH`/`HEDERA_VERIFY_EVIDENCE_HASH` to pin exact `/verify` sha256 anchors. | Resolution driven by the verification result. |
-| `[~]` | **C3** | HCS audit receipt `{evidenceHash, score, recommendation}` on resolution. | Resolving writes an HCS message; readable back. | Pointer only — no bulky data on-chain. |
+| `[x]` | **C3** | HCS audit receipt `{evidenceHash, score, recommendation}` on resolution. | HCS topic `0.0.9222881`; receipt tx `0.0.9222066@1781349565.367938628` writes the C2 evidence hash, score `9200`, and recommendation `proceed`. | Pointer only — no bulky data on-chain. |
 
 ### Phase D — ERC-8004 identity + reputation · `Cut: reads + 1 write` · Hedera lane
 | St | Part | Goal | Done when | Guard |
@@ -308,7 +308,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
 | `[x]` | **E1** | Walrus client: store the **manifest** (spec) and the **evidence blob** → URI + hash; read back. | Both blobs round-trip to/from Walrus. | Content-addressed; chain holds only the pointer. |
-| `[x]` | **E2** | Produce the manifest/evidence URI/hash payload consumed by the spec commit, HCS receipt (C3), and ERC-8004 feedback (D2). Live C1/C2/D1/D2 Hedera EVM writes are complete; C3 still needs a live HCS receipt. | The web/evidence layer emits one hash/pointer object for downstream Hedera/HCS/ERC-8004 scripts. | One evidence object, referenced everywhere. |
+| `[x]` | **E2** | Produce the manifest/evidence URI/hash payload consumed by the spec commit, HCS receipt (C3), and ERC-8004 feedback (D2). Live C1/C2/C3/D1/D2 Hedera writes are complete. | The web/evidence layer emits one hash/pointer object for downstream Hedera/HCS/ERC-8004 scripts. | One evidence object, referenced everywhere. |
 
 ### Phase F — World AgentKit gating · `Cut: policy + IDKit call` · auth lane
 | St | Part | Goal | Done when | Guard |
@@ -324,11 +324,11 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 ---
 
 ## 12. Cut lines (hard — obey under deadline)
-- **NEVER cut:** reframed verification page + split scores (A) · ≥2 checkers (B2) · evidence **hash anchor** (E) · one real Hedera op + lock/resolve (C1, C2) · ERC-8004 identity/feedback writes (D1/D2) · the demo (G1). C1/C2/D1/D2 now have real Hedera testnet tx hashes; do not extend that claim to HCS until C3 has a tx hash.
+- **NEVER cut:** reframed verification page + split scores (A) · ≥2 checkers (B2) · evidence **hash anchor** (E) · one real Hedera op + lock/resolve (C1, C2) · HCS receipt (C3) · ERC-8004 identity/feedback writes (D1/D2) · the demo (G1). C1/C2/C3/D1/D2 now have real Hedera testnet confirmations.
 - **Walrus blob store:** committed as the evidence layer. If the SDK fights at hour 20, fall back to a local store **behind the same hash anchor** — the anchor is what's load-bearing; the store is swappable. (Walrus = the prize + the on-narrative store.)
 - **ERC-8004 (D):** worker/checker identities and worker/checker feedback are live on Hedera testnet. Feedback is resolver/client-signed because the registry correctly blocks self-feedback.
 - **World (F):** gating as policy/UI with the real IDKit verification call; degrade to "design" if the SDK fights.
-- **HCS (C3):** script is wired; native Hedera SDK writes currently time out from this environment. A logged hash is a fallback demo artifact, not a live HCS receipt.
+- **HCS (C3):** live topic/message receipt is complete. The native SDK key parser uses ECDSA for portal-style 32-byte hex keys.
 - **DISPUTED + appeal:** design-only. MVP states: LOCKED → ACCEPTED → SUBMITTED → VERIFIED_PASS/FAIL → PAID/REFUNDED (+ UNCERTAIN→PAUSED).
 
 ---
@@ -344,7 +344,7 @@ wallet + shipping proof."**
 4. **Checkers run** — schema, price (≤700), wallet-risk (poisoning), source.
 5. **Split scores** render + LLM explains the recommendation.
 6. Target settlement path: pass → **release on Hedera**; the live C2 path has deploy, lock, accept, submit, and pass→release tx hashes. The poisoned/over-price fail/refund path is implemented but not separately live-replayed yet.
-7. Target audit/reputation path: **HCS receipt** + **ERC-8004 feedback** update worker + **checker** reputation. ERC-8004 D1/D2 is live; C3 HCS receipt remains incomplete.
+7. Target audit/reputation path: **HCS receipt** + **ERC-8004 feedback** update worker + **checker** reputation. HCS C3 and ERC-8004 D1/D2 are live.
 8. Punchline: *"we score the checker too"* — show a checker's accuracy moving the next decision.
 
 | Beat | Needs |
@@ -353,7 +353,7 @@ wallet + shipping proof."**
 | 2 worker accept (gasless) | C2 live accept tx recorded; gasless worker remains stretch |
 | 3 submit + checkers + split scores | A1–A3, B1, B2, E1 |
 | 4 poisoned/over-price caught | B2 (reuse risk engine) |
-| 5 evidence + receipt + feedback | E2 shipped; C2 evidence hash is on-chain; D1/D2 feedback live; C3 HCS still incomplete |
+| 5 evidence + receipt + feedback | E2 shipped; C2 evidence hash is on-chain; C3 HCS receipt live; D1/D2 feedback live |
 | 6 meta-reputation punchline | B3 |
 
 ---

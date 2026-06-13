@@ -92,7 +92,8 @@ function reportHederaReadiness() {
     {
       label: "C3 existing HCS topic",
       vars: ["HEDERA_HCS_TOPIC_ID"],
-      note: "optional; native SDK/HCS writes are still incomplete from this environment"
+      note: "optional; script uses the committed CTRL+Z topic when omitted",
+      optional: true
     },
     {
       label: "ERC-8004 registries",

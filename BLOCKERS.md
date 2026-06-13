@@ -8,7 +8,7 @@ real confirmation output.
 
 Status: partially shipped.
 
-C1, C2, D1, and D2 are no longer blocked. Confirmed live Hedera testnet
+C1, C2, C3, D1, and D2 are no longer blocked. Confirmed live Hedera testnet
 evidence:
 
 ```txt
@@ -20,6 +20,8 @@ Accept tx:           0xa02682601b9fcbb530f88ff329d5d3000cb8e8f7af5e3a31ed1c85caa
 Submit tx:           0x162cef8266683f44fe54af946e63c0bd68e4cdb1eb77e539f9b899e71cd8c184
 Resolve tx:          0x78c20ab96742a69f1d599109142f51d702cab12edaa4f1310a0bc0081239519f
 Hash source:         demo-fixture bytes32 values
+HCS topic:           0.0.9222881
+HCS receipt tx:      0.0.9222066@1781349565.367938628
 Worker agent:        101
 Worker register tx:  0xd4912aef78fb8f76a0e77e583516bcf0f84ac3e14de5d46d5c78c39dd0863c94
 Checker agent:       102
@@ -73,20 +75,20 @@ exact `/verify` UI anchors, rerun `npm run hedera:verify-demo` with
 
 ```sh
 npm run hedera:hcs -- \
-  --task-id=demo \
-  --evidence-hash=<actual-evidence-sha256-or-bytes32> \
+  --task-id=1 \
+  --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
+  --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
   --score-bps=9200 \
-  --recommendation=proceed
+  --recommendation=proceed \
+  --walrus-uri=https://github.com/Adarsha-gg/ctrlz/blob/main/SUBMISSION.md
 ```
 
-Status: still incomplete. Native Hedera SDK writes currently get past env
-loading but time out from this environment with `DEADLINE_EXCEEDED`.
+Status: done. Confirmed topic `0.0.9222881`; receipt tx
+`0.0.9222066@1781349565.367938628`.
 
-Do not use `0x0` or a placeholder evidence hash for submission.
-
-Done when the command prints a successful HCS topic/message transaction id whose
-payload references the actual evidence hash, score, recommendation, and deployed
-verify escrow address from the demo resolution.
+The successful payload references the C2 evidence hash, score `9200`,
+recommendation `proceed`, and deployed verify escrow address. The native SDK
+path requires ECDSA parsing for portal-style 32-byte hex keys.
 
 ### D1 ERC-8004 agent registration
 
@@ -161,5 +163,5 @@ video. G1 is complete only when:
 - The World gate panel can be shown for human-backed and unknown agents.
 - Checker meta-reputation is visible in the report list.
 - The evidence hash/Walrus panel is visible.
-- The presenter does not claim a live HCS receipt unless C3 has a real
-  transaction hash.
+- The presenter uses the C3 topic/transaction id above when claiming the live
+  HCS receipt.

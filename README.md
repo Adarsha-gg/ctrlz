@@ -56,8 +56,8 @@ later outcomes.
 7. **Settlement and ERC-8004 reputation are live on Hedera.**
    The Solidity verify escrow is deployed on Hedera testnet and the demo
    lock/accept/submit/resolve path has real tx hashes. Worker/checker agent
-   identities and feedback writes are also live in the ERC-8004 registries. HCS
-   receipt is still implemented but not live-completed.
+   identities and feedback writes are also live in the ERC-8004 registries. The
+   HCS receipt is live on topic `0.0.9222881`.
 
 ## Architecture
 
@@ -68,7 +68,7 @@ later outcomes.
 | Checker meta-reputation | Seeded outcome history, replay comparison, influence weighting in scoring/UI | Shipped; checker accuracy feedback live in ERC-8004 |
 | Walrus evidence | Manifest/evidence hashing, publisher/aggregator support, local fallback on failure | Shipped |
 | Hedera EVM escrow | Verify lifecycle contract, live deploy, and live lock/resolve demo | Shipped live on Hedera testnet |
-| Hedera HCS | Receipt topic/message script | Built; live write still incomplete |
+| Hedera HCS | Receipt topic/message script | Shipped live on topic `0.0.9222881` |
 | ERC-8004 | Hedera testnet IdentityRegistry and ReputationRegistry scripts | Shipped live for worker/checker identity and feedback |
 | Google BigQuery | Reputation analytics/leaderboard over settlement + ERC-8004 data | Conditional; not shipped |
 
@@ -90,15 +90,13 @@ later outcomes.
   verification uses; unknown/exhausted agents are pay-gated.
 - Hedera EVM sanity transfer plus live verify escrow deploy/lock/accept/submit/resolve
   txs on testnet.
-- Scripts for HCS receipts.
+- HCS receipt topic/message for the C2 evidence hash, score, and recommendation.
 - ERC-8004 worker/checker agent registrations and reputation feedback txs.
 - Prior Arc escrow work exists as reference/stretch, including the old
   sender-undo state machine and risk engine history reads.
 
 ### Blocked / Not Shipped
 
-- **C3 HCS receipt write:** script exists, but native Hedera SDK writes are
-  currently timing out from this environment.
 - **Google BigQuery:** conditional and not shipped. It should only be claimed if
   the sponsor approves analytics over this Hedera testnet ERC-8004/settlement
   data; otherwise it remains a roadmap analytics layer.
@@ -123,14 +121,20 @@ node --experimental-strip-types web/lib/world/selfcheck.ts
 npm run hedera:evm-sanity
 npm run hedera:verify-demo
 
-# Hedera script still needing live completion
-pnpm hedera:hcs -- --task-id=demo --evidence-hash=0x0 --score-bps=9200 --recommendation=proceed
+# Hedera HCS receipt
+npm run hedera:hcs -- \
+  --task-id=1 \
+  --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
+  --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
+  --score-bps=9200 \
+  --recommendation=proceed \
+  --walrus-uri=https://github.com/Adarsha-gg/ctrlz/blob/main/SUBMISSION.md
 ```
 
 `npm run hedera:evm-sanity` and `npm run hedera:verify-demo` return real
 Hedera testnet tx hashes with the current env. ERC-8004 identity and feedback
-writes have also confirmed live tx hashes. Do not claim live HCS until the C3
-command confirms its own tx hash.
+writes have also confirmed live tx hashes. `npm run hedera:hcs` has confirmed a
+live HCS receipt on topic `0.0.9222881`.
 
 ## Local Development
 
@@ -145,8 +149,8 @@ Open the web app and use `/verify` for the current CTRL+Z Verify demo.
 
 Use this phrasing:
 
-- **Hedera:** C1 sanity transfer and C2 verify escrow deploy/lock/resolve are
-  live on testnet; HCS script is implemented but not live-completed.
+- **Hedera:** C1 sanity transfer, C2 verify escrow deploy/lock/resolve, and C3
+  HCS receipt are live on testnet.
 - **World:** World AgentKit-style gating is implemented as policy plus IDKit
   plumbing with deterministic fallback when credentials are absent.
 - **Walrus:** evidence hashing and Walrus storage/read support are implemented;
