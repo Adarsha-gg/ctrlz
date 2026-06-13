@@ -289,7 +289,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 |---|---|---|---|---|
 | `[x]` | **B1** | Checker registry + runner (`check.type → checker`, run all, collect reports). | Runner executes registered checkers → reports[]. | Each check bounded + deterministic. |
 | `[x]` | **B2** | Demo checkers: `schema`, `price` (≤700 USDC), `wallet-risk` (reuse), `source-listing`. | All 4 run on the demo invoice → pass/fail/uncertain. | Constraint-based, explainable. |
-| `[x]` | **B3** | **Checker meta-reputation (wedge, §8a):** outcome-match accuracy counter per checker (true/false pass-fail vs the settled outcome), money + recency weighted, written to ERC-8004; deterministic checkers expose **re-execution** (re-run vs the Walrus blob → identical verdict). Seed with a couple of historical tasks; surface in UI. | Re-running a deterministic checker reproduces its verdict; a wrong checker shows reduced weight on the next decision. | No LLM grades reviewers; accuracy = influence, never money. |
+| `[x]` | **B3** | **Checker meta-reputation (wedge, §8a):** outcome-match accuracy counter per checker (true/false pass-fail vs the settled outcome), money + recency weighted; deterministic checkers expose **re-execution** (re-run vs the Walrus blob → identical verdict). Seed with a couple of historical tasks; surface in UI. ERC-8004 persistence is handled by D2 and remains blocked until funded Hedera credentials are available. | Re-running a deterministic checker reproduces its verdict; a wrong checker shows reduced weight on the next decision. | No LLM grades reviewers; accuracy = influence, never money. |
 
 ### Phase C — Hedera settlement + audit · `NEVER` · Hedera lane (Codex)
 | St | Part | Goal | Done when | Guard |
@@ -308,7 +308,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
 | `[x]` | **E1** | Walrus client: store the **manifest** (spec) and the **evidence blob** → URI + hash; read back. | Both blobs round-trip to/from Walrus. | Content-addressed; chain holds only the pointer. |
-| `[x]` | **E2** | Wire URI/hash into the spec commit, HCS receipt (C3), ERC-8004 feedback (D2). | All on-chain records carry the live Walrus pointer. | One evidence object, referenced everywhere. |
+| `[x]` | **E2** | Produce the manifest/evidence URI/hash payload consumed by the spec commit, HCS receipt (C3), and ERC-8004 feedback (D2). Live on-chain writes are blocked in C/D until funded Hedera credentials are available. | The web/evidence layer emits one hash/pointer object for downstream Hedera/HCS/ERC-8004 scripts. | One evidence object, referenced everywhere. |
 
 ### Phase F — World AgentKit gating · `Cut: policy + IDKit call` · auth lane
 | St | Part | Goal | Done when | Guard |
@@ -319,16 +319,16 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
 | `[ ]` | **G1** | The one demo (§13), rehearse ×5, fallback where integrations are flaky. | Runs clean start-to-finish 5×. | Protect rehearsal above any feature. |
-| `[ ]` | **G2** | Video + diagram + README reframe + tick prize boxes (Hedera, World, Walrus[, Google]). | Submission complete. | List only what shipped. |
+| `[x]` | **G2** | README + SUBMISSION reframe + honest prize-box language (Hedera, World, Walrus, ERC-8004; Google conditional). | Docs/submission framing complete with shipped-vs-blocked boundary. | List only what shipped; do not claim live Hedera txs until they exist. |
 
 ---
 
 ## 12. Cut lines (hard — obey under deadline)
-- **NEVER cut:** reframed verification page + split scores (A) · ≥2 checkers (B2) · ONE real Hedera op + lock/resolve (C1, C2) · evidence **hash anchor** (E) · the demo (G1).
+- **NEVER cut:** reframed verification page + split scores (A) · ≥2 checkers (B2) · evidence **hash anchor** (E) · the demo (G1). ONE real Hedera op + lock/resolve (C1, C2) remains the intended live path but is currently blocked on funded Hedera credentials; do not present it as shipped until tx hashes exist.
 - **Walrus blob store:** committed as the evidence layer. If the SDK fights at hour 20, fall back to a local store **behind the same hash anchor** — the anchor is what's load-bearing; the store is swappable. (Walrus = the prize + the on-narrative store.)
-- **ERC-8004 (D):** reads + ONE write; if writes fight back, show reads + the registry, pitch the write as wired.
+- **ERC-8004 (D):** scripts are wired for IdentityRegistry + ReputationRegistry writes; currently blocked on funded Hedera EVM credentials. Pitch the write path as implemented, not completed on-chain.
 - **World (F):** gating as policy/UI with the real IDKit verification call; degrade to "design" if the SDK fights.
-- **HCS (C3):** if the SDK stalls, receipt = a logged hash; the one real Hedera op (C1/C2) is non-negotiable.
+- **HCS (C3):** script is wired; currently blocked on funded Hedera operator credentials. A logged hash is a fallback demo artifact, not a live HCS receipt.
 - **DISPUTED + appeal:** design-only. MVP states: LOCKED → ACCEPTED → SUBMITTED → VERIFIED_PASS/FAIL → PAID/REFUNDED (+ UNCERTAIN→PAUSED).
 
 ---
@@ -338,22 +338,22 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 Buyer agent intent: **"Buy an RTX 4090 under 700 USDC from a seller with a valid
 wallet + shipping proof."**
 
-1. Buyer posts intent → **spec hash on Hedera, manifest on Walrus** → **locks payment** (real Hedera op).
-2. Worker agent **accepts the spec** (gasless — zero-HBAR worker).
+1. Buyer posts intent → **manifest on Walrus** + target **spec hash on Hedera** → locks payment once funded Hedera credentials are available.
+2. Worker agent **accepts the spec** (target gasless/zero-HBAR worker once C2 is live).
 3. Worker submits the invoice/listing → **evidence blob → Walrus**.
 4. **Checkers run** — schema, price (≤700), wallet-risk (poisoning), source.
 5. **Split scores** render + LLM explains the recommendation.
-6. Resolve: pass → **release on Hedera**; the poisoned/over-price case → caught, **paused/refunded**.
-7. **HCS receipt** + **ERC-8004 feedback** update worker + **checker** reputation.
+6. Target settlement path: pass → **release on Hedera**; the poisoned/over-price case → caught, **paused/refunded**. Current demo must say this is wired but credential-blocked until tx hashes exist.
+7. Target audit/reputation path: **HCS receipt** + **ERC-8004 feedback** update worker + **checker** reputation. Current demo must say scripts are wired but live writes are credential-blocked.
 8. Punchline: *"we score the checker too"* — show a checker's accuracy moving the next decision.
 
 | Beat | Needs |
 |---|---|
-| 1 lock + spec | C1, C2, E1 |
-| 2 worker accept (gasless) | C2, §8 |
+| 1 lock + spec | E1 shipped; C1/C2 blocked on funded Hedera credentials |
+| 2 worker accept (gasless) | C2 blocked on funded Hedera credentials |
 | 3 submit + checkers + split scores | A1–A3, B1, B2, E1 |
 | 4 poisoned/over-price caught | B2 (reuse risk engine) |
-| 5 evidence + receipt + feedback | E2, C3, D1, D2 |
+| 5 evidence + receipt + feedback | E2 shipped; C3/D1/D2 blocked on funded Hedera credentials |
 | 6 meta-reputation punchline | B3 |
 
 ---
