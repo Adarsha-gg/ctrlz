@@ -81,6 +81,9 @@ replayChecks(...)  ──► re-execution proof for deterministic checkers
 computeCheckerMetas(...)  ──► per-checker accuracy weight (B3 meta-reputation)
         │
         ▼
+buildCheckerRuntimeManifest(...) ──► pinned checker code hash + frozen inputs (§8e)
+        │
+        ▼
 scoreSplit({checks, workerHistory})  ── scoring/score.ts
         │     ├── outputValidity  ← hard-gate checker results
         │     ├── agentTrust      ← worker settlement history
@@ -124,10 +127,14 @@ The HCS receipt now carries **both**: the on-chain `evidenceHash` and a real
    Keep it **bounded + deterministic** — same input → same report.
 2. Register it in `web/lib/checkers/registry.ts` (`check.type → checker`) and
    re-export from `web/lib/checkers/index.ts`.
-3. Decide `hardGate` on the `CheckSpec`: hard-gate failures drive `reject`/`outputValidity`;
+3. Add it to `web/lib/checkers/runtime.ts`: assign a checker version, pin the
+   checker source hash, and list any frozen external inputs. If it reads data
+   that was once external (price feed/RPC/history/etc.), that value must be in
+   the evidence path, not fetched live during replay.
+4. Decide `hardGate` on the `CheckSpec`: hard-gate failures drive `reject`/`outputValidity`;
    advisory failures only `pause` when the checker's meta-weight is high enough.
-4. Add a case to the demo acceptance spec in `web/app/verify/fixtures.ts`.
-5. Add assertions to `web/lib/scoring/selfcheck.ts` and run it (see §6).
+5. Add a case to the demo acceptance spec in `web/app/verify/fixtures.ts`.
+6. Add assertions to `web/lib/scoring/selfcheck.ts` and run it (see §6).
 
 ### A new sub-score or recommendation rule
 Edit `web/lib/scoring/score.ts`. **Never collapse the three scores.** The
@@ -209,6 +216,9 @@ All of these are read-verifiable: `cast code <addr> --rpc-url https://testnet.ha
   sha256 anchor is always available even when the network is down.
 - **Selfchecks are the contract** for the deterministic lanes — add to them when you
   change scoring/checkers/walrus/world; they run with plain Node + `--experimental-strip-types`.
+- **Checker hashes are intentional pins** — changing checker logic or risk-engine
+  dependencies should fail `web/lib/scoring/selfcheck.ts` until
+  `web/lib/checkers/runtime.ts` is updated with the new source/bundle hashes.
 - **`.env` holds live testnet keys.** Scripts load it via `env.mjs`; never echo
   secrets. `demo:check` and the selfchecks need no secrets.
 ```
