@@ -26,6 +26,14 @@ function hasEnv(name) {
   return Boolean(process.env[name] && process.env[name].trim().length > 0);
 }
 
+function hasAnyEnv(names) {
+  return names.some((name) => hasEnv(name));
+}
+
+function hasEnvPair(pairs) {
+  return pairs.some(([idName, keyName]) => hasEnv(idName) && hasEnv(keyName));
+}
+
 function statusLine(label, ok, detail) {
   const marker = ok ? "ok" : "warn";
   console.log(`  ${marker} ${label}${detail ? ` - ${detail}` : ""}`);
@@ -69,18 +77,22 @@ function reportHederaReadiness() {
   const groups = [
     {
       label: "C1/C3 SDK txs",
-      vars: ["HEDERA_OPERATOR_ID", "HEDERA_OPERATOR_KEY"],
-      note: "needed for sanity transfer and HCS receipt"
+      pairs: [
+        ["HEDERA_OPERATOR_ID", "HEDERA_OPERATOR_KEY"],
+        ["HEDERA_RESOLVER_ID", "HEDERA_RESOLVER_PRIVATE_KEY"],
+        ["HEDERA_PAYER_ID", "HEDERA_PAYER_PRIVATE_KEY"]
+      ],
+      note: "needed as a matched account id + private key pair for native SDK/HCS"
     },
     {
       label: "C2/D1/D2 EVM txs",
-      vars: ["HEDERA_EVM_PRIVATE_KEY"],
+      any: [["HEDERA_EVM_PRIVATE_KEY", "HEDERA_PAYER_PRIVATE_KEY", "HEDERA_RESOLVER_PRIVATE_KEY"]],
       note: "needed for escrow deploy/resolve and ERC-8004 writes"
     },
     {
       label: "C3 existing HCS topic",
       vars: ["HEDERA_HCS_TOPIC_ID"],
-      note: "optional; script can create a topic when operator credentials exist"
+      note: "optional; native SDK/HCS writes are still incomplete from this environment"
     },
     {
       label: "ERC-8004 registries",
@@ -91,12 +103,21 @@ function reportHederaReadiness() {
     {
       label: "verify escrow address",
       vars: ["NEXT_PUBLIC_CTRLZ_VERIFY_ESCROW_ADDRESS"],
-      note: "needed by web after a live Hedera EVM deploy"
+      note: "env override is optional; web has a committed Hedera testnet fallback",
+      optional: true
     }
   ];
 
   for (const group of groups) {
-    const missing = group.vars.filter((name) => !hasEnv(name));
+    const missing = group.pairs
+      ? hasEnvPair(group.pairs)
+        ? []
+        : [group.pairs.map(([idName, keyName]) => `${idName}+${keyName}`).join(" or ")]
+      : group.any
+      ? group.any
+          .map((names) => (hasAnyEnv(names) ? null : names.join(" or ")))
+          .filter(Boolean)
+      : group.vars.filter((name) => !hasEnv(name));
     if (group.optional && missing.length > 0) {
       statusLine(group.label, true, `${group.note}; using script defaults`);
       continue;

@@ -9,6 +9,25 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · Hedera live C1/C2
+
+- **Did:** Updated Hedera env handling for the renamed payer/resolver variables,
+  added `npm run hedera:evm-sanity`, and added `npm run hedera:verify-demo`.
+  Confirmed a live Hedera testnet EVM sanity transfer:
+  `0x9236c06cbd4021ce15c531a4d184d325b88c8ab852585bcf69c2a63733b09e97`.
+  Deployed `CtrlZVerifyEscrow` at
+  `0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4` and ran lock/accept/submit/
+  resolve(PASS) with tx hashes recorded in [SUBMISSION.md](SUBMISSION.md) and
+  [BLOCKERS.md](BLOCKERS.md). The confirmed run used deterministic demo-fixture
+  bytes32 hashes; rerun with `HEDERA_VERIFY_SPEC_HASH` and
+  `HEDERA_VERIFY_EVIDENCE_HASH` to anchor exact `/verify` sha256 values.
+- **State:** C1 `[x]`; C2 `[x]` for pass→release. C3 remains incomplete because
+  native Hedera SDK writes time out from this environment. D1/D2 remain
+  incomplete until live ERC-8004 registry writes are run with real agent/evidence
+  URIs.
+- **Next:** Run D1 ERC-8004 registrations, then D2 feedback writes, or record
+  the G1 demo if time is tighter.
+
 ## 2026-06-13 · agent (Codex) · blocker runbook
 
 - **Did:** Added [BLOCKERS.md](BLOCKERS.md) with exact missing env vars and

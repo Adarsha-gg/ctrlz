@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { loadDotenv, optionalEnv, requireEnv } from "./env.mjs";
+import { loadDotenv, optionalEnv, requireEnvAny } from "./env.mjs";
 
 export const HEDERA_ERC8004_IDENTITY_REGISTRY =
   "0x8004A818BFB912233c491871b3d84c89A494BD9e";
@@ -16,7 +16,14 @@ export function getHederaEvmClients() {
   loadDotenv();
   const rpcUrl = optionalEnv("HEDERA_RPC_URL", "https://testnet.hashio.io/api");
   const chainId = Number(optionalEnv("HEDERA_CHAIN_ID", "296"));
-  const privateKey = requireEnv("HEDERA_EVM_PRIVATE_KEY");
+  const privateKeyEnv = requireEnvAny([
+    "HEDERA_EVM_PRIVATE_KEY",
+    "HEDERA_PAYER_PRIVATE_KEY",
+    "HEDERA_RESOLVER_PRIVATE_KEY"
+  ]);
+  const privateKey = privateKeyEnv.value.startsWith("0x")
+    ? privateKeyEnv.value
+    : `0x${privateKeyEnv.value}`;
   const account = privateKeyToAccount(privateKey);
   const chain = {
     id: chainId,

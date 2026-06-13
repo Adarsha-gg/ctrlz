@@ -32,7 +32,8 @@ scores the checkers by whether later outcomes agreed with them.
   uses, unknown/exhausted agents are pay-gated, trust boost is capped.
 - Checker meta-reputation in scoring/UI using seeded outcome history and replay
   checks.
-- Hedera verify escrow contract and scripts for C1/C3/D1/D2 paths.
+- Hedera EVM sanity transfer, live verify escrow deployment, and lock/accept/submit/resolve transaction flow.
+- Scripts for C3 HCS, D1 ERC-8004 identity registration, and D2 ERC-8004 feedback paths.
 - ERC-8004 IdentityRegistry and ReputationRegistry write scripts targeting
   Hedera testnet registry defaults.
 
@@ -43,18 +44,18 @@ scores the checkers by whether later outcomes agreed with them.
 | A/B verification UI, checkers, split scoring | Shipped | Demo surface is live in the web app. |
 | F1 World AgentKit-style gating | Shipped | Policy and IDKit plumbing with deterministic fallback when credentials are missing. |
 | E1/E2 Walrus evidence | Shipped | Hash anchor always works; Walrus publisher/aggregator path is implemented. |
-| B3 checker meta-reputation | Shipped locally | Influence weighting is in scoring/UI; ERC-8004 persistence is blocked. |
-| C1 Hedera sanity write | Blocked | Requires funded `HEDERA_OPERATOR_ID` / `HEDERA_OPERATOR_KEY`. |
-| C2 Hedera EVM escrow deploy + live lock/resolve | Blocked | Requires funded `HEDERA_EVM_PRIVATE_KEY`. |
-| C3 HCS receipt | Blocked | Script exists; live message needs funded Hedera operator credentials. |
-| D1 ERC-8004 identity registration | Blocked | Script exists; live tx needs funded Hedera EVM key. |
-| D2 ERC-8004 reputation feedback | Blocked | Script exists; live tx needs funded Hedera EVM key and agent id. |
+| B3 checker meta-reputation | Shipped locally | Influence weighting is in scoring/UI; ERC-8004 persistence still needs D2 live registry writes. |
+| C1 Hedera sanity write | Shipped live | EVM sanity transfer tx: `0x9236c06cbd4021ce15c531a4d184d325b88c8ab852585bcf69c2a63733b09e97`. |
+| C2 Hedera EVM escrow deploy + live lock/resolve | Shipped live | Escrow: `0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4`; deploy `0xd4b09a50ae6ef7c733ccdcdcbba3399838d950836dc95712310eed9cd39db792`; resolve `0x78c20ab96742a69f1d599109142f51d702cab12edaa4f1310a0bc0081239519f`. Current run used deterministic demo-fixture hashes; rerun with `HEDERA_VERIFY_SPEC_HASH`/`HEDERA_VERIFY_EVIDENCE_HASH` for exact `/verify` sha256 anchors. |
+| C3 HCS receipt | Blocked | Script exists; native Hedera SDK writes are currently timing out from this environment. |
+| D1 ERC-8004 identity registration | Incomplete | Script exists; live registry tx still needs to be run with a real registration URI. |
+| D2 ERC-8004 reputation feedback | Incomplete | Script exists; live tx still needs D1 agent ids and an evidence URI/hash. |
 | Google BigQuery | Conditional / not shipped | Only claim if sponsor approves Hedera testnet ERC-8004/settlement data as an eligible source. |
 | Arc / Ledger | Prior or stretch | Do not pitch as the primary G2 product. |
 
-Do not overclaim live Hedera transactions. Until tx hashes exist from the
-Hedera scripts, say the Hedera/EVM/HCS/ERC-8004 paths are implemented and
-blocked on funded credentials.
+Do not overclaim live Hedera transactions. C1/C2 now have real Hedera testnet
+tx hashes. C3/D1/D2 do not yet, so keep HCS/ERC-8004 registry claims at
+"implemented, not completed live."
 
 ## Demo Commands
 
@@ -71,7 +72,11 @@ node --experimental-strip-types web/lib/scoring/selfcheck.ts
 # World gate selfcheck
 node --experimental-strip-types web/lib/world/selfcheck.ts
 
-# Hedera scripts: dry-run/fail-fast without funded credentials
+# Hedera scripts: live tx paths
+npm run hedera:evm-sanity
+npm run hedera:verify-demo
+
+# Hedera scripts still needing live completion
 pnpm hedera:sanity
 pnpm hedera:hcs -- --task-id=demo --evidence-hash=0x0 --score-bps=9200 --recommendation=proceed
 pnpm hedera:agent -- --agent-uri=https://example.com/ctrlz-agent.json
@@ -79,26 +84,27 @@ pnpm hedera:feedback -- --agent-id=1 --feedback-uri=walrus://demo --feedback-has
 ```
 
 Expected current behavior: web/scoring/world checks should pass if dependencies
-are installed; Hedera commands should fail fast without funded credentials or
-return real tx hashes only after credentials are funded.
+are installed; `npm run hedera:evm-sanity` and `npm run hedera:verify-demo`
+return real Hedera testnet tx hashes with the current env. Native SDK/HCS may
+still time out from this environment, and ERC-8004 registry writes still need
+real registration/evidence URIs.
 
 `npm run demo:check` bundles the scoring selfcheck, World selfcheck, and `npm run
 build` in `web/`, then reports Hedera environment readiness by variable presence
 only. It does not print secrets, submit transactions, or mark G1 complete.
 
-See [BLOCKERS.md](BLOCKERS.md) for the exact env vars and commands needed to
-turn the credential-blocked Hedera paths into completed items.
+See [BLOCKERS.md](BLOCKERS.md) for the exact remaining C3/D1/D2 commands.
 
 ## Prize Box Language
 
-- **Hedera:** implemented settlement/HCS/ERC-8004 scripts and Hedera verify
-  escrow; live writes blocked on funded credentials.
+- **Hedera:** live C1 sanity transfer plus C2 verify escrow deploy/lock/resolve
+  txs are complete; HCS/ERC-8004 live writes remain incomplete.
 - **World:** implemented World-style human-backed agent gating and capped trust
   lift.
 - **Walrus:** implemented content-addressed manifest/evidence storage and read
   path, with local fallback.
 - **ERC-8004:** implemented the checker/worker reputation model and write
-  scripts; live writes blocked.
+  scripts; live registry writes remain incomplete.
 - **Google BigQuery:** not shipped unless sponsor approves the Hedera data
   source.
 
@@ -106,4 +112,4 @@ turn the credential-blocked Hedera paths into completed items.
 
 - **G1:** leave undone until the demo runs clean start-to-finish five times.
 - **G2:** complete for docs/submission framing. The shipped-vs-blocked boundary
-  is explicit and does not claim live Hedera transactions.
+  now includes live C1/C2 Hedera tx hashes and does not claim C3/D1/D2.
