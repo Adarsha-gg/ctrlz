@@ -8,12 +8,33 @@ import { runChecks } from "@/lib/checkers";
 import type { CheckSpec, CheckerReport, TaskContext } from "@/lib/checkers";
 import { scoreSplit } from "@/lib/scoring/score";
 import type { ScoredCheck, SplitScore } from "@/lib/scoring/score";
+import {
+  buildEvidenceBlob,
+  buildManifest,
+  hashBlob,
+  storeEvidence,
+  type AcceptanceManifest,
+  type EvidenceBlob,
+  type StoreResult
+} from "@/lib/walrus";
 import { DEMO_ACCEPTANCE_SPEC, type DemoSubmission } from "./fixtures";
 
 export type VerificationResult = {
   scored: ScoredCheck[];
   reports: CheckerReport[];
   split: SplitScore;
+  /** the acceptance-spec manifest this submission was judged against (E2) */
+  manifest: AcceptanceManifest;
+  /** the assembled evidence blob (E2) — the thing money resolves against */
+  evidence: EvidenceBlob;
+};
+
+/** The evidence + manifest anchors surfaced in the UI (E2). */
+export type EvidenceAnchors = {
+  /** evidence-blob store result (Walrus or local fallback) + sha256 anchor */
+  evidence: StoreResult;
+  /** acceptance-manifest sha256 anchor (Codex's on-chain commit uses this) */
+  manifestHash: string;
 };
 
 /** Run the demo acceptance spec over a submission and produce the split score. */
@@ -36,5 +57,31 @@ export function verifySubmission(demo: DemoSubmission): VerificationResult {
   const scored: ScoredCheck[] = checks.map((c, i) => ({ check: c, report: reports[i] }));
   const split = scoreSplit({ checks: scored, workerHistory: demo.workerHistory });
 
-  return { scored, reports, split };
+  // Assemble the verifiable manifest + evidence blob (E2). The manifest uses the
+  // injected checks (so its hash reflects exactly what was evaluated); the
+  // evidence blob bundles spec + worker output + reports + the split score.
+  const manifest = buildManifest({ intent: DEMO_ACCEPTANCE_SPEC.intent, checks });
+  const evidence = buildEvidenceBlob({
+    taskSpec: manifest,
+    workerOutput: demo.submission,
+    checkerReports: reports,
+    splitScore: split,
+    recommendation: split.recommendation
+  });
+
+  return { scored, reports, split, manifest, evidence };
+}
+
+/**
+ * Anchor the evidence (E2): compute the manifest hash and store the evidence
+ * blob (Walrus → local fallback). Best-effort and NEVER throws — on any Walrus
+ * failure the evidence store degrades to `{ store: "local", hash }` so the page
+ * always has a hash to render.
+ */
+export async function anchorEvidence(result: VerificationResult): Promise<EvidenceAnchors> {
+  const [evidence, manifestHash] = await Promise.all([
+    storeEvidence(result.evidence),
+    hashBlob(result.manifest)
+  ]);
+  return { evidence, manifestHash };
 }

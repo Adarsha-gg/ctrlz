@@ -27,6 +27,48 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 - **Next:** Fund `HEDERA_EVM_PRIVATE_KEY`/`HEDERA_PAYER_ADDRESS`, deploy
   `CtrlZVerifyEscrow`, then record the deployed address in `web/lib/contract.ts`.
 
+---
+
+## 2026-06-13 · agent (Claude) · E1/E2 Walrus evidence layer
+
+- **Did:** Built the content-addressed evidence layer + wired it into `/verify`.
+  - **E1** `web/lib/walrus/evidence.ts` — `AcceptanceManifest` (extends the demo
+    spec: intent + checks + `resolutionPolicy` + `createdAt`) and `EvidenceBlob`
+    (`{taskSpec, workerOutput, checkerReports, splitScore, recommendation,
+    createdAt}`), plus `buildManifest` / `buildEvidenceBlob`.
+  - **E1** `web/lib/walrus/store.ts` — `hashBlob` (canonical-JSON → **sha256
+    hex**, the load-bearing anchor, ALWAYS computed; key-order-independent via a
+    recursive canonicalizer; uses Web Crypto so it runs in browser/Node/strip-
+    types). `storeEvidence` PUTs to the Walrus **publisher**, parses the blobId
+    (probes `newlyCreated`/`alreadyCertified`/flat shapes), builds the aggregator
+    read URI; **on ANY failure → `{store:"local", hash}`, never throws.**
+    `readEvidence` GETs from the aggregator (best-effort). Endpoints **and** the
+    store/read path templates are env-configurable
+    (`NEXT_PUBLIC_WALRUS_PUBLISHER`/`_AGGREGATOR`/`_STORE_PATH`/`_READ_PATH`/
+    `_TIMEOUT_MS`) with testnet v1 defaults.
+  - **E2** `web/app/verify/run.ts` — after `runChecks` + `scoreSplit`, assembles
+    the manifest + evidence blob; new `anchorEvidence()` stores the blob (Walrus
+    → local) and hashes the manifest. `page.tsx` renders an evidence card: the
+    **evidence sha256**, the **acceptance-spec hash**, the storage badge, and —
+    when `store==="walrus"` — the **blobId** + a **"View evidence on Walrus"**
+    link to the aggregator URI. Additive CSS (`.evidence-*`) in `globals.css`.
+- **Verify:** `node_modules/.bin/tsc --noEmit` → exit 0 (reverted the stray
+  `pnpm-workspace.yaml` `allowBuilds` line pnpm added). `selfcheck.ts`
+  (`node --experimental-strip-types web/lib/walrus/selfcheck.ts`) → all pass:
+  hashBlob deterministic + key-order-independent + differs on mutation; bogus
+  publisher → local fallback with a valid hash, no throw. **Live store WORKED**
+  against the default testnet publisher (real blobId minted; round-tripped the
+  canonical blob back from the aggregator).
+- **Ethos:** sha256 anchor is load-bearing + always shown; Walrus down → degrade
+  to local hash (never throws into UI); content-addressed, chain holds only the
+  pointer; one evidence object referenced everywhere.
+- **Lane:** added `web/lib/walrus/**`; edited only `web/app/verify/**` +
+  additive `globals.css`. Did NOT touch checkers/scoring/risk/llm/api/contracts.
+- **Next:** Codex consumes `manifestHash` (on-chain spec commit) + the evidence
+  `hash`/`blobId` (HCS receipt C3, ERC-8004 feedback D2) via `web/lib/walrus`.
+
+---
+
 ## 2026-06-13 · agent (Claude) · A1/A2/A3 + B1/B2 verification core
 
 - **Did:** Built the web-side verification core on a NEW `/verify` route
