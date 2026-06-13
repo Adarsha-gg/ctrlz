@@ -9,6 +9,35 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · ERC-8004 Hedera scripts (D1/D2 prep)
+
+- **Did:** Added Hedera EVM helpers plus official ERC-8004 ABIs under
+  `scripts/hedera/abis/`. Added `erc8004-register-agent.mjs` for Identity
+  Registry registration and `erc8004-feedback.mjs` for Reputation Registry
+  feedback.
+- **Config:** Added `HEDERA_EVM_PRIVATE_KEY`,
+  `ERC8004_IDENTITY_REGISTRY`, and `ERC8004_REPUTATION_REGISTRY` usage docs;
+  defaults target Hedera testnet's ERC-8004 addresses.
+- **State:** D1/D2 `[~]`; they become `[x]` only after funded Hedera EVM
+  credentials submit real registry transactions.
+- **Next:** Set `HEDERA_EVM_PRIVATE_KEY`, run `pnpm hedera:agent -- --agent-uri=...`,
+  then `pnpm hedera:feedback -- --agent-id=... --feedback-uri=...`.
+
+## 2026-06-13 · agent (Codex) · Hedera HCS receipt scripts (C3 prep)
+
+- **Did:** Added root Hedera SDK dependency plus `scripts/hedera/**`:
+  shared `.env`/client loader, `sanity-transfer.mjs` for C1's real HBAR
+  transfer, and `hcs-receipt.mjs` for C3 receipt topic create/submit.
+- **Config:** Added `HEDERA_OPERATOR_ID`, `HEDERA_OPERATOR_KEY`,
+  `HEDERA_HCS_TOPIC_ID`, and sanity-transfer env names to `.env.example`.
+- **Verify:** HCS script dry-run fails clearly on missing
+  `HEDERA_OPERATOR_ID`; `forge test --root contracts` passes 47 tests;
+  `npm run build` in `web/` passes.
+- **State:** C3 `[~]`; it becomes `[x]` only after a real HCS topic/message is
+  submitted and readable with funded Hedera operator credentials.
+- **Next:** Add funded Hedera operator env, run `pnpm hedera:sanity`, then
+  `pnpm hedera:hcs -- --task-id=... --evidence-hash=...`.
+
 ## 2026-06-13 · agent (Codex) · Hedera verify escrow skeleton (C1/C2 prep)
 
 - **Did:** Started the Codex-owned Hedera lane from the new build plan. Added

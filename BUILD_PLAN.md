@@ -296,13 +296,13 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 |---|---|---|---|---|
 | `[~]` | **C1** | Hedera Testnet setup + one real testnet financial op (sanity). | A real Hedera tx confirms from our code. | Demo MUST show ≥1 real Hedera op. |
 | `[~]` | **C2** | Redeploy escrow Solidity to **Hedera EVM**; lock + resolve(pass→release/fail→refund); spec-hash + evidence-hash on-chain. | Lock+resolve work; address+ABI in `web/lib/contract.ts`. | Resolution driven by the verification result. |
-| `[ ]` | **C3** | HCS audit receipt `{evidenceHash, score, recommendation}` on resolution. | Resolving writes an HCS message; readable back. | Pointer only — no bulky data on-chain. |
+| `[~]` | **C3** | HCS audit receipt `{evidenceHash, score, recommendation}` on resolution. | Resolving writes an HCS message; readable back. | Pointer only — no bulky data on-chain. |
 
 ### Phase D — ERC-8004 identity + reputation · `Cut: reads + 1 write` · Hedera lane
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
-| `[ ]` | **D1** | Register service + checker agents in IdentityRegistry `0x8004A818BFB912233c491871b3d84c89A494BD9e`. | Agent identities resolve. | Standard ERC-8004; don't reinvent identity. |
-| `[ ]` | **D2** | Write reputation feedback (worker outcome + checker accuracy) to ReputationRegistry `0x8004B663056A597Dffe9eCcC1965A193B7388713`, metadata URI → Walrus. | A resolution writes feedback pointing at the evidence. | Settlement-derived, not attestation-only. |
+| `[~]` | **D1** | Register service + checker agents in IdentityRegistry `0x8004A818BFB912233c491871b3d84c89A494BD9e`. | Agent identities resolve. | Standard ERC-8004; don't reinvent identity. |
+| `[~]` | **D2** | Write reputation feedback (worker outcome + checker accuracy) to ReputationRegistry `0x8004B663056A597Dffe9eCcC1965A193B7388713`, metadata URI → Walrus. | A resolution writes feedback pointing at the evidence. | Settlement-derived, not attestation-only. |
 
 ### Phase E — Walrus evidence · `NEVER (hash-anchor); blob store = Walrus` · evidence lane
 | St | Part | Goal | Done when | Guard |

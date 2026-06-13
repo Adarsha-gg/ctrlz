@@ -4,7 +4,14 @@
   "packageManager": "pnpm@11.6.0",
   "scripts": {
     "contracts:build": "forge build --root contracts",
+    "hedera:agent": "node scripts/hedera/erc8004-register-agent.mjs",
+    "hedera:feedback": "node scripts/hedera/erc8004-feedback.mjs",
+    "hedera:hcs": "node scripts/hedera/hcs-receipt.mjs",
+    "hedera:sanity": "node scripts/hedera/sanity-transfer.mjs",
     "web:dev": "pnpm --filter web dev"
   },
-  "devDependencies": {}
+  "dependencies": {
+    "@hashgraph/sdk": "^2.81.0",
+    "viem": "^2.52.2"
+  }
 }
