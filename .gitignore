@@ -13,6 +13,9 @@ artifacts/
 typechain-types/
 broadcast/
 
+# local working notes — never committed
+notes/
+
 # misc
 .DS_Store
 *.log
