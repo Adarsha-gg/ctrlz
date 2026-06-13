@@ -211,6 +211,35 @@ export default function VerifyPage() {
             <ScoreTile label="Payment risk (safer = higher)" sub={split.paymentRisk} />
           </div>
 
+          <div className="world-gate-panel">
+            <div>
+              <p className="field-label">World AgentKit gate</p>
+              <p className="world-gate-title">
+                {result.worldGate.humanBacked ? "Human-backed agent" : "Unknown agent"} ·{" "}
+                {result.worldGate.status === "free" ? "free verification" : "payment required"}
+              </p>
+              <p className="muted-text" style={{ fontSize: "0.82rem", margin: "4px 0 0" }}>
+                {result.worldGate.reason}. Free uses left: {result.worldGate.freeUsesRemaining}/
+                {result.worldGate.trialLimit}. Source: {result.worldGate.source}.
+              </p>
+            </div>
+            <span
+              className={`gate-badge ${
+                result.worldGate.paymentRequired ? "gate-hard" : "gate-advisory"
+              }`}
+            >
+              {result.worldGate.paymentRequired ? "pay-gated" : "trial"}
+            </span>
+          </div>
+
+          {result.worldTrustBoost.applied && (
+            <p className="world-boost-note">
+              World backing lifted agentTrust from {result.worldTrustBoost.before.score} to{" "}
+              {result.worldTrustBoost.after.score}, capped at {result.worldTrustBoost.cap}. Output
+              checks and hard-gate failures are unchanged.
+            </p>
+          )}
+
           <div>
             <p className="field-label">Why this recommendation</p>
             <p className="verdict-explanation">

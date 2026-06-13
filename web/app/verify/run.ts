@@ -18,6 +18,12 @@ import {
   type EvidenceBlob,
   type StoreResult
 } from "@/lib/walrus";
+import {
+  applyWorldTrustBoost,
+  decideWorldGate,
+  type WorldGateDecision,
+  type WorldTrustBoost
+} from "@/lib/world";
 import { CHECKER_HISTORY, DEMO_ACCEPTANCE_SPEC, type DemoSubmission } from "./fixtures";
 
 export type VerificationResult = {
@@ -25,6 +31,10 @@ export type VerificationResult = {
   reports: CheckerReport[];
   split: SplitScore;
   checkerMeta: CheckerMeta[];
+  /** World AgentKit-style free-trial/payment gate + human-backing signal (F1) */
+  worldGate: WorldGateDecision;
+  /** capped baseline adjustment applied only to agentTrust, never output checks */
+  worldTrustBoost: WorldTrustBoost;
   /** the acceptance-spec manifest this submission was judged against (E2) */
   manifest: AcceptanceManifest;
   /** the assembled evidence blob (E2) — the thing money resolves against */
@@ -63,7 +73,13 @@ export function verifySubmission(demo: DemoSubmission): VerificationResult {
     report: reports[i],
     metaWeight: checkerMeta[i]?.weight
   }));
-  const split = scoreSplit({ checks: scored, workerHistory: demo.workerHistory });
+  const rawSplit = scoreSplit({ checks: scored, workerHistory: demo.workerHistory });
+  const worldGate = decideWorldGate({
+    agentId: demo.worldAgent.agentId,
+    usedVerifications: demo.worldAgent.usedVerifications,
+    identity: demo.worldAgent.identity
+  });
+  const { split, boost: worldTrustBoost } = applyWorldTrustBoost(rawSplit, worldGate);
 
   // Assemble the verifiable manifest + evidence blob (E2). The manifest uses the
   // injected checks (so its hash reflects exactly what was evaluated); the
@@ -78,7 +94,7 @@ export function verifySubmission(demo: DemoSubmission): VerificationResult {
     checkerMeta
   });
 
-  return { scored, reports, split, checkerMeta, manifest, evidence };
+  return { scored, reports, split, checkerMeta, worldGate, worldTrustBoost, manifest, evidence };
 }
 
 /**
