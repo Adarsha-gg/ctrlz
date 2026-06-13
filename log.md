@@ -9,6 +9,22 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · Arc deploy handoff (P1.10)
+
+- **Did:** Deployed `CtrlZEscrow` to Arc testnet from the configured payer.
+  Address: `0x2f2B5C26de74aA7307A5b946B025ce1A13255f45`; deploy block:
+  `46822450`; tx:
+  `0x91b8414d6203934b5f2541e39934d7fc4a6e5aac68b544e63a9618efc07a1280`.
+- **Verified:** `cast call ... 'NAME()(string)'` returned `"CTRL+Z Escrow"`.
+  `forge fmt --root contracts`; `forge test --root contracts` passes 41 tests;
+  `web/node_modules/.bin/tsc --noEmit` passes. `pnpm --filter web typecheck`
+  was blocked by pnpm's non-TTY modules purge prompt, so no package files were
+  changed.
+- **Handoff:** Logging this entry before editing `web/lib/contract.ts`; that file
+  will carry address, deploy block, and ABI for Claude's web/indexer work.
+- **State:** P1.10 `[x]`.
+- **Next:** P1.11 seed script.
+
 ## 2026-06-13 · agent (Codex) · contract invariants (P1.9)
 
 - **Did:** Expanded `contracts/test/CtrlZEscrow.t.sol` for P1.9 transition and
