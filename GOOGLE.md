@@ -92,20 +92,23 @@ Status: `[ ]` todo · `[~]` wip · `[x]` done. Lane in brackets.
       **Guard** descriptive, not accusatory; it sets up the validator contrast.
 
 ### Phase VAL — CTRL+Z as a live ERC-8004 validator (the headline) [Codex chain]
-- [ ] **VAL.1** Copy `ValidationRegistry.json` ABI into `scripts/hedera/abis/`
-      (available in the erc-8004-contracts repo). **Done when** ABI is in repo.
-- [ ] **VAL.2** `scripts/hedera/erc8004-validation-request.mjs` — agent owner calls
+- [x] **VAL.1** Copy `ValidationRegistry.json` ABI into `scripts/hedera/abis/`
+      (minimal ABI for request/response/status).
+- [x] **VAL.2** `scripts/hedera/erc8004-validation-request.mjs` — agent owner calls
       `validationRequest(ctrlzValidator, agentId, requestURI, requestHash)` on
-      `0x8004Cb1BF31DAf7788923b405b754f57acEB4272`. **Done when** a live request tx
-      confirms. **Guard** mirror the existing `erc8004-feedback.mjs` env/signing.
-- [ ] **VAL.3** `scripts/hedera/erc8004-validation-respond.mjs` — CTRL+Z validator
+      `0x8004Cb1BF31DAf7788923b405b754f57acEB4272`. **Live tx:** `0x58127f902d18df683efb23f50674fb549ebf111b3fae462cf5a798b683366bf4`
+      (agent `101`, request hash `0xc558bf1d075e6d7c622aaba021c8409b1cbbdf17c8cc527aa59c7326e9279d84`).
+- [x] **VAL.3** `scripts/hedera/erc8004-validation-respond.mjs` — CTRL+Z validator
       calls `validationResponse(requestHash, score0to100, walrusUri, evidenceHash,
-      "ctrlz.verify")`. **Done when** a live response tx confirms and
-      `getValidationStatus(requestHash)` returns our verdict. **Guard** validator
-      ≠ agent owner (use a dedicated CTRL+Z validator wallet for credibility).
-- [ ] **VAL.4** Wire it into the resolve flow so a `/verify` resolution emits a real
-      validationResponse (score = bps/100, URI/hash = the Walrus anchor). **Done
-      when** resolving a demo task writes an on-chain ERC-8004 validation signal.
+      "ctrlz.verify")`. **Live tx:** `0x3ee62f1cc9c848a809ffb5bc46a3f2e2b55f8a1038afc93a9ab7b67c78a6fd51`
+      (validator `0xDd03ba8B15d147366D033e090fBAeC10dc9C2D53`, score `92`,
+      tag `ctrlz.verify`).
+- [x] **VAL.4** Wire it into the resolve flow so a `/verify` resolution emits a real
+      validationResponse (score = bps/100, URI/hash = the Walrus anchor). `/verify`
+      now calls `/api/erc8004/validation` after evidence anchoring; the API writes
+      request+response when Hedera requester/validator keys are configured and
+      otherwise returns the exact replayable payload. A live request+response was
+      executed for agent `101`; `getAgentValidations(101)` returns the request hash.
       **Guard** settlement-derived; validate real evidence only.
 
 ### Phase TELL — the narrative [Claude web]

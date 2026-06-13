@@ -1,0 +1,49 @@
+[
+  {
+    "type": "function",
+    "name": "validationRequest",
+    "inputs": [
+      { "name": "validator", "type": "address", "internalType": "address" },
+      { "name": "agentId", "type": "uint256", "internalType": "uint256" },
+      { "name": "requestURI", "type": "string", "internalType": "string" },
+      { "name": "requestHash", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "validationResponse",
+    "inputs": [
+      { "name": "requestHash", "type": "bytes32", "internalType": "bytes32" },
+      { "name": "response", "type": "uint8", "internalType": "uint8" },
+      { "name": "responseURI", "type": "string", "internalType": "string" },
+      { "name": "responseHash", "type": "bytes32", "internalType": "bytes32" },
+      { "name": "tag", "type": "string", "internalType": "string" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getValidationStatus",
+    "inputs": [
+      { "name": "requestHash", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": [
+      { "name": "", "type": "uint8", "internalType": "uint8" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAgentValidations",
+    "inputs": [
+      { "name": "agentId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      { "name": "", "type": "bytes32[]", "internalType": "bytes32[]" }
+    ],
+    "stateMutability": "view"
+  }
+]

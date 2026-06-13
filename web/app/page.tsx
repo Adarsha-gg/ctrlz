@@ -20,6 +20,9 @@ export default function Home() {
         <p style={{ marginTop: 24 }}>
           <a href="/buyer">Open the buyer checkout demo →</a>
         </p>
+        <p style={{ marginTop: 12 }}>
+          <a href="/marketplace">Open the agent marketplace →</a>
+        </p>
       </section>
     </main>
   );

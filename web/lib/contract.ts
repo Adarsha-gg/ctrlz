@@ -14,7 +14,8 @@ export const hederaTestnet = {
 
 export const erc8004HederaTestnet = {
   identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e" as Address,
-  reputationRegistry: "0x8004B663056A597Dffe9eCcC1965A193B7388713" as Address
+  reputationRegistry: "0x8004B663056A597Dffe9eCcC1965A193B7388713" as Address,
+  validationRegistry: "0x8004Cb1BF31DAf7788923b405b754f57acEB4272" as Address
 } as const;
 
 export const sepoliaEns = {
@@ -50,13 +51,23 @@ export const ctrlzVerifyEscrowDeployment = {
     evidenceHash: "0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7",
     recommendationHash:
       "0x51c1f255c050c58e5c543aa089d63ba99581e984e1b9ecc80f4a4e576ab77996",
-    hashSource: "verify-ui-sha256"
+    hashSource: "verify-ui-sha256",
+    validationRequestHash: "0x58127f902d18df683efb23f50674fb549ebf111b3fae462cf5a798b683366bf4",
+    validationResponseHash: "0x3ee62f1cc9c848a809ffb5bc46a3f2e2b55f8a1038afc93a9ab7b67c78a6fd51",
+    validationRequestBlock: 36660758,
+    validationResponseBlock: 36660775
   }
 } as const;
 
 export const ctrlzVerifyEscrowAddress =
   (process.env.NEXT_PUBLIC_CTRLZ_VERIFY_ESCROW_ADDRESS as Address | undefined) ??
   ctrlzVerifyEscrowDeployment.address;
+
+export const ctrlzWalrusEvidence = {
+  uri: "https://aggregator.walrus-testnet.walrus.space/v1/blobs/eDxE69ZD3dua2R7xO8Z1KlYa9RvKgpNZHzXIkO63frk",
+  blobId: "eDxE69ZD3dua2R7xO8Z1KlYa9RvKgpNZHzXIkO63frk",
+  hash: ctrlzVerifyEscrowDeployment.demo.evidenceHash
+} as const;
 
 export const ctrlzVerifyEscrowAbi = [
   {

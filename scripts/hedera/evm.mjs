@@ -7,6 +7,8 @@ export const HEDERA_ERC8004_IDENTITY_REGISTRY =
   "0x8004A818BFB912233c491871b3d84c89A494BD9e";
 export const HEDERA_ERC8004_REPUTATION_REGISTRY =
   "0x8004B663056A597Dffe9eCcC1965A193B7388713";
+export const HEDERA_ERC8004_VALIDATION_REGISTRY =
+  "0x8004Cb1BF31DAf7788923b405b754f57acEB4272";
 
 export function readAbi(path) {
   return JSON.parse(fs.readFileSync(new URL(path, import.meta.url), "utf8"));

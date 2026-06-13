@@ -79,11 +79,18 @@ leaderboard." Validation Registry confirmed **live on Hedera testnet** at
 - [ ] **GQ.3** Explorer route (e.g. `web/app/explorer`) over the BigQuery results.
 - [ ] **GQ.4** Sybil/spam lens — flag agents whose feedback comes from few unique
       raters (sets up the validator contrast).
-- [ ] **VAL.1** *(Codex)* copy `ValidationRegistry.json` ABI → `scripts/hedera/abis/`.
-- [ ] **VAL.2/VAL.3** *(Codex)* `erc8004-validation-request.mjs` +
+- [x] **VAL.1** *(Codex)* copy `ValidationRegistry.json` ABI → `scripts/hedera/abis/`.
+- [x] **VAL.2/VAL.3** *(Codex)* `erc8004-validation-request.mjs` +
       `erc8004-validation-respond.mjs` (mirror `erc8004-feedback.mjs`); call
       `validationResponse(requestHash, score/100, walrusUri, evidenceHash, "ctrlz.verify")`.
-- [ ] **VAL.4** *(Codex)* wire `/verify` resolve → on-chain validationResponse.
+- [x] **VAL.4** *(Codex)* wire `/verify` resolve → on-chain validationResponse.
+      `/verify` now calls `/api/erc8004/validation` after evidence anchoring; with
+      Hedera requester/validator keys configured it writes request+response,
+      otherwise it returns the exact replayable payload. Live proof: request
+      `0x58127f902d18df683efb23f50674fb549ebf111b3fae462cf5a798b683366bf4`,
+      response `0x3ee62f1cc9c848a809ffb5bc46a3f2e2b55f8a1038afc93a9ab7b67c78a6fd51`;
+      `getAgentValidations(101)` returns request hash
+      `0xc558bf1d075e6d7c622aaba021c8409b1cbbdf17c8cc527aa59c7326e9279d84`.
 - [ ] **TELL.1** Explorer screen contrasting naive mainnet rep vs CTRL+Z-validated signal.
 - [ ] **Booth (Sun AM):** ask if Hedera is in BigQuery (bonus) and whether our
       Hedera validation counts; show them VAL.* + the §8e re-execution design.

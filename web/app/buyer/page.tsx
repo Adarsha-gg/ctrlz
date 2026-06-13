@@ -1,40 +1,32 @@
-import { VerdictCard } from "./VerdictCard";
-
-/**
- * P6.1 — the buyer dApp's first screen. Framed as buying a used GPU from a
- * stranger on a marketplace: a static listing + a "Pay with CTRL+Z" affordance
- * that scores the seller's recipient before any money moves.
- */
+import { TerminalHeader } from "@/app/components/TerminalHeader";
+import { PaymentDemo } from "./PaymentDemo";
 
 export const metadata = {
-  title: "CTRL+Z — Checkout"
+  title: "CTRL+Z - Buyer Payment Demo"
 };
 
-export default function BuyerPage() {
-  return (
-    <main className="shell shell-wide">
-      <section className="listing">
-        <p className="eyebrow">Marketplace · used hardware</p>
-        <div className="listing-body">
-          <div className="listing-art" aria-hidden>
-            🎮
-          </div>
-          <div>
-            <h1 className="listing-title">NVIDIA RTX 4090 — Founders Edition</h1>
-            <p className="listing-meta">Lightly used · original box · ships today</p>
-            <p className="listing-price">600 USDC</p>
-            <p className="listing-seller">
-              Sold by an unverified marketplace seller. CTRL+Z checks the recipient
-              before you pay — and lets you undo the send if something looks wrong.
-            </p>
-          </div>
-        </div>
-      </section>
+export type BuyerQuery = {
+  agent?: string;
+  agentId?: string;
+  policy?: string;
+  kind?: string;
+  score?: string;
+  domain?: string;
+  owner?: string;
+  workLabel?: string;
+};
 
-      <section className="panel checkout">
-        <p className="eyebrow">Checkout</p>
-        <VerdictCard />
-      </section>
+export default async function BuyerPage({
+  searchParams
+}: {
+  searchParams?: Promise<BuyerQuery>;
+}) {
+  const query = (await searchParams) ?? {};
+
+  return (
+    <main className="terminal-app">
+      <TerminalHeader active="buyer" />
+      <PaymentDemo query={query} />
     </main>
   );
 }
