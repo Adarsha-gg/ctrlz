@@ -1,0 +1,10 @@
+{
+  "name": "ctrlz",
+  "private": true,
+  "packageManager": "pnpm@11.6.0",
+  "scripts": {
+    "contracts:build": "forge build --root contracts",
+    "web:dev": "pnpm --filter web dev"
+  },
+  "devDependencies": {}
+}
