@@ -11,7 +11,7 @@
  * (ethos guard #5).
  */
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   scoreRecipient,
   DEMO_ADDRESS_BOOK,
@@ -19,9 +19,11 @@ import {
   ALICE_ADDRESS,
   ALICE_NAME,
   POISONED_LOOKALIKE,
+  type RecipientHistory,
   type RiskVerdict,
   type VerdictTier
 } from "@/lib/risk";
+import { fetchRecipientHistory } from "@/lib/chain/history";
 import { resolveRecipient, type ResolvedRecipient } from "./resolve";
 
 const TIER_META: Record<VerdictTier, { emoji: string; label: string }> = {
@@ -41,11 +43,42 @@ export function VerdictCard() {
   const [explain, setExplain] = useState<ExplainState>({ status: "idle" });
   // bump on each input so a stale /api/explain response can't overwrite a newer one
   const requestSeq = useRef(0);
+  // On-chain reputation for the currently-resolved address (P2.5). `undefined`
+  // means "no history / RPC unreachable" — the engine degrades to a cautious
+  // tier. We key by address so a stale fetch can't poison a newer recipient.
+  const [history, setHistory] = useState<{
+    address: string;
+    data: RecipientHistory | undefined;
+  } | null>(null);
 
   const resolved: ResolvedRecipient | null = useMemo(
     () => (raw.trim() ? resolveRecipient(raw) : null),
     [raw]
   );
+
+  // Fetch real on-chain history whenever the resolved address changes. This
+  // never throws into the UI (fetchRecipientHistory swallows RPC failures and
+  // returns undefined), so the card always renders.
+  useEffect(() => {
+    const address = resolved?.address;
+    if (!address) {
+      setHistory(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchRecipientHistory(address).then((data) => {
+      if (!cancelled) setHistory({ address, data });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [resolved?.address]);
+
+  // Only apply history once it matches the address we're actually scoring.
+  const historyForResolved =
+    resolved?.address && history?.address === resolved.address
+      ? history.data
+      : undefined;
 
   const verdict: RiskVerdict | null = useMemo(() => {
     if (!resolved || !resolved.address) return null;
@@ -53,9 +86,10 @@ export function VerdictCard() {
       address: resolved.address,
       typedName: resolved.typedName,
       addressBook: DEMO_ADDRESS_BOOK,
-      knownNames: KNOWN_NAMES
+      knownNames: KNOWN_NAMES,
+      history: historyForResolved
     });
-  }, [resolved]);
+  }, [resolved, historyForResolved]);
 
   const fetchExplanation = useCallback(async (v: RiskVerdict) => {
     const seq = ++requestSeq.current;
@@ -77,26 +111,20 @@ export function VerdictCard() {
     }
   }, []);
 
-  // Recompute + (re)fetch explanation whenever the input changes.
-  const onChange = useCallback(
-    (value: string) => {
-      setRaw(value);
-      const next = value.trim() ? resolveRecipient(value) : null;
-      if (next && next.address) {
-        const v = scoreRecipient({
-          address: next.address,
-          typedName: next.typedName,
-          addressBook: DEMO_ADDRESS_BOOK,
-          knownNames: KNOWN_NAMES
-        });
-        void fetchExplanation(v);
-      } else {
-        requestSeq.current++;
-        setExplain({ status: "idle" });
-      }
-    },
-    [fetchExplanation]
-  );
+  const onChange = useCallback((value: string) => {
+    setRaw(value);
+  }, []);
+
+  // (Re)fetch the LLM explanation whenever the deterministic verdict changes —
+  // including when real on-chain history arrives and shifts the tier/reasons.
+  useEffect(() => {
+    if (verdict) {
+      void fetchExplanation(verdict);
+    } else {
+      requestSeq.current++;
+      setExplain({ status: "idle" });
+    }
+  }, [verdict, fetchExplanation]);
 
   return (
     <div className="verdict-wrap">
