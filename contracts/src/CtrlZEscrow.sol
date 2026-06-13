@@ -3,6 +3,9 @@ pragma solidity ^0.8.24;
 
 contract CtrlZEscrow {
     string public constant NAME = "CTRL+Z Escrow";
+    bytes32 public constant CLAIM_FOR_TYPEHASH = keccak256(
+        "CtrlZEscrowClaimFor(uint256 paymentId,address recipient,uint256 chainId,address verifyingContract)"
+    );
 
     uint256 public constant MIN_UNDO_WINDOW = 5 minutes;
     uint256 public constant MAX_UNDO_WINDOW = 24 hours;
@@ -35,6 +38,7 @@ contract CtrlZEscrow {
 
     uint256 public nextPaymentId = 1;
     mapping(uint256 => Payment) public payments;
+    mapping(bytes32 => bool) public claimForHashUsed;
 
     event Sent(
         uint256 indexed id,
@@ -56,6 +60,8 @@ contract CtrlZEscrow {
     error NotSender();
     error NotRecipient();
     error ClaimTooEarly();
+    error SignatureAlreadyUsed();
+    error InvalidSignature();
     error TransferFailed();
 
     function send(address recipient, uint256 amount, uint256 undoWin)
@@ -128,6 +134,33 @@ contract CtrlZEscrow {
         _sendValue(recipient, amount);
     }
 
+    function claimFor(uint256 id, bytes calldata recipientSig) external {
+        Payment storage payment = payments[id];
+        bytes32 digest = claimForDigest(id);
+        if (claimForHashUsed[digest]) revert SignatureAlreadyUsed();
+        if (payment.state != State.PENDING) revert InvalidState();
+        if (block.timestamp < payment.claimableAt) revert ClaimTooEarly();
+        if (_recoverSigner(digest, recipientSig) != payment.recipient) revert InvalidSignature();
+
+        uint256 amount = payment.amount;
+        address recipient = payment.recipient;
+        address sender = payment.sender;
+        claimForHashUsed[digest] = true;
+        payment.state = State.SEALED;
+        payment.sealedAt = uint64(block.timestamp);
+
+        emit Sealed(id, sender, recipient, amount);
+        _sendValue(recipient, amount);
+    }
+
+    function claimForDigest(uint256 id) public view returns (bytes32) {
+        Payment storage payment = payments[id];
+        bytes32 structHash = keccak256(
+            abi.encode(CLAIM_FOR_TYPEHASH, id, payment.recipient, block.chainid, address(this))
+        );
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", structHash));
+    }
+
     function hold(address) public pure returns (uint256) {
         return 0;
     }
@@ -140,6 +173,29 @@ contract CtrlZEscrow {
 
     function _max(uint256 a, uint256 b) private pure returns (uint256) {
         return a >= b ? a : b;
+    }
+
+    function _recoverSigner(bytes32 digest, bytes calldata signature)
+        private
+        pure
+        returns (address)
+    {
+        if (signature.length != 65) revert InvalidSignature();
+
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := calldataload(signature.offset)
+            s := calldataload(add(signature.offset, 0x20))
+            v := byte(0, calldataload(add(signature.offset, 0x40)))
+        }
+
+        if (v != 27 && v != 28) revert InvalidSignature();
+
+        address signer = ecrecover(digest, v, r, s);
+        if (signer == address(0)) revert InvalidSignature();
+        return signer;
     }
 
     function _sendValue(address to, uint256 amount) private {

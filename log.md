@@ -9,6 +9,18 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · gasless claimFor (P1.4)
+
+- **Did:** Added `claimFor(id, recipientSig)` to `contracts/src/CtrlZEscrow.sol`
+  so any relayer can seal a claim after `claimableAt` using the recipient's
+  signature. The signed digest binds payment id, stored recipient, chain id, and
+  verifying contract; used digests are recorded to reject replay; funds are sent
+  only to the stored recipient. Added focused Foundry coverage for relayer
+  success, replay, wrong signer, too early, and recipient-only payout.
+- **Verified:** `forge fmt --root contracts`; `forge test --root contracts`
+  (11/11).
+- **Next:** P1.5 `expire()`.
+
 ## 2026-06-13 · agent (Codex) · contract core P1.1-P1.3
 
 - **Did:** Implemented the first escrow state-machine slice in
