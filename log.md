@@ -9,6 +9,19 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · on-chain tier counters (P1.6)
+
+- **Did:** Added contract-owned recipient counters (`sealedCount`,
+  `distinctSenderCount`, `flagCount`, `firstSeen`) plus recipient/sender
+  dedupe for distinct sender approximation. Successful `claim`/`claimFor`
+  seals now update reputation; PENDING, recall, reject, and expire do not.
+  Replaced the P1.3 `hold()` stub with deterministic counter-derived tiers
+  that still preserve the universal 5-minute undo floor through `send()`'s
+  `max(clamped undoWin, hold(recipient))`.
+- **State:** P1.6 `[x]`; contract tests cover sealed-only counter updates,
+  distinct sender dedupe, hold shortening, and the unbuyable undo floor.
+- **Next:** Codex → P1.7 `flag()` + `attachProof()`.
+
 ## 2026-06-12 · agent (Claude) · buyer verdict card (P6.1 + P3.2)
 
 - **Did:** Built the buyer dApp's first screen at `web/app/buyer/`. Framed as
