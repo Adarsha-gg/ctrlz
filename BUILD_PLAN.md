@@ -106,7 +106,7 @@ P3.1 to wrap it in language.
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
 | `[x]` | **P3.1** | One LLM call (Claude — check the `claude-api` skill for the current model id when wiring it) that turns the verdict's `reasons[]` into a plain-English explanation. | Given a verdict, returns a 1–2 sentence human explanation. | The LLM **explains**, it never decides — it cannot override the deterministic tier. |
-| `[ ]` | **P3.2** | Wire the explanation into the verdict-card shape the UI renders. | Verdict card carries `{tier, explanation, reasons[]}`. | Degrade to `reasons[]` bullets if the call fails — never block a send on the LLM. |
+| `[x]` | **P3.2** | Wire the explanation into the verdict-card shape the UI renders. | Verdict card carries `{tier, explanation, reasons[]}`. | Degrade to `reasons[]` bullets if the call fails — never block a send on the LLM. |
 
 ---
 
@@ -139,7 +139,7 @@ Chrome/WebHID only, localhost or HTTPS. Packages: `@ledgerhq/device-management-k
 
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
-| `[ ]` | **P6.1** | Buyer: marketplace listing frame ("buying a used GPU from a stranger", **Pay with CTRL+Z** button) + recipient field + verdict card from P2/P3. | Pasting a recipient shows the live 🔴/🟡/🟢 verdict + explanation. | Frame as a marketplace buy, never an abstract "send money" screen. |
+| `[x]` | **P6.1** | Buyer: marketplace listing frame ("buying a used GPU from a stranger", **Pay with CTRL+Z** button) + recipient field + verdict card from P2/P3. | Pasting a recipient shows the live 🔴/🟡/🟢 verdict + explanation. | Frame as a marketplace buy, never an abstract "send money" screen. |
 | `[ ]` | **P6.2** | Buyer: `send()` → PENDING view → **UNDO** button → `recall()` → refund rendered **from RPC state** (explorer is corroboration only). | The full poison→fix→pay→undo→refund loop runs in-UI. | The recall climax reads RPC — testnet explorer indexing lag must not own the demo. |
 | `[ ]` | **P6.3** | Seller: "⏳ PENDING — do not deliver" / "✅ SEALED — irreversibly yours" view + `claim()` and gasless `claimFor()` (relayer = the **settler** wallet) + `attachProof()` + a mocked "Delivered ✓ (FedEx)" chip. | Seller claims with an empty wallet via relayer; seals; attaches proof; buyer view flips the chip. | The chip is display only — it **never** gates money. The empty-wallet claim is the Arc-necessity beat: rehearse saying it. |
 | `[ ]` | **P6.4** | ENS-everywhere pass across both apps: recipient field, verdict card, Ledger screen, seller dashboard, event feed, flag records, ⚠️ badges. | Grep the rendered UI — no bare `0x…` anywhere. | Raw `0x` on screen = a bug. |
