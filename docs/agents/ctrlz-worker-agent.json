@@ -11,7 +11,12 @@
       "description": "Demo task flow for agent-to-agent work verification."
     }
   ],
-  "registrations": [],
+  "registrations": [
+    {
+      "agentRegistry": "eip155:296:0x8004A818BFB912233c491871b3d84c89A494BD9e",
+      "agentId": "101"
+    }
+  ],
   "supportedTrust": [
     "reputation",
     "validation",
@@ -21,6 +26,8 @@
     "role": "worker",
     "domain": "gpu-invoice-sourcing",
     "chain": "hedera-testnet",
+    "agentId": "101",
+    "registrationTx": "0xd4912aef78fb8f76a0e77e583516bcf0f84ac3e14de5d46d5c78c39dd0863c94",
     "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
     "reputationRegistry": "0x8004B663056A597Dffe9eCcC1965A193B7388713",
     "verifyEscrow": "0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4"

@@ -12,15 +12,15 @@ export function readAbi(path) {
   return JSON.parse(fs.readFileSync(new URL(path, import.meta.url), "utf8"));
 }
 
-export function getHederaEvmClients() {
+export function getHederaEvmClients(privateKeyNames = [
+  "HEDERA_EVM_PRIVATE_KEY",
+  "HEDERA_PAYER_PRIVATE_KEY",
+  "HEDERA_RESOLVER_PRIVATE_KEY"
+]) {
   loadDotenv();
   const rpcUrl = optionalEnv("HEDERA_RPC_URL", "https://testnet.hashio.io/api");
   const chainId = Number(optionalEnv("HEDERA_CHAIN_ID", "296"));
-  const privateKeyEnv = requireEnvAny([
-    "HEDERA_EVM_PRIVATE_KEY",
-    "HEDERA_PAYER_PRIVATE_KEY",
-    "HEDERA_RESOLVER_PRIVATE_KEY"
-  ]);
+  const privateKeyEnv = requireEnvAny(privateKeyNames);
   const privateKey = privateKeyEnv.value.startsWith("0x")
     ? privateKeyEnv.value
     : `0x${privateKeyEnv.value}`;

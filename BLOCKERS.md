@@ -8,7 +8,8 @@ real confirmation output.
 
 Status: partially shipped.
 
-C1 and C2 are no longer blocked. Confirmed live Hedera testnet evidence:
+C1, C2, D1, and D2 are no longer blocked. Confirmed live Hedera testnet
+evidence:
 
 ```txt
 EVM sanity transfer: 0x9236c06cbd4021ce15c531a4d184d325b88c8ab852585bcf69c2a63733b09e97
@@ -19,6 +20,12 @@ Accept tx:           0xa02682601b9fcbb530f88ff329d5d3000cb8e8f7af5e3a31ed1c85caa
 Submit tx:           0x162cef8266683f44fe54af946e63c0bd68e4cdb1eb77e539f9b899e71cd8c184
 Resolve tx:          0x78c20ab96742a69f1d599109142f51d702cab12edaa4f1310a0bc0081239519f
 Hash source:         demo-fixture bytes32 values
+Worker agent:        101
+Worker register tx:  0xd4912aef78fb8f76a0e77e583516bcf0f84ac3e14de5d46d5c78c39dd0863c94
+Checker agent:       102
+Checker register tx: 0xff802ef5cd713ab8075e3b195329ac3664633dfa648f61fff156e84582d8f80f
+Worker feedback tx:  0x3745fa1efa69f725481f5798d3e2d76d856123510569f09f2a59c277f3e0fb0f
+Checker feedback tx: 0xa42eb5c0142e0fd26362c900357fd4def575691d91800040147bec7ee6078bbc
 ```
 
 Current env aliases supported by scripts:
@@ -26,6 +33,7 @@ Current env aliases supported by scripts:
 ```txt
 SDK account/key:     HEDERA_OPERATOR_ID+HEDERA_OPERATOR_KEY or HEDERA_RESOLVER_ID+HEDERA_RESOLVER_PRIVATE_KEY or HEDERA_PAYER_ID+HEDERA_PAYER_PRIVATE_KEY
 EVM private key:     HEDERA_EVM_PRIVATE_KEY or HEDERA_PAYER_PRIVATE_KEY or HEDERA_RESOLVER_PRIVATE_KEY
+Feedback signer:     HEDERA_FEEDBACK_PRIVATE_KEY or HEDERA_RESOLVER_PRIVATE_KEY (must not be the agent owner)
 RPC URL:             HEDERA_RPC_URL=https://testnet.hashio.io/api
 Verify escrow env:   NEXT_PUBLIC_CTRLZ_VERIFY_ESCROW_ADDRESS=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4
 ```
@@ -90,11 +98,12 @@ npm run hedera:agent -- \
   --agent-uri=<checker-agent-registration-json>
 ```
 
-Status: still incomplete.
+Status: done.
 
-Done when both the service/worker agent and at least one checker agent are
-registered, each command prints a successful transaction hash + agent id, and the
-agent URIs resolve to registration JSON that names the service/checker role.
+Worker agent `101` registered with tx
+`0xd4912aef78fb8f76a0e77e583516bcf0f84ac3e14de5d46d5c78c39dd0863c94`.
+Checker agent `102` registered with tx
+`0xff802ef5cd713ab8075e3b195329ac3664633dfa648f61fff156e84582d8f80f`.
 
 ### D2 ERC-8004 reputation feedback
 
@@ -114,14 +123,16 @@ npm run hedera:feedback -- \
   --feedback-hash=<actual-evidence-bytes32-hash>
 ```
 
-Do not use `agent-id=1`, `walrus://demo`, or all-zero hashes unless those are the
-actual deployed demo values.
+Use a non-owner feedback signer. The ERC-8004 ReputationRegistry rejects
+self-feedback, which is correct; the live D2 feedback txs were signed by the
+resolver/client wallet.
 
-Status: still incomplete.
+Status: done.
 
-Done when both worker outcome feedback and checker accuracy feedback are written
-to the ReputationRegistry, both point at the actual Walrus evidence URI/hash, and
-the transaction hashes are recorded in the submission notes.
+Worker outcome feedback for agent `101` confirmed with tx
+`0x3745fa1efa69f725481f5798d3e2d76d856123510569f09f2a59c277f3e0fb0f`.
+Checker accuracy feedback for agent `102` confirmed with tx
+`0xa42eb5c0142e0fd26362c900357fd4def575691d91800040147bec7ee6078bbc`.
 
 ## Google BigQuery
 
@@ -150,5 +161,5 @@ video. G1 is complete only when:
 - The World gate panel can be shown for human-backed and unknown agents.
 - Checker meta-reputation is visible in the report list.
 - The evidence hash/Walrus panel is visible.
-- The presenter does not claim live Hedera txs unless C1/C2/C3/D1/D2 have real
-  transaction hashes.
+- The presenter does not claim a live HCS receipt unless C3 has a real
+  transaction hash.

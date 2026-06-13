@@ -11,7 +11,12 @@
       "description": "Demo checker runner and scoring implementation."
     }
   ],
-  "registrations": [],
+  "registrations": [
+    {
+      "agentRegistry": "eip155:296:0x8004A818BFB912233c491871b3d84c89A494BD9e",
+      "agentId": "102"
+    }
+  ],
   "supportedTrust": [
     "reputation",
     "validation",
@@ -26,6 +31,8 @@
       "source_listing"
     ],
     "chain": "hedera-testnet",
+    "agentId": "102",
+    "registrationTx": "0xff802ef5cd713ab8075e3b195329ac3664633dfa648f61fff156e84582d8f80f",
     "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
     "reputationRegistry": "0x8004B663056A597Dffe9eCcC1965A193B7388713"
   }
