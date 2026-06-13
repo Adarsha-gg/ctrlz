@@ -9,6 +9,27 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-12 · agent (Claude) · buyer verdict card (P6.1 + P3.2)
+
+- **Did:** Built the buyer dApp's first screen at `web/app/buyer/`. Framed as
+  buying a used RTX 4090 from a stranger: static listing + a "Pay with CTRL+Z"
+  checkout. `VerdictCard.tsx` (client) takes a typed/pasted recipient, resolves
+  it (`resolve.ts` — name↔address against the demo fixtures, ENS P2.4 not wired
+  yet), scores it with the deterministic `scoreRecipient` (client-side), and
+  renders the 🔴/🟡/🟢 tier + LLM explanation + `reasons[]`. POSTs the verdict
+  to `/api/explain`; if that fails the reasons render as bullets and the tier
+  still shows (guard #1). Resolved known recipients show their NAME in the card
+  + headline, never raw hex (guard #5). One-click demo buttons fill the field
+  with the poisoned lookalike (🔴) and alice by name/address (🟢). Added card
+  styles to `globals.css` and a link from the home page. Did not touch
+  `web/lib/risk/**`, `web/app/api/explain/**`, or `contracts/**`.
+- **Verified:** `pnpm install` + `node_modules/.bin/tsc --noEmit` → exit 0.
+  Demo-path sanity (ran engine directly): POISONED_LOOKALIKE → `red`; alice by
+  address → `green`; alice by name → `green`. PASS.
+- **Next:** P6.2 send → PENDING → UNDO → refund (blocked on the deployed escrow
+  address/ABI in `web/lib/contract.ts` from Codex P1.10). Reviewer owns merging
+  this PR.
+
 ## 2026-06-13 · agent (Codex) · expire refund (P1.5)
 
 - **Did:** Added `expire(id)` to refund unclaimed PENDING payments after

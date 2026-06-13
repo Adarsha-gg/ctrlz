@@ -77,3 +77,226 @@ dd {
   overflow-wrap: anywhere;
   text-align: right;
 }
+
+/* ── Buyer verdict card (P6.1) ──────────────────────────────────────── */
+
+.shell-wide {
+  align-content: center;
+  grid-auto-flow: row;
+  gap: 20px;
+}
+
+.listing,
+.checkout {
+  width: min(100%, 620px);
+}
+
+.listing {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 24px;
+}
+
+.listing-body {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.listing-art {
+  font-size: 3rem;
+  line-height: 1;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #efece4;
+}
+
+.listing-title {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.listing-meta {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.listing-price {
+  margin: 0 0 10px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.listing-seller {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.checkout {
+  padding: 24px;
+}
+
+.verdict-wrap {
+  display: grid;
+  gap: 12px;
+}
+
+.field-label {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.recipient-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+.recipient-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.demo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.demo-hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.demo-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.demo-btn:hover {
+  border-color: var(--accent);
+}
+
+.empty-note {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.verdict-card {
+  border: 1px solid var(--line);
+  border-left-width: 6px;
+  border-radius: 8px;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+  background: #fff;
+}
+
+.verdict-card.tier-red {
+  border-left-color: #c0392b;
+  background: #fdf3f2;
+}
+
+.verdict-card.tier-yellow {
+  border-left-color: #b7791f;
+  background: #fdf9ee;
+}
+
+.verdict-card.tier-green {
+  border-left-color: #1a7f5a;
+  background: #f1f9f4;
+}
+
+.verdict-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.verdict-emoji {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.verdict-tier {
+  margin: 0 0 2px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.verdict-target {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.verdict-target strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.verdict-sub,
+.muted-text {
+  color: var(--muted);
+}
+
+.verdict-explanation {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.verdict-reasons {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.pay-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.98rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  background: var(--accent);
+}
+
+.pay-btn.tier-yellow {
+  background: #b7791f;
+}
+
+.pay-btn.tier-green {
+  background: #1a7f5a;
+}
+
+.pay-btn.tier-red {
+  background: #c0392b;
+  opacity: 0.6;
+  cursor: not-allowed;
+}

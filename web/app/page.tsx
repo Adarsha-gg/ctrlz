@@ -17,6 +17,9 @@ export default function Home() {
             <dd>{supportsWebHid() ? "available" : "browser unsupported"}</dd>
           </div>
         </dl>
+        <p style={{ marginTop: 24 }}>
+          <a href="/buyer">Open the buyer checkout demo →</a>
+        </p>
       </section>
     </main>
   );
