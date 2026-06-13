@@ -12,8 +12,17 @@
  * --experimental-strip-types, mirroring web/lib/risk/selfcheck.ts.
  */
 
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { replayChecks } from "../checkers/registry.ts";
 import { computeCheckerMetas } from "../checkers/metaReputation.ts";
+import {
+  buildCheckerRuntimeManifest,
+  CHECKER_BUNDLE_HASH,
+  CHECKER_SOURCE_HASHES
+} from "../checkers/runtime.ts";
 import { runChecks } from "../checkers/registry.ts";
 import type { CheckSpec, TaskContext } from "../checkers/types.ts";
 import { scoreSplit } from "./score.ts";
@@ -37,6 +46,23 @@ function check(label: string, cond: boolean, detail?: string) {
   }
 }
 
+const rootDir = fileURLToPath(new URL("../../../", import.meta.url));
+
+function sha256Text(text: string): string {
+  return `sha256:${createHash("sha256").update(text).digest("hex")}`;
+}
+
+function sha256File(relativePath: string): string {
+  return sha256Text(readFileSync(resolve(rootDir, relativePath), "utf8"));
+}
+
+function bundleFingerprint(hashes: Record<string, string>): string {
+  return Object.keys(hashes)
+    .sort()
+    .map((path) => `${path}:${hashes[path]}`)
+    .join("\n");
+}
+
 /** Inject the demo's wallet history onto the wallet_risk check, then run + pair. */
 function evaluate(demo: DemoSubmission) {
   const checks: CheckSpec[] = DEMO_ACCEPTANCE_SPEC.checks.map((c) =>
@@ -51,6 +77,7 @@ function evaluate(demo: DemoSubmission) {
   };
   const reports = runChecks(checks, ctx);
   const replays = replayChecks(checks, ctx, reports);
+  const checkerRuntime = buildCheckerRuntimeManifest(checks);
   const checkerMeta = computeCheckerMetas({ reports, history: CHECKER_HISTORY, replays });
   const scored: ScoredCheck[] = checks.map((c, i) => ({
     check: c,
@@ -58,7 +85,7 @@ function evaluate(demo: DemoSubmission) {
     metaWeight: checkerMeta[i]?.weight
   }));
   const split = scoreSplit({ checks: scored, workerHistory: demo.workerHistory });
-  return { reports, scored, split, checkerMeta, replays };
+  return { reports, scored, split, checkerMeta, replays, checkerRuntime };
 }
 
 // Beat 3+5: CLEAN invoice → proceed (or proceed_with_protection), all checks pass.
@@ -121,6 +148,51 @@ function evaluate(demo: DemoSubmission) {
     "B3 replay: deterministic checkers reproduce every CLEAN verdict",
     a.replays.every((r) => r.status === "match" && r.replayable),
     JSON.stringify(a.replays)
+  );
+}
+
+// §8e: evidence must pin checker code and freeze external inputs for replay.
+{
+  const { reports, checkerRuntime } = evaluate(CLEAN_SUBMISSION);
+  check(
+    "§8e runtime manifest pins one checker version per report",
+    checkerRuntime.checkers.length === reports.length &&
+      checkerRuntime.checkers.every((entry) => entry.deterministic && entry.codeHash.startsWith("sha256:")),
+    JSON.stringify(checkerRuntime)
+  );
+  const frozenHistory = checkerRuntime.frozenInputs.find(
+    (entry) => entry.checker === "wallet-risk-checker" && entry.key === "check.history"
+  );
+  check(
+    "§8e runtime manifest freezes wallet-risk history into the evidence path",
+    Boolean(
+      frozenHistory &&
+        typeof frozenHistory.value === "object" &&
+        frozenHistory.value &&
+        (frozenHistory.value as { sealedCount?: number }).sealedCount === ALICE_HISTORY.sealedCount
+    ),
+    JSON.stringify(checkerRuntime.frozenInputs)
+  );
+}
+
+// §8e: pinned checker hashes must move when checker logic/dependencies move.
+{
+  const actualHashes = Object.fromEntries(
+    Object.keys(CHECKER_SOURCE_HASHES).map((path) => [path, sha256File(path)])
+  ) as Record<string, string>;
+  const stale = Object.entries(CHECKER_SOURCE_HASHES).filter(
+    ([path, expected]) => actualHashes[path] !== expected
+  );
+  check(
+    "§8e pinned checker source hashes match current files",
+    stale.length === 0,
+    JSON.stringify(stale)
+  );
+  const actualBundleHash = sha256Text(bundleFingerprint(actualHashes));
+  check(
+    "§8e pinned checker bundle hash matches current file set",
+    actualBundleHash === CHECKER_BUNDLE_HASH,
+    `${actualBundleHash} vs ${CHECKER_BUNDLE_HASH}`
   );
 }
 

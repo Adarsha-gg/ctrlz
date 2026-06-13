@@ -9,6 +9,28 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Claude) · Reputation system design (REPUTATION.md)
+
+- **Did:** Wrote [REPUTATION.md](REPUTATION.md) — the agent validation + reputation
+  spec. Locked 4 decisions: (1) enterprise = cheap self-serve **domain proof**
+  (DNS/`.well-known`), (2) **public** sibling linkage (no privacy — an operator's
+  agents are visible), (3) fraud propagates **hard but not 0** (decaying drag;
+  only a pattern zeroes a cluster), (4) **dispute window with staked verifiers**
+  adjudicated by deterministic **re-execution** of checkers against the Walrus
+  blob (reuses `replayChecks` + sha256 anchor). Core principle: *good rep is hard
+  to share, fraud rep is easy to share*. Builds on existing `world/policy.ts`
+  tiers/`clusterId`/`reputationSubjectFor` (and Codex's new backing-cluster lane).
+- **Decided since:** at-risk bonds = **5× task value**; verifiers
+  **permissionless but staked**; jurors **human-backed + random per dispute**
+  (REPUTATION.md §8c/§8d). Added §8e explaining the deterministic re-execution
+  requirement (freeze inputs + pin checker version hash in the evidence blob).
+- **Next:** Phase R1.1 — `web/lib/reputation/` operator-root model; replace the
+  flat tier boost with earned+shared operator standing (`floor()`). See §11 plan.
+  Key remaining build risk = the §8e deterministic runner (R4 depends on it; also
+  constrains checkers to use no live data on the dispute path).
+
+---
+
 ## 2026-06-13 · agent (Codex) · Real World AgentKit lane + backing clusters
 
 - **Did:** Split the old World-style F1 gate from a real AgentKit lane. Added

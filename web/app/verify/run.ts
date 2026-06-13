@@ -4,7 +4,7 @@
  * submission → same result, so the page is replayable.
  */
 
-import { replayChecks, runChecks } from "@/lib/checkers";
+import { buildCheckerRuntimeManifest, replayChecks, runChecks } from "@/lib/checkers";
 import type { CheckSpec, CheckerReport, TaskContext } from "@/lib/checkers";
 import { computeCheckerMetas, type CheckerMeta } from "@/lib/checkers/metaReputation";
 import { scoreSplit } from "@/lib/scoring/score";
@@ -93,6 +93,7 @@ export function verifySubmission(demo: DemoSubmission): VerificationResult {
     taskSpec: manifest,
     workerOutput: demo.submission,
     checkerReports: reports,
+    checkerRuntime: buildCheckerRuntimeManifest(checks),
     splitScore: split,
     recommendation: split.recommendation,
     checkerMeta

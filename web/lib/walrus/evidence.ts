@@ -18,6 +18,7 @@
  */
 
 import type { CheckerReport, CheckSpec, WorkerSubmission } from "../checkers/types.ts";
+import type { CheckerRuntimeManifest } from "../checkers/runtime.ts";
 import type { CheckerMeta } from "../checkers/metaReputation.ts";
 import type { Recommendation, SplitScore } from "../scoring/score.ts";
 
@@ -47,6 +48,8 @@ export type EvidenceBlob = {
   workerOutput: WorkerSubmission;
   /** every checker's machine-readable report (§6) */
   checkerReports: CheckerReport[];
+  /** §8e: pinned checker code + frozen external inputs for replay disputes */
+  checkerRuntime: CheckerRuntimeManifest;
   /** B3: checker accuracy/replayability snapshot used for this decision */
   checkerMeta?: CheckerMeta[];
   /** the three never-collapsed scores (§7) */
@@ -75,6 +78,7 @@ export function buildEvidenceBlob(input: {
   taskSpec: AcceptanceManifest;
   workerOutput: WorkerSubmission;
   checkerReports: CheckerReport[];
+  checkerRuntime: CheckerRuntimeManifest;
   checkerMeta?: CheckerMeta[];
   splitScore: SplitScore;
   recommendation: Recommendation;
@@ -84,6 +88,7 @@ export function buildEvidenceBlob(input: {
     taskSpec: input.taskSpec,
     workerOutput: input.workerOutput,
     checkerReports: input.checkerReports,
+    checkerRuntime: input.checkerRuntime,
     ...(input.checkerMeta ? { checkerMeta: input.checkerMeta } : {}),
     splitScore: input.splitScore,
     recommendation: input.recommendation,

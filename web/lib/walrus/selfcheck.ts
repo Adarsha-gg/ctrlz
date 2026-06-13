@@ -18,6 +18,7 @@
 
 import { hashBlob, storeEvidence, canonicalJSON } from "./store.ts";
 import { buildEvidenceBlob, buildManifest } from "./evidence.ts";
+import { buildCheckerRuntimeManifest } from "../checkers/runtime.ts";
 
 let failures = 0;
 function check(label: string, cond: boolean, detail?: string) {
@@ -42,6 +43,7 @@ const manifest = buildManifest(
   },
   { createdAt: "2026-06-13T00:00:00.000Z" }
 );
+const checkerRuntime = buildCheckerRuntimeManifest(manifest.checks);
 
 const blob = buildEvidenceBlob({
   taskSpec: manifest,
@@ -53,6 +55,7 @@ const blob = buildEvidenceBlob({
   checkerReports: [
     { checker: "price-checker", result: "pass", confidence: 1, detail: "689 ≤ 700" }
   ],
+  checkerRuntime,
   splitScore: {
     outputValidity: { score: 98, status: "pass" },
     agentTrust: { score: 90, status: "strong" },
@@ -74,6 +77,7 @@ async function main() {
   const reordered = {
     recommendation: blob.recommendation,
     splitScore: blob.splitScore,
+    checkerRuntime: blob.checkerRuntime,
     checkerReports: blob.checkerReports,
     workerOutput: blob.workerOutput,
     taskSpec: blob.taskSpec,
