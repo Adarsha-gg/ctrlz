@@ -9,6 +9,25 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · P1.11 on-chain alice seed complete
+
+- **Did:** Recorded orchestrator-completed P1.11 seed for alice
+  `0x3695f9A1A29b66ddbA90cD9069c65921C17b480C` on escrow
+  `0x2f2B5C26de74aA7307A5b946B025ce1A13255f45`.
+- **Txs:** sends created payment IDs 1 and 2:
+  `0x7d7fc86e854ca416eb3044a46e2fa31d0b5f70f875e2d92c8d618e93e52a15ba`,
+  `0xe319c5d0933c24b03630137a9eb6819a4906392685dc757fe8e3d77880832a8c`;
+  claims sealed them:
+  `0xa247070e6fabf9a9fad275ddb6737070a51cf2dcef4264a94396ea32cfa6eb9b`,
+  `0xb6d6312252e57a3320d204f4ab6a67780dab09e9048e39e68e5a6d8ef39d7a73`.
+- **Verified:** counters read back as `sealedCount=2`,
+  `distinctSenderCount=1`, `firstSeen=1781323380`. Payments 1 and 2 are
+  state `3` / SEALED with `sealedAt=1781323380`.
+- **Fixture note:** The poisoned lookalike fixture already exists and was
+  updated in PR #14.
+- **Next:** Resume at P2.0/P2 validation with alice's non-zero on-chain
+  history available.
+
 ## 2026-06-13 · agent (Codex) · Alice fixture uses owned settler wallet
 
 - **Did:** Replaced the fake vanity alice placeholder with the owned settler
