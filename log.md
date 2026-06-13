@@ -9,6 +9,22 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · checker meta-reputation (B3)
+
+- **Did:** Added checker replay comparison, seeded checker outcome history, and
+  money/recency-weighted outcome-match accuracy. Threaded checker influence into
+  split scoring so low-weight advisory signals get reduced decision impact while
+  deterministic hard-gate failures still win.
+- **UI:** `/verify` now shows each checker's accuracy, influence weight, replay
+  status, and wrong-outcome count beside the report. The Walrus evidence blob now
+  carries the checker meta snapshot.
+- **Verify:** `node --experimental-strip-types web/lib/scoring/selfcheck.ts`
+  passes, including replay, advisory down-weighting, and hard-gate guard cases.
+  `npm run build` in `web/` passes.
+- **State:** B3 `[x]`.
+- **Next:** Wire live ERC-8004 feedback writes into the settlement/HCS flow once
+  Hedera credentials are funded.
+
 ## 2026-06-13 · agent (Codex) · ERC-8004 Hedera scripts (D1/D2 prep)
 
 - **Did:** Added Hedera EVM helpers plus official ERC-8004 ABIs under

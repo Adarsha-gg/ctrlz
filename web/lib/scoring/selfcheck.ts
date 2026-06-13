@@ -12,11 +12,15 @@
  * --experimental-strip-types, mirroring web/lib/risk/selfcheck.ts.
  */
 
+import { replayChecks } from "../checkers/registry.ts";
+import { computeCheckerMetas } from "../checkers/metaReputation.ts";
 import { runChecks } from "../checkers/registry.ts";
 import type { CheckSpec, TaskContext } from "../checkers/types.ts";
 import { scoreSplit } from "./score.ts";
 import type { ScoredCheck } from "./score.ts";
 import {
+  ALICE_HISTORY,
+  CHECKER_HISTORY,
   DEMO_ACCEPTANCE_SPEC,
   CLEAN_SUBMISSION,
   BAD_SUBMISSION,
@@ -46,9 +50,15 @@ function evaluate(demo: DemoSubmission) {
     recipientName: demo.submission.recipientName
   };
   const reports = runChecks(checks, ctx);
-  const scored: ScoredCheck[] = checks.map((c, i) => ({ check: c, report: reports[i] }));
+  const replays = replayChecks(checks, ctx, reports);
+  const checkerMeta = computeCheckerMetas({ reports, history: CHECKER_HISTORY, replays });
+  const scored: ScoredCheck[] = checks.map((c, i) => ({
+    check: c,
+    report: reports[i],
+    metaWeight: checkerMeta[i]?.weight
+  }));
   const split = scoreSplit({ checks: scored, workerHistory: demo.workerHistory });
-  return { reports, scored, split };
+  return { reports, scored, split, checkerMeta, replays };
 }
 
 // Beat 3+5: CLEAN invoice → proceed (or proceed_with_protection), all checks pass.
@@ -106,6 +116,86 @@ function evaluate(demo: DemoSubmission) {
   check(
     "deterministic: re-running CLEAN yields identical reports",
     JSON.stringify(a.reports) === JSON.stringify(b.reports)
+  );
+  check(
+    "B3 replay: deterministic checkers reproduce every CLEAN verdict",
+    a.replays.every((r) => r.status === "match" && r.replayable),
+    JSON.stringify(a.replays)
+  );
+}
+
+// B3: seeded wrong source-listing history lowers influence.
+{
+  const { checkerMeta } = evaluate(BAD_SUBMISSION);
+  const source = checkerMeta.find((m) => m.checker === "source-listing-checker");
+  check(
+    "B3 meta-reputation: seeded false source-listing outcomes reduce checker weight",
+    Boolean(source && source.weight < 0.6 && source.falsePass + source.falseFail > 0),
+    JSON.stringify(source)
+  );
+}
+
+// B3: low-weight advisory flags have less decision impact than high-weight ones.
+{
+  const baseReports = evaluate(CLEAN_SUBMISSION).reports;
+  const advisoryReport = {
+    checker: "source-listing-checker",
+    result: "uncertain" as const,
+    confidence: 0.55,
+    detail: "Advisory source could not be confirmed."
+  };
+  const checks: ScoredCheck[] = [
+    ...DEMO_ACCEPTANCE_SPEC.checks.slice(0, 3).map((check, index) => ({
+      check,
+      report: baseReports[index],
+      metaWeight: 1
+    })),
+    { check: DEMO_ACCEPTANCE_SPEC.checks[3], report: advisoryReport, metaWeight: 0.3 }
+  ];
+  const low = scoreSplit({ checks, workerHistory: ALICE_HISTORY });
+  const high = scoreSplit({
+    checks: checks.map((c, index) => (index === 3 ? { ...c, metaWeight: 0.9 } : c)),
+    workerHistory: ALICE_HISTORY
+  });
+  check(
+    "B3 influence: low-weight advisory uncertainty does not force pause",
+    low.recommendation === "proceed_with_protection",
+    JSON.stringify(low)
+  );
+  check(
+    "B3 influence: high-weight advisory uncertainty still pauses",
+    high.recommendation === "pause",
+    JSON.stringify(high)
+  );
+}
+
+// B3 verifier finding: replay mismatch caps advisory influence below trusted.
+{
+  const base = evaluate(CLEAN_SUBMISSION);
+  const sourceReport = base.reports.find((r) => r.checker === "source-listing-checker");
+  const sourceMeta = computeCheckerMetas({
+    reports: [sourceReport!],
+    history: CHECKER_HISTORY,
+    replays: [{ checker: "source-listing-checker", status: "mismatch", replayable: true }]
+  })[0];
+  check(
+    "B3 replay guard: mismatched replay cannot keep trusted advisory weight",
+    sourceMeta.weight < 0.6,
+    JSON.stringify(sourceMeta)
+  );
+}
+
+// B3 guard: deterministic hard-gate facts still win even if their weight is low.
+{
+  const { scored } = evaluate(BAD_SUBMISSION);
+  const lowWeighted = scored.map((entry) =>
+    entry.report.checker === "price-checker" ? { ...entry, metaWeight: 0.05 } : entry
+  );
+  const split = scoreSplit({ checks: lowWeighted, workerHistory: ALICE_HISTORY });
+  check(
+    "B3 guard: low-weight hard-gate price failure still rejects",
+    split.recommendation === "reject",
+    JSON.stringify(split)
   );
 }
 

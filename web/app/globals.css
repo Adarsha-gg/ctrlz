@@ -428,6 +428,23 @@ dd {
   line-height: 1.4;
 }
 
+.checker-meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 4px;
+}
+
+.checker-meta-line span {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  padding: 2px 6px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: #4a4338;
+}
+
 /* Evidence anchor block (E2 — Walrus evidence layer) */
 .evidence-block {
   display: flex;

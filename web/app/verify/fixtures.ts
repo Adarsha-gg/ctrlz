@@ -18,6 +18,7 @@ import {
   POISONED_LOOKALIKE
 } from "../../lib/risk/index.ts";
 import type { CheckSpec, WorkerSubmission } from "../../lib/checkers/index.ts";
+import type { CheckerOutcomeRecord } from "../../lib/checkers/metaReputation.ts";
 import type { RecipientHistory } from "../../lib/risk/index.ts";
 
 export const DEMO_INTENT =
@@ -111,3 +112,54 @@ export const BAD_SUBMISSION: DemoSubmission = {
 };
 
 export const DEMO_SUBMISSIONS: DemoSubmission[] = [CLEAN_SUBMISSION, BAD_SUBMISSION];
+
+export const CHECKER_HISTORY: CheckerOutcomeRecord[] = [
+  {
+    checker: "schema-checker",
+    result: "pass",
+    confidence: 0.98,
+    settledOutcome: "paid",
+    amountUsd: 689,
+    settledAt: "2026-06-10T12:00:00.000Z"
+  },
+  {
+    checker: "price-checker",
+    result: "fail",
+    confidence: 1,
+    settledOutcome: "refunded",
+    amountUsd: 879,
+    settledAt: "2026-06-11T12:00:00.000Z"
+  },
+  {
+    checker: "wallet-risk-checker",
+    result: "fail",
+    confidence: 0.95,
+    settledOutcome: "refunded",
+    amountUsd: 879,
+    settledAt: "2026-06-12T12:00:00.000Z"
+  },
+  {
+    checker: "source-listing-checker",
+    result: "pass",
+    confidence: 0.92,
+    settledOutcome: "refunded",
+    amountUsd: 760,
+    settledAt: "2026-06-12T08:00:00.000Z"
+  },
+  {
+    checker: "source-listing-checker",
+    result: "fail",
+    confidence: 0.86,
+    settledOutcome: "paid",
+    amountUsd: 540,
+    settledAt: "2026-05-29T08:00:00.000Z"
+  },
+  {
+    checker: "source-listing-checker",
+    result: "uncertain",
+    confidence: 0.55,
+    settledOutcome: "buyer_accepted",
+    amountUsd: 620,
+    settledAt: "2026-05-24T08:00:00.000Z"
+  }
+];

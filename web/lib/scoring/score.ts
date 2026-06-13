@@ -48,6 +48,8 @@ export type SplitScore = {
 export type ScoredCheck = {
   check: CheckSpec;
   report: CheckerReport;
+  /** B3: checker meta-reputation influence, 0..1. Defaults to 1. */
+  metaWeight?: number;
 };
 
 export type ScoreInput = {
@@ -57,6 +59,10 @@ export type ScoreInput = {
 };
 
 const WALLET_RISK_CHECKER = "wallet-risk-checker";
+
+function influence(check: ScoredCheck): number {
+  return typeof check.metaWeight === "number" ? Math.max(0, Math.min(1, check.metaWeight)) : 1;
+}
 
 /** outputValidity ← hard-gate checker results only. */
 function computeOutputValidity(checks: ScoredCheck[]): SubScore {
@@ -73,8 +79,8 @@ function computeOutputValidity(checks: ScoredCheck[]): SubScore {
   }
   if (hasUncertain) {
     // weighted by how confident the uncertain checks were
-    const avgConf =
-      hard.reduce((sum, c) => sum + c.report.confidence, 0) / hard.length;
+    const totalWeight = hard.reduce((sum, c) => sum + influence(c), 0) || 1;
+    const avgConf = hard.reduce((sum, c) => sum + c.report.confidence * influence(c), 0) / totalWeight;
     return { score: Math.round(45 + avgConf * 20), status: "warn" };
   }
   return { score: 98, status: "pass" };
@@ -134,12 +140,21 @@ function recommend(
   if (hard.some((c) => c.report.result === "fail")) {
     return "reject";
   }
-  // Hard-gate uncertainty, or any advisory fail/uncertain → pause for buyer.
+  // Hard-gate uncertainty → pause for buyer.
   if (hard.some((c) => c.report.result === "uncertain")) {
     return "pause";
   }
-  if (advisory.some((c) => c.report.result === "fail" || c.report.result === "uncertain")) {
+  // Advisory signals only pause when the checker still has enough meta-rep
+  // influence. Low-accuracy advisory checkers are visible, but down-weighted.
+  const advisoryFlag = advisory.some((c) => c.report.result === "fail" || c.report.result === "uncertain");
+  const trustedAdvisoryFlag = advisory.some(
+    (c) => (c.report.result === "fail" || c.report.result === "uncertain") && influence(c) >= 0.6
+  );
+  if (trustedAdvisoryFlag) {
     return "pause";
+  }
+  if (advisoryFlag) {
+    return "proceed_with_protection";
   }
   // All hard-gates pass, nothing advisory-flagged. Trust/payment shading.
   if (paymentRisk.status === "warn" || agentTrust.status === "weak") {

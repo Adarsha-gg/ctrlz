@@ -289,7 +289,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 |---|---|---|---|---|
 | `[x]` | **B1** | Checker registry + runner (`check.type → checker`, run all, collect reports). | Runner executes registered checkers → reports[]. | Each check bounded + deterministic. |
 | `[x]` | **B2** | Demo checkers: `schema`, `price` (≤700 USDC), `wallet-risk` (reuse), `source-listing`. | All 4 run on the demo invoice → pass/fail/uncertain. | Constraint-based, explainable. |
-| `[ ]` | **B3** | **Checker meta-reputation (wedge, §8a):** outcome-match accuracy counter per checker (true/false pass-fail vs the settled outcome), money + recency weighted, written to ERC-8004; deterministic checkers expose **re-execution** (re-run vs the Walrus blob → identical verdict). Seed with a couple of historical tasks; surface in UI. | Re-running a deterministic checker reproduces its verdict; a wrong checker shows reduced weight on the next decision. | No LLM grades reviewers; accuracy = influence, never money. |
+| `[x]` | **B3** | **Checker meta-reputation (wedge, §8a):** outcome-match accuracy counter per checker (true/false pass-fail vs the settled outcome), money + recency weighted, written to ERC-8004; deterministic checkers expose **re-execution** (re-run vs the Walrus blob → identical verdict). Seed with a couple of historical tasks; surface in UI. | Re-running a deterministic checker reproduces its verdict; a wrong checker shows reduced weight on the next decision. | No LLM grades reviewers; accuracy = influence, never money. |
 
 ### Phase C — Hedera settlement + audit · `NEVER` · Hedera lane (Codex)
 | St | Part | Goal | Done when | Guard |
