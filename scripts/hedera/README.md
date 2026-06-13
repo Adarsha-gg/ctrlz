@@ -17,6 +17,17 @@ HEDERA_CHAIN_ID=296
 HEDERA_EVM_PRIVATE_KEY=0x...
 ```
 
+For ERC-8004 feedback, prefer a non-owner client signer:
+
+```txt
+HEDERA_FEEDBACK_PRIVATE_KEY=0x...
+```
+
+If `HEDERA_FEEDBACK_PRIVATE_KEY` is unset, `erc8004-feedback.mjs` tries
+`HEDERA_RESOLVER_PRIVATE_KEY` before falling back to the generic EVM key. This
+matters because the ReputationRegistry correctly rejects self-feedback from an
+agent owner.
+
 Optional:
 
 ```txt
@@ -65,7 +76,8 @@ available in the receipt, the minted `agentId`.
 ## D2 ERC-8004 reputation feedback
 
 Writes a reputation signal against an agent. Use `tag1`/`tag2` to separate
-worker outcome feedback from checker accuracy feedback.
+worker outcome feedback from checker accuracy feedback. The signer must not own
+the agent identity being reviewed.
 
 ```sh
 node scripts/hedera/erc8004-feedback.mjs \

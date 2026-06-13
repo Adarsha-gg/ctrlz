@@ -9,6 +9,25 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · ERC-8004 live D1/D2
+
+- **Did:** Registered the CTRL+Z worker and checker agent metadata in the
+  Hedera ERC-8004 IdentityRegistry. Worker agent `101` tx:
+  `0xd4912aef78fb8f76a0e77e583516bcf0f84ac3e14de5d46d5c78c39dd0863c94`;
+  checker agent `102` tx:
+  `0xff802ef5cd713ab8075e3b195329ac3664633dfa648f61fff156e84582d8f80f`.
+  Wrote ReputationRegistry feedback from the resolver/client wallet: worker
+  outcome tx `0x3745fa1efa69f725481f5798d3e2d76d856123510569f09f2a59c277f3e0fb0f`;
+  checker accuracy tx
+  `0xa42eb5c0142e0fd26362c900357fd4def575691d91800040147bec7ee6078bbc`.
+- **Fix:** `erc8004-feedback.mjs` now prefers a non-owner feedback signer
+  (`HEDERA_FEEDBACK_PRIVATE_KEY` or resolver key) because the registry correctly
+  rejects self-feedback from the agent owner.
+- **State:** D1 `[x]`; D2 `[x]`. C3 HCS remains incomplete due native SDK
+  `DEADLINE_EXCEEDED`; G1 still needs five rehearsals/video.
+- **Next:** Try HCS from another network path or record the G1 demo with C3
+  called out as the only remaining live-write gap.
+
 ## 2026-06-13 · agent (Codex) · Hedera live C1/C2
 
 - **Did:** Updated Hedera env handling for the renamed payer/resolver variables,

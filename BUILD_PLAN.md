@@ -289,7 +289,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 |---|---|---|---|---|
 | `[x]` | **B1** | Checker registry + runner (`check.type → checker`, run all, collect reports). | Runner executes registered checkers → reports[]. | Each check bounded + deterministic. |
 | `[x]` | **B2** | Demo checkers: `schema`, `price` (≤700 USDC), `wallet-risk` (reuse), `source-listing`. | All 4 run on the demo invoice → pass/fail/uncertain. | Constraint-based, explainable. |
-| `[x]` | **B3** | **Checker meta-reputation (wedge, §8a):** outcome-match accuracy counter per checker (true/false pass-fail vs the settled outcome), money + recency weighted; deterministic checkers expose **re-execution** (re-run vs the Walrus blob → identical verdict). Seed with a couple of historical tasks; surface in UI. ERC-8004 persistence is handled by D2 and still needs live registry writes. | Re-running a deterministic checker reproduces its verdict; a wrong checker shows reduced weight on the next decision. | No LLM grades reviewers; accuracy = influence, never money. |
+| `[x]` | **B3** | **Checker meta-reputation (wedge, §8a):** outcome-match accuracy counter per checker (true/false pass-fail vs the settled outcome), money + recency weighted; deterministic checkers expose **re-execution** (re-run vs the Walrus blob → identical verdict). Seed with a couple of historical tasks; surface in UI. ERC-8004 persistence is handled by D2 and now has live worker/checker feedback txs. | Re-running a deterministic checker reproduces its verdict; a wrong checker shows reduced weight on the next decision. | No LLM grades reviewers; accuracy = influence, never money. |
 
 ### Phase C — Hedera settlement + audit · `NEVER` · Hedera lane (Codex)
 | St | Part | Goal | Done when | Guard |
@@ -301,14 +301,14 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 ### Phase D — ERC-8004 identity + reputation · `Cut: reads + 1 write` · Hedera lane
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
-| `[~]` | **D1** | Register service + checker agents in IdentityRegistry `0x8004A818BFB912233c491871b3d84c89A494BD9e`. | Agent identities resolve. | Standard ERC-8004; don't reinvent identity. |
-| `[~]` | **D2** | Write reputation feedback (worker outcome + checker accuracy) to ReputationRegistry `0x8004B663056A597Dffe9eCcC1965A193B7388713`, metadata URI → Walrus. | A resolution writes feedback pointing at the evidence. | Settlement-derived, not attestation-only. |
+| `[x]` | **D1** | Register service + checker agents in IdentityRegistry `0x8004A818BFB912233c491871b3d84c89A494BD9e`. | Worker agent `101` and checker agent `102` registered on Hedera testnet. | Standard ERC-8004; don't reinvent identity. |
+| `[x]` | **D2** | Write reputation feedback (worker outcome + checker accuracy) to ReputationRegistry `0x8004B663056A597Dffe9eCcC1965A193B7388713`, metadata URI → evidence. | Worker outcome feedback tx `0x3745fa1efa69f725481f5798d3e2d76d856123510569f09f2a59c277f3e0fb0f`; checker accuracy feedback tx `0xa42eb5c0142e0fd26362c900357fd4def575691d91800040147bec7ee6078bbc`. | Settlement-derived, not attestation-only. |
 
 ### Phase E — Walrus evidence · `NEVER (hash-anchor); blob store = Walrus` · evidence lane
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
 | `[x]` | **E1** | Walrus client: store the **manifest** (spec) and the **evidence blob** → URI + hash; read back. | Both blobs round-trip to/from Walrus. | Content-addressed; chain holds only the pointer. |
-| `[x]` | **E2** | Produce the manifest/evidence URI/hash payload consumed by the spec commit, HCS receipt (C3), and ERC-8004 feedback (D2). Live C1/C2 Hedera EVM writes are complete; C3/D1/D2 still need live receipt/registry writes. | The web/evidence layer emits one hash/pointer object for downstream Hedera/HCS/ERC-8004 scripts. | One evidence object, referenced everywhere. |
+| `[x]` | **E2** | Produce the manifest/evidence URI/hash payload consumed by the spec commit, HCS receipt (C3), and ERC-8004 feedback (D2). Live C1/C2/D1/D2 Hedera EVM writes are complete; C3 still needs a live HCS receipt. | The web/evidence layer emits one hash/pointer object for downstream Hedera/HCS/ERC-8004 scripts. | One evidence object, referenced everywhere. |
 
 ### Phase F — World AgentKit gating · `Cut: policy + IDKit call` · auth lane
 | St | Part | Goal | Done when | Guard |
@@ -324,9 +324,9 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 ---
 
 ## 12. Cut lines (hard — obey under deadline)
-- **NEVER cut:** reframed verification page + split scores (A) · ≥2 checkers (B2) · evidence **hash anchor** (E) · one real Hedera op + lock/resolve (C1, C2) · the demo (G1). C1/C2 now have real Hedera testnet tx hashes; do not extend that claim to HCS/ERC-8004 until C3/D1/D2 tx hashes exist.
+- **NEVER cut:** reframed verification page + split scores (A) · ≥2 checkers (B2) · evidence **hash anchor** (E) · one real Hedera op + lock/resolve (C1, C2) · ERC-8004 identity/feedback writes (D1/D2) · the demo (G1). C1/C2/D1/D2 now have real Hedera testnet tx hashes; do not extend that claim to HCS until C3 has a tx hash.
 - **Walrus blob store:** committed as the evidence layer. If the SDK fights at hour 20, fall back to a local store **behind the same hash anchor** — the anchor is what's load-bearing; the store is swappable. (Walrus = the prize + the on-narrative store.)
-- **ERC-8004 (D):** scripts are wired for IdentityRegistry + ReputationRegistry writes; live D1/D2 registry txs are still incomplete. Pitch the write path as implemented, not completed on-chain.
+- **ERC-8004 (D):** worker/checker identities and worker/checker feedback are live on Hedera testnet. Feedback is resolver/client-signed because the registry correctly blocks self-feedback.
 - **World (F):** gating as policy/UI with the real IDKit verification call; degrade to "design" if the SDK fights.
 - **HCS (C3):** script is wired; native Hedera SDK writes currently time out from this environment. A logged hash is a fallback demo artifact, not a live HCS receipt.
 - **DISPUTED + appeal:** design-only. MVP states: LOCKED → ACCEPTED → SUBMITTED → VERIFIED_PASS/FAIL → PAID/REFUNDED (+ UNCERTAIN→PAUSED).
@@ -344,7 +344,7 @@ wallet + shipping proof."**
 4. **Checkers run** — schema, price (≤700), wallet-risk (poisoning), source.
 5. **Split scores** render + LLM explains the recommendation.
 6. Target settlement path: pass → **release on Hedera**; the live C2 path has deploy, lock, accept, submit, and pass→release tx hashes. The poisoned/over-price fail/refund path is implemented but not separately live-replayed yet.
-7. Target audit/reputation path: **HCS receipt** + **ERC-8004 feedback** update worker + **checker** reputation. Current demo must say scripts are wired but C3/D1/D2 live writes are still incomplete.
+7. Target audit/reputation path: **HCS receipt** + **ERC-8004 feedback** update worker + **checker** reputation. ERC-8004 D1/D2 is live; C3 HCS receipt remains incomplete.
 8. Punchline: *"we score the checker too"* — show a checker's accuracy moving the next decision.
 
 | Beat | Needs |
@@ -353,7 +353,7 @@ wallet + shipping proof."**
 | 2 worker accept (gasless) | C2 live accept tx recorded; gasless worker remains stretch |
 | 3 submit + checkers + split scores | A1–A3, B1, B2, E1 |
 | 4 poisoned/over-price caught | B2 (reuse risk engine) |
-| 5 evidence + receipt + feedback | E2 shipped; C2 evidence hash is on-chain; C3/D1/D2 live writes still incomplete |
+| 5 evidence + receipt + feedback | E2 shipped; C2 evidence hash is on-chain; D1/D2 feedback live; C3 HCS still incomplete |
 | 6 meta-reputation punchline | B3 |
 
 ---

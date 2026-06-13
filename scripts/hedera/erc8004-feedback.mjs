@@ -29,7 +29,12 @@ if (!Number.isInteger(valueDecimals) || valueDecimals < 0 || valueDecimals > 18)
 }
 
 const reputationAbi = readAbi("./abis/ReputationRegistry.json");
-const { account, publicClient, walletClient } = getHederaEvmClients();
+const { account, publicClient, walletClient } = getHederaEvmClients([
+  "HEDERA_FEEDBACK_PRIVATE_KEY",
+  "HEDERA_RESOLVER_PRIVATE_KEY",
+  "HEDERA_EVM_PRIVATE_KEY",
+  "HEDERA_PAYER_PRIVATE_KEY"
+]);
 
 const hash = await walletClient.writeContract({
   address: reputationRegistryAddress,
