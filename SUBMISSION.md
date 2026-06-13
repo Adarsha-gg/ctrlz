@@ -59,6 +59,9 @@ blocked on funded credentials.
 ## Demo Commands
 
 ```sh
+# Local G1 rehearsal readiness check (no Hedera secrets required; sends no txs)
+npm run demo:check
+
 # Web build
 pnpm --filter web build
 
@@ -78,6 +81,10 @@ pnpm hedera:feedback -- --agent-id=1 --feedback-uri=walrus://demo --feedback-has
 Expected current behavior: web/scoring/world checks should pass if dependencies
 are installed; Hedera commands should fail fast without funded credentials or
 return real tx hashes only after credentials are funded.
+
+`npm run demo:check` bundles the scoring selfcheck, World selfcheck, and `npm run
+build` in `web/`, then reports Hedera environment readiness by variable presence
+only. It does not print secrets, submit transactions, or mark G1 complete.
 
 ## Prize Box Language
 

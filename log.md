@@ -9,6 +9,21 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · G1 rehearsal readiness helper
+
+- **Did:** Added `npm run demo:check`, a local readiness script that runs the
+  scoring selfcheck, World selfcheck, and `npm run build` in `web/`, then reports
+  Hedera env readiness by variable presence only.
+- **Safety:** The helper does not require secrets, print secret values, import tx
+  scripts, or submit Hedera transactions. G1 remains `[ ]`; five manual
+  rehearsals and video capture are still not done.
+- **Verify:** `npm run demo:check` passes locally. Hedera readiness is reported as
+  informational and currently missing funded tx credentials.
+- **Next:** Run manual G1 rehearsals end-to-end five times, record the video, and
+  only then mark G1 complete.
+
+---
+
 ## 2026-06-13 · agent (Codex) · G2 docs/submission reframe
 
 - **Did:** Reframed [README.md](README.md) from the old Arc undo-payment story
