@@ -13,6 +13,7 @@ contract CtrlZEscrow {
     uint256 public constant UNKNOWN_HOLD = 30 minutes;
     uint256 public constant FIRST_SEAL_HOLD = 15 minutes;
     uint256 public constant FLAGGED_HOLD = 24 hours;
+    uint256 public constant FLAG_WINDOW = 30 days;
 
     enum State {
         NONE,
@@ -47,6 +48,8 @@ contract CtrlZEscrow {
     mapping(address => uint256) public flagCount;
     mapping(address => uint64) public firstSeen;
     mapping(address => mapping(address => bool)) public hasSealedFrom;
+    mapping(uint256 => bool) public paymentFlagged;
+    mapping(uint256 => bytes32) public proofHash;
 
     event Sent(
         uint256 indexed id,
@@ -61,6 +64,10 @@ contract CtrlZEscrow {
     event Sealed(
         uint256 indexed id, address indexed sender, address indexed recipient, uint256 amount
     );
+    event Flagged(uint256 indexed id, address indexed sender, address indexed recipient);
+    event ProofAttached(
+        uint256 indexed id, address indexed sender, address indexed recipient, bytes32 proofHash
+    );
 
     error InvalidRecipient();
     error InvalidAmount();
@@ -69,6 +76,8 @@ contract CtrlZEscrow {
     error NotRecipient();
     error ClaimTooEarly();
     error ExpireTooEarly();
+    error AlreadyFlagged();
+    error FlagTooLate();
     error SignatureAlreadyUsed();
     error InvalidSignature();
     error TransferFailed();
@@ -174,6 +183,29 @@ contract CtrlZEscrow {
         payment.state = State.REFUNDED;
 
         _sendValue(refundTo, amount);
+    }
+
+    function flag(uint256 id) external {
+        Payment storage payment = payments[id];
+        if (payment.state != State.SEALED) revert InvalidState();
+        if (msg.sender != payment.sender) revert NotSender();
+        if (paymentFlagged[id]) revert AlreadyFlagged();
+        if (block.timestamp > payment.sealedAt + FLAG_WINDOW) revert FlagTooLate();
+
+        paymentFlagged[id] = true;
+        flagCount[payment.recipient]++;
+
+        emit Flagged(id, payment.sender, payment.recipient);
+    }
+
+    function attachProof(uint256 id, bytes32 hash) external {
+        Payment storage payment = payments[id];
+        if (payment.state != State.SEALED) revert InvalidState();
+        if (msg.sender != payment.recipient) revert NotRecipient();
+
+        proofHash[id] = hash;
+
+        emit ProofAttached(id, payment.sender, payment.recipient, hash);
     }
 
     function claimForDigest(uint256 id) public view returns (bytes32) {

@@ -9,6 +9,18 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · flag and proof signals (P1.7)
+
+- **Did:** Added `flag(id)` for the original sender of a SEALED payment,
+  once within 30 days of `sealedAt`, incrementing recipient flag counters and
+  emitting `Flagged` without moving money. Added recipient-only
+  `attachProof(id, bytes32 hash)` on SEALED payments with `ProofAttached`,
+  also signal-only. Added focused Foundry tests for gates, timing, duplicate
+  flags, proof attachment, and balance invariants.
+- **State:** P1.7 `[x]`; signals are contract-owned and never affect payment
+  settlement.
+- **Next:** Codex → P1.8 event completeness, including `Expired`.
+
 ## 2026-06-13 · agent (Codex) · on-chain tier counters (P1.6)
 
 - **Did:** Added contract-owned recipient counters (`sealedCount`,
