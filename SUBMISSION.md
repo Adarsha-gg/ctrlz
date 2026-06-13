@@ -86,6 +86,9 @@ return real tx hashes only after credentials are funded.
 build` in `web/`, then reports Hedera environment readiness by variable presence
 only. It does not print secrets, submit transactions, or mark G1 complete.
 
+See [BLOCKERS.md](BLOCKERS.md) for the exact env vars and commands needed to
+turn the credential-blocked Hedera paths into completed items.
+
 ## Prize Box Language
 
 - **Hedera:** implemented settlement/HCS/ERC-8004 scripts and Hedera verify
