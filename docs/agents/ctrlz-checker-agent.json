@@ -1,0 +1,32 @@
+{
+  "type": "https://8004.org/schemas/agent-registration.json",
+  "name": "CTRL+Z Verify Checker Agent",
+  "description": "Checker agent for CTRL+Z Verify. Runs bounded schema, price, wallet-risk, and source-listing checks over agent work evidence.",
+  "image": "https://raw.githubusercontent.com/Adarsha-gg/ctrlz/main/docs/agents/ctrlz-mark.svg",
+  "services": [
+    {
+      "type": "https",
+      "name": "CTRL+Z Verify demo",
+      "url": "https://github.com/Adarsha-gg/ctrlz",
+      "description": "Demo checker runner and scoring implementation."
+    }
+  ],
+  "registrations": [],
+  "supportedTrust": [
+    "reputation",
+    "validation",
+    "deterministic-replay"
+  ],
+  "ctrlz": {
+    "role": "checker",
+    "checkTypes": [
+      "schema",
+      "price_max",
+      "wallet_risk",
+      "source_listing"
+    ],
+    "chain": "hedera-testnet",
+    "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    "reputationRegistry": "0x8004B663056A597Dffe9eCcC1965A193B7388713"
+  }
+}

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">CTRL+Z Verify</title>
+  <desc id="desc">CTRL+Z Verify mark</desc>
+  <rect width="512" height="512" rx="64" fill="#10131f"/>
+  <path d="M118 170h276v48H207l187 187-34 34-187-187v187h-48V170z" fill="#b879ff"/>
+  <path d="M118 106h276v48H118z" fill="#47d7ac"/>
+</svg>

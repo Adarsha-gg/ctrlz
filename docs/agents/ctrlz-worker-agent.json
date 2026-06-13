@@ -1,0 +1,28 @@
+{
+  "type": "https://8004.org/schemas/agent-registration.json",
+  "name": "CTRL+Z Verify Worker Agent",
+  "description": "Service agent for the CTRL+Z Verify demo. Accepts a buyer agent's acceptance spec, submits evidence, and settles through the Hedera verify escrow.",
+  "image": "https://raw.githubusercontent.com/Adarsha-gg/ctrlz/main/docs/agents/ctrlz-mark.svg",
+  "services": [
+    {
+      "type": "https",
+      "name": "CTRL+Z Verify demo",
+      "url": "https://github.com/Adarsha-gg/ctrlz",
+      "description": "Demo task flow for agent-to-agent work verification."
+    }
+  ],
+  "registrations": [],
+  "supportedTrust": [
+    "reputation",
+    "validation",
+    "settlement-derived-feedback"
+  ],
+  "ctrlz": {
+    "role": "worker",
+    "domain": "gpu-invoice-sourcing",
+    "chain": "hedera-testnet",
+    "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    "reputationRegistry": "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+    "verifyEscrow": "0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4"
+  }
+}
