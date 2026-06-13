@@ -9,6 +9,17 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · expire refund (P1.5)
+
+- **Did:** Added `expire(id)` to refund unclaimed PENDING payments after
+  `expiresAt`; anyone can call it, but funds are sent only to the stored
+  `refundTo` address after state is set to `REFUNDED`. Added Foundry coverage
+  for 72h expiry, too-early expiry, state reverts after claim/reject/recall, and
+  refund destination.
+- **Verified:** `forge fmt --root contracts`; `forge test --root contracts`
+  (15/15).
+- **Next:** P1.6 on-chain counters and real `hold(recipient)`.
+
 ## 2026-06-13 · agent (Codex) · gasless claimFor (P1.4)
 
 - **Did:** Added `claimFor(id, recipientSig)` to `contracts/src/CtrlZEscrow.sol`

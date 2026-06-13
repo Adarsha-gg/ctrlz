@@ -195,6 +195,67 @@ contract CtrlZEscrowTest {
         _assertEq(relayer.balance, relayerBefore, "relayer unpaid");
     }
 
+    function testAnyoneCanExpireAfterSeventyTwoHours() public {
+        uint256 id = _send(2 ether, 5 minutes);
+        uint256 senderBefore = sender.balance;
+
+        vm.warp(block.timestamp + 72 hours);
+        vm.prank(stranger);
+        escrow.expire(id);
+
+        (,,,,,, CtrlZEscrow.State state,) = escrow.payments(id);
+        _assertEq(uint256(state), uint256(CtrlZEscrow.State.REFUNDED), "state");
+        _assertEq(sender.balance, senderBefore + 2 ether, "sender refund");
+    }
+
+    function testExpireTooEarlyReverts() public {
+        uint256 id = _send(1 ether, 5 minutes);
+
+        vm.warp(block.timestamp + 72 hours - 1 seconds);
+        vm.prank(stranger);
+        vm.expectRevert(CtrlZEscrow.ExpireTooEarly.selector);
+        escrow.expire(id);
+    }
+
+    function testExpireAfterClaimRejectedOrRecalledRevertsByState() public {
+        uint256 claimedId = _send(1 ether, 5 minutes);
+        vm.warp(block.timestamp + 5 minutes);
+        vm.prank(recipient);
+        escrow.claim(claimedId);
+        vm.warp(block.timestamp + 72 hours);
+        vm.expectRevert(CtrlZEscrow.InvalidState.selector);
+        escrow.expire(claimedId);
+
+        uint256 rejectedId = _send(1 ether, 5 minutes);
+        vm.prank(recipient);
+        escrow.reject(rejectedId);
+        vm.warp(block.timestamp + 72 hours);
+        vm.expectRevert(CtrlZEscrow.InvalidState.selector);
+        escrow.expire(rejectedId);
+
+        uint256 recalledId = _send(1 ether, 5 minutes);
+        vm.prank(sender);
+        escrow.recall(recalledId, CtrlZEscrow.RecallReason.OTHER);
+        vm.warp(block.timestamp + 72 hours);
+        vm.expectRevert(CtrlZEscrow.InvalidState.selector);
+        escrow.expire(recalledId);
+    }
+
+    function testExpireRefundAlwaysGoesToRefundToSender() public {
+        uint256 id = _send(3 ether, 5 minutes);
+        uint256 senderBefore = sender.balance;
+        uint256 recipientBefore = recipient.balance;
+        uint256 strangerBefore = stranger.balance;
+
+        vm.warp(block.timestamp + 72 hours);
+        vm.prank(stranger);
+        escrow.expire(id);
+
+        _assertEq(sender.balance, senderBefore + 3 ether, "sender refund");
+        _assertEq(recipient.balance, recipientBefore, "recipient unchanged");
+        _assertEq(stranger.balance, strangerBefore, "expirer unchanged");
+    }
+
     function _send(uint256 amount, uint256 undoWin) private returns (uint256 id) {
         vm.prank(sender);
         return escrow.send{ value: amount }(recipient, amount, undoWin);
