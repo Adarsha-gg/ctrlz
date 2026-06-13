@@ -9,7 +9,21 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
-## 2026-06-13 · agent (Claude) · Docs cleanup + TODO consolidation
+## 2026-06-13 · agent (Claude) · Held-out tests (commit-reveal) + PITCH.md
+
+- **Did:** Built the held-out-test anti-gaming primitive
+  `web/lib/checkers/heldout.ts` (commit-reveal): buyer commits
+  `sha256({hiddenChecks, salt})` inside the Walrus manifest whose hash is the
+  on-chain `specHash` — so hidden checks are bound at lock with **no contract
+  change**, revealed at resolution, verified by `verifyReveal`. Selfcheck
+  `heldout-selfcheck.ts` proves no-leakage, hiding, tamper-detection, and that a
+  gamed deliverable passes public-only but fails once held-out checks reveal
+  (14/14; tsc clean). Documented in REPUTATION.md §8f (incl. the fairness rule —
+  held-out *inputs* not *requirements* — and the satisfiability/griefing-buyer
+  guards). Added [PITCH.md](PITCH.md) — the necessity-chain story (why each
+  component is required; remove one → a named attack walks through).
+- **Next:** wire held-out manifest into the `/verify` flow + evidence blob (reveal
+  at resolve); milestone escrow for large specs. See TODO.md P2/P4.
 
 - **Did:** Pruned stale docs and synced the rest to current reality. **Deleted**
   `NEW_DIRECTION.md` (frozen pivot snapshot, superseded), `WORKSTREAMS.md`
