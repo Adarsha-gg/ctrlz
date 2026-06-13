@@ -1,8 +1,8 @@
 # CTRL+Z Verify — Master Plan (how it works + build)
 
-> **Canonical plan.** Replaces the escrow-first `BUILD_PLAN.md` (being deleted).
-> Product per [NEW_DIRECTION.md](NEW_DIRECTION.md), sharpened by the design
-> decisions below. **Deadline: Sunday 09:00** (~18–20 effective build hours after
+> **Canonical plan** for the CTRL+Z Verify product, sharpened by the design
+> decisions below. Open work is tracked in [TODO.md](TODO.md); forward design in
+> [REPUTATION.md](REPUTATION.md) + [GOOGLE.md](GOOGLE.md). **Deadline: Sunday 09:00** (~18–20 effective build hours after
 > sleep + the Sunday video/diagram/rehearsal tax). Strategy: **port settlement to
 > Hedera, REUSE the working core, build the verification spine on top.**
 

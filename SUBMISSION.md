@@ -107,7 +107,7 @@ receipt on topic `0.0.9222881`.
 build` in `web/`, then reports Hedera environment readiness by variable presence
 only. It does not print secrets, submit transactions, or mark G1 complete.
 
-See [BLOCKERS.md](BLOCKERS.md) for the remaining G1 rehearsal/video checklist.
+See [TODO.md](TODO.md) for the remaining G1 rehearsal/video checklist and all open work.
 
 ## Prize Box Language
 

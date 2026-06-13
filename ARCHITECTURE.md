@@ -1,8 +1,11 @@
 # ARCHITECTURE — CTRL+Z Verify
 
 > How this repo is wired, where each thing lives, and where to add new code.
-> Pairs with [BUILD_PLAN.md](BUILD_PLAN.md) (the task/ethos source of truth) and
-> the lane docs [CLAUDE.md](CLAUDE.md) / [CODEX.md](CODEX.md).
+> Pairs with [BUILD_PLAN.md](BUILD_PLAN.md) (task/ethos source of truth), the lane
+> docs [CLAUDE.md](CLAUDE.md) / [CODEX.md](CODEX.md), the forward-looking design
+> specs [REPUTATION.md](REPUTATION.md) (agent reputation/validation) and
+> [GOOGLE.md](GOOGLE.md) (ERC-8004 validator + BigQuery lane), and the live
+> open-work list in [TODO.md](TODO.md).
 
 ## 1. What it is
 
@@ -111,13 +114,14 @@ on-chain (Codex lane, scripts/hedera/):
 ### Two hashes, on purpose (don't conflate them)
 - **sha256 Walrus anchor** — `hashBlob()` over the canonical evidence JSON. This is
   what content-addresses the blob on Walrus and what `/verify` renders.
-- **on-chain `evidenceHash` (bytes32)** — in the *current live demo* this is a
-  deterministic **keccak256 demo-fixture** (`keccak256("ctrlz-demo-evidence-v1")`),
-  not the sha256 anchor. To pin the exact sha256 anchors on-chain, rerun
-  `hedera:verify-demo` with `HEDERA_VERIFY_SPEC_HASH` / `HEDERA_VERIFY_EVIDENCE_HASH`.
+- **on-chain `evidenceHash` (bytes32)** — as of the pinned redeploy (PR #35) this
+  is the **exact sha256 Walrus anchor** committed on-chain (set via
+  `HEDERA_VERIFY_SPEC_HASH` / `HEDERA_VERIFY_EVIDENCE_HASH` on `hedera:verify-demo`).
+  Earlier demo runs used a deterministic keccak256 demo-fixture; the current live
+  deployment uses the real sha256 anchor.
 
-The HCS receipt now carries **both**: the on-chain `evidenceHash` and a real
-`walrusUri` pointing at the sha256-anchored blob.
+The HCS receipt carries **both**: the on-chain `evidenceHash` (= the sha256 anchor)
+and a real `walrusUri` pointing at the sha256-anchored blob.
 
 ## 5. How to add things
 
@@ -194,12 +198,13 @@ npm run hedera:hcs -- --task-id=1 --contract=0x.. --evidence-hash=0x.. --score-b
 
 | Thing | Value |
 |---|---|
-| Verify escrow | `0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4` |
+| Verify escrow (pinned, PR #35) | `0xa2ac71dd9e7835af08e6be33ec047c47a35b2462` |
 | Earlier escrow (Arc) | `0x2f2B5C26de74aA7307A5b946B025ce1A13255f45` |
 | ERC-8004 IdentityRegistry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` (worker agent `101`, checker agent `102`) |
 | ERC-8004 ReputationRegistry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
-| HCS receipt topic | `0.0.9222881` (canonical receipt: seq 3, tx `0.0.9222066@1781350379.095328969`) |
-| Walrus evidence blob | `https://aggregator.walrus-testnet.walrus.space/v1/blobs/OnRmhrt8o-olmw4DJj5K6_WUFYjFR9Qir_A7ehyctds` |
+| ERC-8004 ValidationRegistry (live, see GOOGLE.md) | `0x8004Cb1BF31DAf7788923b405b754f57acEB4272` |
+| HCS receipt topic | `0.0.9222881` (latest receipt tx `0.0.9222066@1781356716.807172813`) |
+| Walrus evidence blob | `https://aggregator.walrus-testnet.walrus.space/v1/blobs/eDxE69ZD3dua2R7xO8Z1KlYa9RvKgpNZHzXIkO63frk` |
 
 All of these are read-verifiable: `cast code <addr> --rpc-url https://testnet.hashio.io/api`,
 `cast receipt <tx> ...`, and the Hedera mirror node for the HCS topic.
