@@ -58,17 +58,32 @@ Uses the default CTRL+Z receipt topic unless `HEDERA_HCS_TOPIC_ID` is set.
 Set `HEDERA_HCS_TOPIC_ID=new` to create a new topic, then submit the receipt
 message.
 
-Live C3 topic: `0.0.9222881`. Confirmed receipt tx:
-`0.0.9222066@1781349565.367938628`.
+Live C3 topic: `0.0.9222881`. Canonical receipt tx:
+`0.0.9222066@1781350379.095328969` (seq 3) — references the real Walrus
+evidence blob.
+
+`--walrus-uri` must be a genuine Walrus reference: a `walrus://` ref or a Walrus
+aggregator `/v1/blobs/<id>` URL. A GitHub or other non-Walrus link is rejected.
+Mint a real one first with `store-evidence.mjs`, which stores the evidence record
+on Walrus via the same code path as the `/verify` page:
 
 ```sh
+# 1. Store the evidence on Walrus → prints walrusUri + sha256 anchor
+node --experimental-strip-types scripts/hedera/store-evidence.mjs \
+  --task-id=1 \
+  --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
+  --spec-hash=0xc4dab248f10ba4e5028308d2768503432834e4015f0fdd86c12cbdb2261335b9 \
+  --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
+  --score-bps=9200 --recommendation=proceed
+
+# 2. Submit the HCS receipt with the real Walrus URI from step 1
 node scripts/hedera/hcs-receipt.mjs \
   --task-id=1 \
   --contract=0x4659ddc8ec3f43bfa16498bc095da8ff973df1e4 \
   --evidence-hash=0x547ddf8be39080f6c01b007835654637ce68ac113470b3a1d6dbd38c02330e02 \
   --score-bps=9200 \
   --recommendation=proceed \
-  --walrus-uri=https://github.com/Adarsha-gg/ctrlz/blob/main/SUBMISSION.md
+  --walrus-uri=https://aggregator.walrus-testnet.walrus.space/v1/blobs/OnRmhrt8o-olmw4DJj5K6_WUFYjFR9Qir_A7ehyctds
 ```
 
 ## D1 ERC-8004 agent registration
