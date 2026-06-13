@@ -6,9 +6,11 @@ export const DEMO_WORLD_AGENTS: Record<string, WorldAgentIdentity> = {
   [WORLD_HUMAN_AGENT_ID]: {
     agentId: WORLD_HUMAN_AGENT_ID,
     humanBacked: true,
+    backingKind: "human",
     source: "demo",
     ownerAddress: "0x1111111111111111111111111111111111111111",
-    nullifierHash: "demo-nullifier-human-backed-agent"
+    nullifierHash: "demo-nullifier-human-backed-agent",
+    clusterId: "demo-nullifier-human-backed-agent"
   }
 };
 
@@ -48,9 +50,12 @@ export async function lookupAgentBacking(agentId: string): Promise<WorldAgentIde
         return {
           agentId,
           humanBacked: Boolean(data.humanBacked),
+          backingKind: data.backingKind ?? (data.humanBacked ? "human" : "none"),
           source: "agentbook",
           ownerAddress: data.ownerAddress,
-          nullifierHash: data.nullifierHash
+          nullifierHash: data.nullifierHash,
+          clusterId: data.clusterId ?? data.nullifierHash,
+          enterpriseName: data.enterpriseName
         };
       }
     } catch {

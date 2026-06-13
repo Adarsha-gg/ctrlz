@@ -149,6 +149,12 @@ results.push(
     "web/lib/world/selfcheck.ts"
   ])
 );
+results.push(
+  await runStep("world agentkit selfcheck", "node", [
+    "--experimental-strip-types",
+    "web/lib/world/agentkit-selfcheck.ts"
+  ])
+);
 results.push(await runStep("web build", "npm", ["run", "build"], { cwd: resolve(root, "web") }));
 
 reportHederaReadiness();
