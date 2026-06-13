@@ -294,8 +294,8 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 ### Phase C — Hedera settlement + audit · `NEVER` · Hedera lane (Codex)
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
-| `[ ]` | **C1** | Hedera Testnet setup + one real testnet financial op (sanity). | A real Hedera tx confirms from our code. | Demo MUST show ≥1 real Hedera op. |
-| `[ ]` | **C2** | Redeploy escrow Solidity to **Hedera EVM**; lock + resolve(pass→release/fail→refund); spec-hash + evidence-hash on-chain. | Lock+resolve work; address+ABI in `web/lib/contract.ts`. | Resolution driven by the verification result. |
+| `[~]` | **C1** | Hedera Testnet setup + one real testnet financial op (sanity). | A real Hedera tx confirms from our code. | Demo MUST show ≥1 real Hedera op. |
+| `[~]` | **C2** | Redeploy escrow Solidity to **Hedera EVM**; lock + resolve(pass→release/fail→refund); spec-hash + evidence-hash on-chain. | Lock+resolve work; address+ABI in `web/lib/contract.ts`. | Resolution driven by the verification result. |
 | `[ ]` | **C3** | HCS audit receipt `{evidenceHash, score, recommendation}` on resolution. | Resolving writes an HCS message; readable back. | Pointer only — no bulky data on-chain. |
 
 ### Phase D — ERC-8004 identity + reputation · `Cut: reads + 1 write` · Hedera lane

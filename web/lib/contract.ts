@@ -6,6 +6,17 @@ export const arcTestnet = {
   rpcUrl: process.env.NEXT_PUBLIC_ARC_RPC_URL ?? "https://rpc.testnet.arc.network"
 } as const;
 
+export const hederaTestnet = {
+  id: Number(process.env.NEXT_PUBLIC_HEDERA_CHAIN_ID ?? 296),
+  name: "Hedera Testnet",
+  rpcUrl: process.env.NEXT_PUBLIC_HEDERA_RPC_URL ?? "https://testnet.hashio.io/api"
+} as const;
+
+export const erc8004HederaTestnet = {
+  identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e" as Address,
+  reputationRegistry: "0x8004B663056A597Dffe9eCcC1965A193B7388713" as Address
+} as const;
+
 export const sepoliaEns = {
   id: 11155111,
   name: "Ethereum Sepolia",
@@ -24,6 +35,131 @@ export const ctrlzEscrowAddress =
   ctrlzEscrowDeployment.address;
 
 export const ctrlzEscrowDeployBlock = ctrlzEscrowDeployment.deployBlock;
+
+export const ctrlzVerifyEscrowAddress = process.env
+  .NEXT_PUBLIC_CTRLZ_VERIFY_ESCROW_ADDRESS as Address | undefined;
+
+export const ctrlzVerifyEscrowAbi = [
+  {
+    type: "function",
+    name: "NAME",
+    inputs: [],
+    outputs: [{ name: "", type: "string", internalType: "string" }],
+    stateMutability: "view"
+  },
+  {
+    type: "function",
+    name: "acceptTask",
+    inputs: [{ name: "id", type: "uint256", internalType: "uint256" }],
+    outputs: [],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
+    name: "buyerAcceptPaused",
+    inputs: [
+      { name: "id", type: "uint256", internalType: "uint256" },
+      { name: "recommendationHash", type: "bytes32", internalType: "bytes32" }
+    ],
+    outputs: [],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
+    name: "buyerRefundPaused",
+    inputs: [
+      { name: "id", type: "uint256", internalType: "uint256" },
+      { name: "recommendationHash", type: "bytes32", internalType: "bytes32" }
+    ],
+    outputs: [],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
+    name: "lockTask",
+    inputs: [
+      { name: "worker", type: "address", internalType: "address" },
+      { name: "resolver", type: "address", internalType: "address" },
+      { name: "specHash", type: "bytes32", internalType: "bytes32" }
+    ],
+    outputs: [{ name: "id", type: "uint256", internalType: "uint256" }],
+    stateMutability: "payable"
+  },
+  {
+    type: "function",
+    name: "resolve",
+    inputs: [
+      { name: "id", type: "uint256", internalType: "uint256" },
+      {
+        name: "result",
+        type: "uint8",
+        internalType: "enum CtrlZVerifyEscrow.VerificationResult"
+      },
+      { name: "evidenceHash", type: "bytes32", internalType: "bytes32" },
+      { name: "scoreBps", type: "uint16", internalType: "uint16" },
+      { name: "recommendationHash", type: "bytes32", internalType: "bytes32" }
+    ],
+    outputs: [],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
+    name: "submitOutput",
+    inputs: [
+      { name: "id", type: "uint256", internalType: "uint256" },
+      { name: "evidenceHash", type: "bytes32", internalType: "bytes32" }
+    ],
+    outputs: [],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
+    name: "tasks",
+    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [
+      { name: "buyer", type: "address", internalType: "address" },
+      { name: "worker", type: "address", internalType: "address" },
+      { name: "resolver", type: "address", internalType: "address" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "specHash", type: "bytes32", internalType: "bytes32" },
+      { name: "evidenceHash", type: "bytes32", internalType: "bytes32" },
+      { name: "state", type: "uint8", internalType: "enum CtrlZVerifyEscrow.State" },
+      { name: "scoreBps", type: "uint16", internalType: "uint16" },
+      { name: "recommendationHash", type: "bytes32", internalType: "bytes32" }
+    ],
+    stateMutability: "view"
+  },
+  {
+    type: "event",
+    name: "TaskLocked",
+    inputs: [
+      { name: "id", type: "uint256", indexed: true, internalType: "uint256" },
+      { name: "buyer", type: "address", indexed: true, internalType: "address" },
+      { name: "worker", type: "address", indexed: true, internalType: "address" },
+      { name: "resolver", type: "address", indexed: false, internalType: "address" },
+      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
+      { name: "specHash", type: "bytes32", indexed: false, internalType: "bytes32" }
+    ],
+    anonymous: false
+  },
+  {
+    type: "event",
+    name: "TaskResolved",
+    inputs: [
+      { name: "id", type: "uint256", indexed: true, internalType: "uint256" },
+      {
+        name: "result",
+        type: "uint8",
+        indexed: false,
+        internalType: "enum CtrlZVerifyEscrow.VerificationResult"
+      },
+      { name: "evidenceHash", type: "bytes32", indexed: false, internalType: "bytes32" },
+      { name: "scoreBps", type: "uint16", indexed: false, internalType: "uint16" },
+      { name: "recommendationHash", type: "bytes32", indexed: false, internalType: "bytes32" }
+    ],
+    anonymous: false
+  }
+] as const;
 
 export const ctrlzEscrowAbi = [
   {
