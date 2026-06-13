@@ -9,6 +9,19 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · contract invariants (P1.9)
+
+- **Did:** Expanded `contracts/test/CtrlZEscrow.t.sol` for P1.9 transition and
+  invariant coverage: no double-claim, same-block recall/claim ordering by
+  state, claim-after-refund state rejection, stronger refund-to-sender balance
+  checks, and `claimFor` replay/state protection. No production contract code
+  changed.
+- **Verified:** `forge fmt --root contracts`; `forge test --root contracts`
+  passes 41 tests.
+- **State:** P1.9 `[x]`.
+- **Next:** Codex → P1.10 deploy to Arc and record `web/lib/contract.ts`
+  handoff details after logging.
+
 ## 2026-06-13 · agent (Codex) · contract transition events (P1.8)
 
 - **Did:** Added indexer-ready event payloads across the escrow state machine:
