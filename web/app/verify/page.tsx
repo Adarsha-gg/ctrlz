@@ -102,12 +102,6 @@ function selectedPolicyCopy(policy: string) {
   return "This agent should not receive autonomous payment without manual review.";
 }
 
-function backingLabel(kind: VerificationResult["worldTrustBoost"]["backingKind"]) {
-  if (kind === "human") return "Human-backed agent";
-  if (kind === "enterprise") return "Enterprise-backed agent";
-  return "Unbacked agent";
-}
-
 function CheckerMetaLine({ meta }: { meta?: CheckerMeta }) {
   if (!meta) return null;
   return (
@@ -403,42 +397,6 @@ function VerifyPageInner() {
             <ScoreTile label="Payment risk (safer = higher)" sub={split.paymentRisk} />
           </div>
 
-          <div className="world-gate-panel">
-            <div>
-              <p className="field-label">World AgentKit gate</p>
-              <p className="world-gate-title">
-                {backingLabel(result.worldTrustBoost.backingKind)} ·{" "}
-                {result.worldGate.status === "free" ? "free verification" : "payment required"}
-              </p>
-              <p className="muted-text" style={{ fontSize: "0.82rem", margin: "4px 0 0" }}>
-                {result.worldGate.reason}. Free uses left: {result.worldGate.freeUsesRemaining}/
-                {result.worldGate.trialLimit}. Source: {result.worldGate.source}.
-              </p>
-              <p className="muted-text" style={{ fontSize: "0.82rem", margin: "4px 0 0" }}>
-                Reputation subject: {result.worldTrustBoost.reputationSubject.label} ·{" "}
-                {result.worldTrustBoost.reputationSubject.sharedAcrossAgents
-                  ? "shared across agents"
-                  : "agent-local"}.
-              </p>
-            </div>
-            <span
-              className={`gate-badge ${
-                result.worldGate.paymentRequired ? "gate-hard" : "gate-advisory"
-              }`}
-            >
-              {result.worldGate.paymentRequired ? "pay-gated" : "trial"}
-            </span>
-          </div>
-
-          {result.worldTrustBoost.applied && (
-            <p className="world-boost-note">
-              {backingLabel(result.worldTrustBoost.backingKind)} lifted agentTrust from{" "}
-              {result.worldTrustBoost.before.score} to{" "}
-              {result.worldTrustBoost.after.score}, capped at {result.worldTrustBoost.cap}. Output
-              checks and hard-gate failures are unchanged.
-            </p>
-          )}
-
           <div>
             <p className="field-label">Why this recommendation</p>
             <p className="verdict-explanation">
@@ -502,10 +460,10 @@ function VerifyPageInner() {
           </div>
 
           <div>
-            <p className="field-label">Evidence anchor (Walrus)</p>
+            <p className="field-label">Evidence anchor (Walrus · Sui)</p>
             {anchoring && !anchors && (
               <p className="muted-text" style={{ fontSize: "0.82rem", margin: 0 }}>
-                Anchoring evidence…
+                Anchoring evidence on Walrus…
               </p>
             )}
             {anchors && (
@@ -521,7 +479,7 @@ function VerifyPageInner() {
                 <p className="evidence-row">
                   <span className="evidence-key">Storage</span>
                   {anchors.evidence.store === "walrus" ? (
-                    <span className="gate-badge gate-hard">Walrus</span>
+                    <span className="gate-badge gate-hard">Walrus (Sui)</span>
                   ) : (
                     <span className="gate-badge gate-advisory">local (Walrus unavailable)</span>
                   )}
@@ -531,6 +489,22 @@ function VerifyPageInner() {
                     <p className="evidence-row">
                       <span className="evidence-key">Blob ID</span>
                       <code className="evidence-hash">{anchors.evidence.blobId}</code>
+                    </p>
+                    <p className="evidence-row">
+                      <span className="evidence-key">Retrievability</span>
+                      {anchors.readback.retrieved && anchors.readback.hashMatches ? (
+                        <span className="gate-badge gate-hard">
+                          ✅ re-fetched from Walrus · hash matches
+                        </span>
+                      ) : anchors.readback.retrieved ? (
+                        <span className="gate-badge gate-advisory">
+                          ⚠️ re-fetched · hash mismatch
+                        </span>
+                      ) : (
+                        <span className="gate-badge gate-advisory">
+                          aggregator not yet serving blob
+                        </span>
+                      )}
                     </p>
                     {anchors.evidence.uri && (
                       <p className="evidence-row">
@@ -547,8 +521,10 @@ function VerifyPageInner() {
                   </>
                 )}
                 <p className="muted-text" style={{ fontSize: "0.78rem", margin: "4px 0 0" }}>
-                  The sha256 hash is the load-bearing anchor — always computed. Walrus is the
-                  swappable store behind it; if it&apos;s down we keep the hash and degrade locally.
+                  The sha256 hash is the load-bearing anchor — always computed. The blob lives on
+                  Walrus, Sui&apos;s decentralized store; we round-trip it from the aggregator and
+                  recompute the hash to prove it&apos;s genuinely retrievable, not just claimed. If
+                  Walrus is down we keep the hash and degrade locally.
                 </p>
               </div>
             )}

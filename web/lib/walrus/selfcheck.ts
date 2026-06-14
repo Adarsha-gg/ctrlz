@@ -16,7 +16,7 @@
  * --experimental-strip-types, mirroring web/lib/scoring/selfcheck.ts.
  */
 
-import { hashBlob, storeEvidence, canonicalJSON } from "./store.ts";
+import { hashBlob, storeEvidence, readEvidence, canonicalJSON } from "./store.ts";
 import { buildEvidenceBlob, buildManifest } from "./evidence.ts";
 import { buildCheckerRuntimeManifest } from "../checkers/runtime.ts";
 
@@ -145,6 +145,20 @@ async function main() {
     if (live.store === "walrus") {
       console.log(`  LIVE OK  stored on Walrus: blobId=${live.blobId}`);
       console.log(`           uri=${live.uri}`);
+      // Round-trip retrievability: re-fetch from the aggregator + recompute sha256.
+      if (live.blobId) {
+        const fetched = await readEvidence(live.blobId);
+        if (fetched === undefined) {
+          console.log("  LIVE SKIP  aggregator not yet serving the blob (expected-OK on testnet)");
+        } else {
+          const refetchedHash = await hashBlob(fetched);
+          console.log(
+            `  LIVE ${refetchedHash === live.hash ? "OK" : "WARN"}  read-back hash ${
+              refetchedHash === live.hash ? "matches" : "MISMATCH"
+            } the committed anchor`
+          );
+        }
+      }
     } else {
       console.log("  LIVE SKIP  publisher unreachable / shape drift → local fallback (expected-OK)");
     }

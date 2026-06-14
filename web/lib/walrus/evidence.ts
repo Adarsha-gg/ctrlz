@@ -21,6 +21,16 @@ import type { CheckerReport, CheckSpec, WorkerSubmission } from "../checkers/typ
 import type { CheckerRuntimeManifest } from "../checkers/runtime.ts";
 import type { CheckerMeta } from "../checkers/metaReputation.ts";
 import type { Recommendation, SplitScore } from "../scoring/score.ts";
+import type { StoreResult } from "./store.ts";
+
+/**
+ * Pointer to the held-out test reveal blob on Walrus (REPUTATION §8f). When a task
+ * uses held-out checks, the revealed `{hiddenChecks, salt}` is published as its own
+ * content-addressed Walrus blob; this pointer (sha256 anchor + blobId/uri when it
+ * landed on Walrus) lets a disputer fetch it and re-verify against the on-chain
+ * commit. Shape mirrors a `storeHeldoutReveal` result.
+ */
+export type HeldoutRevealPointer = StoreResult;
 
 /**
  * The acceptance-spec manifest — the verifiable spec the buyer commits.
@@ -56,6 +66,8 @@ export type EvidenceBlob = {
   splitScore: SplitScore;
   /** the deterministic recommendation the scores produced */
   recommendation: Recommendation;
+  /** §8f: pointer to the held-out test reveal blob on Walrus, when the task used held-out checks */
+  heldoutReveal?: HeldoutRevealPointer;
   /** ISO timestamp (optional → omit for a deterministic, replayable blob) */
   createdAt?: string;
 };
@@ -82,6 +94,7 @@ export function buildEvidenceBlob(input: {
   checkerMeta?: CheckerMeta[];
   splitScore: SplitScore;
   recommendation: Recommendation;
+  heldoutReveal?: HeldoutRevealPointer;
   createdAt?: string;
 }): EvidenceBlob {
   return {
@@ -92,6 +105,7 @@ export function buildEvidenceBlob(input: {
     ...(input.checkerMeta ? { checkerMeta: input.checkerMeta } : {}),
     splitScore: input.splitScore,
     recommendation: input.recommendation,
+    ...(input.heldoutReveal ? { heldoutReveal: input.heldoutReveal } : {}),
     ...(input.createdAt ? { createdAt: input.createdAt } : {})
   };
 }

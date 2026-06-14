@@ -13,3 +13,12 @@ export {
   parseBlobId,
   WALRUS_CONFIG
 } from "./store.ts";
+export type {
+  HeldoutRevealPointer,
+  HeldoutRevealVerification
+} from "./heldout.ts";
+export {
+  storeHeldoutReveal,
+  fetchAndVerifyHeldoutReveal,
+  verifyHeldoutReveal
+} from "./heldout.ts";

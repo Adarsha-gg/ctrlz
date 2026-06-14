@@ -14,13 +14,17 @@ import { schemaChecker } from "./schema.ts";
 import { priceChecker } from "./price.ts";
 import { walletRiskChecker } from "./walletRisk.ts";
 import { sourceListingChecker } from "./sourceListing.ts";
+import { dataReconcileChecker } from "./dataReconcile.ts";
+import { testsPassChecker } from "./testsPass.ts";
 
 /** check.type → checker. Demo set per BUILD_PLAN §6. */
 export const CHECKER_REGISTRY: Record<string, Checker> = {
   schema: schemaChecker,
   price_max: priceChecker,
   wallet_risk: walletRiskChecker,
-  source_listing: sourceListingChecker
+  source_listing: sourceListingChecker,
+  data_reconcile: dataReconcileChecker,
+  tests_pass: testsPassChecker
 };
 
 /** Look up a checker by check type; undefined if none is registered. */

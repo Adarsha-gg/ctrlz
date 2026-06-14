@@ -52,6 +52,57 @@ export type InvoiceItem = {
 };
 
 /**
+ * One row of a data-work output. `key` is the canonical identity of the record
+ * (e.g. a tx hash, or `block:logIndex`) — the thing a verifier re-fetches ground
+ * truth by. `value` is the flat field bag the worker claims for that key.
+ */
+export type DataRecord = {
+  key: string;
+  value: Record<string, string | number>;
+};
+
+/**
+ * A worker's data-aggregation output (the "expensive to produce" artifact). The
+ * worker commits `rowsCommit = sha256({rows})` at lock and reveals `rows` at
+ * submit, so the spot-check sample (derived from the commit) is unpredictable
+ * until after the rows are frozen. See `web/lib/checkers/reconcile.ts`.
+ */
+export type DatasetArtifact = {
+  rows: DataRecord[];
+  /** sha256({rows}) committed at lock — verified against `rows` at submit */
+  rowsCommit: string;
+};
+
+/** The outcome of running a single test case (the verifier's ground truth). */
+export type TestStatus = "passed" | "failed" | "errored" | "skipped";
+
+/**
+ * One test-case result, produced by the verifier ACTUALLY RUNNING the suite
+ * against the worker's patch — the cheap, deterministic ground truth a
+ * `tests_pass` check decides over (§ pay-on-green). `name` is the canonical
+ * test identity (e.g. `tests/test_api.py::test_empty_input`).
+ */
+export type TestResult = {
+  name: string;
+  status: TestStatus;
+  /** optional failure/error message, surfaced in the report detail */
+  message?: string;
+};
+
+/**
+ * A worker's code patch (the "expensive to produce" artifact for pay-on-green).
+ * The worker commits `patchCommit = sha256({diff})` at lock and reveals `diff`
+ * at submit — so the buyer's held-out test suite is run against exactly the
+ * patch that was frozen, not one swapped in after seeing which tests ran.
+ */
+export type PatchArtifact = {
+  /** unified diff (or file blob) the worker produced against the target repo */
+  diff: string;
+  /** sha256({diff}) committed at lock — verified against `diff` at submit */
+  patchCommit: string;
+};
+
+/**
  * The worker submission a checker reasons over — the invoice plus whatever
  * evidence the worker attached. Bounded + plain data so reports are replayable.
  */
@@ -79,6 +130,10 @@ export type WorkerSubmission = {
     carrier?: string;
     tracking?: string;
   };
+  /** the data-aggregation output a `data_reconcile` check spot-checks (§ niche) */
+  dataset?: DatasetArtifact;
+  /** the code patch a `tests_pass` check runs the held-out suite against (§ pay-on-green) */
+  patch?: PatchArtifact;
   /** points into the Walrus evidence blob this submission was read from */
   evidenceHash?: string;
 };

@@ -20,8 +20,6 @@ import {
 import type { CheckSpec, WorkerSubmission } from "../../lib/checkers/index.ts";
 import type { CheckerOutcomeRecord } from "../../lib/checkers/metaReputation.ts";
 import type { RecipientHistory } from "../../lib/risk/index.ts";
-import { WORLD_HUMAN_AGENT_ID } from "../../lib/world/policy.ts";
-import type { WorldAgentIdentity } from "../../lib/world/policy.ts";
 
 export const DEMO_INTENT =
   "Buy an RTX 4090 under 700 USDC from a seller with a valid wallet + shipping proof.";
@@ -55,40 +53,17 @@ export type DemoSubmission = {
   label: string;
   hint: string;
   submission: WorkerSubmission;
-  worldAgent: {
-    agentId: string;
-    usedVerifications: number;
-    identity?: WorldAgentIdentity;
-  };
   /** worker history for the split-score agentTrust input (undefined → weak) */
   workerHistory?: RecipientHistory;
   /** wallet-risk history override, passed through on the wallet_risk check */
   recipientHistory?: RecipientHistory;
 };
 
-export const WORLD_UNKNOWN_AGENT_ID = "agent:unknown-demo";
-export const WORLD_HUMAN_SECOND_AGENT_ID = "agent:world-human-second-demo";
-export const WORLD_ENTERPRISE_AGENT_ID = "agent:enterprise-walmart-demo";
-
-const HUMAN_CLUSTER = "demo-nullifier-human-backed-agent";
-
 /** CLEAN: known seller, 689 USDC (< 700), recognizable source → proceed. */
 export const CLEAN_SUBMISSION: DemoSubmission = {
   id: "clean",
   label: "Run valid output",
   hint: "Known seller, under budget, plausible source",
-  worldAgent: {
-    agentId: WORLD_HUMAN_AGENT_ID,
-    usedVerifications: 0,
-    identity: {
-      agentId: WORLD_HUMAN_AGENT_ID,
-      humanBacked: true,
-      backingKind: "human",
-      source: "demo",
-      nullifierHash: HUMAN_CLUSTER,
-      clusterId: HUMAN_CLUSTER
-    }
-  },
   workerHistory: ALICE_HISTORY,
   recipientHistory: ALICE_HISTORY,
   submission: {
@@ -111,15 +86,12 @@ export const CLEAN_SUBMISSION: DemoSubmission = {
   }
 };
 
-/** CLEAN but unknown: same valid output, but the agent has no World backing. */
+/** CLEAN but thin history: same valid output, but the agent has no track record. */
 export const UNKNOWN_CLEAN_SUBMISSION: DemoSubmission = {
   id: "unknown-clean",
-  label: "Run valid output / unknown agent",
-  hint: "Valid output from an agent that has no World human backing",
-  worldAgent: {
-    agentId: WORLD_UNKNOWN_AGENT_ID,
-    usedVerifications: 0
-  },
+  label: "Run valid output / new agent",
+  hint: "Valid output from an agent with no settlement history → weaker agent trust",
+  // no workerHistory → weak agentTrust, even though the output passes every gate
   recipientHistory: ALICE_HISTORY,
   submission: {
     recipientAddress: ALICE_ADDRESS,
@@ -141,102 +113,12 @@ export const UNKNOWN_CLEAN_SUBMISSION: DemoSubmission = {
   }
 };
 
-/** Same human, different agent: trust subject is shared by clusterId/nullifier. */
-export const SAME_HUMAN_SECOND_AGENT_SUBMISSION: DemoSubmission = {
-  id: "same-human-agent",
-  label: "Run valid output / same human",
-  hint: "Different agent ID, same World human cluster",
-  worldAgent: {
-    agentId: WORLD_HUMAN_SECOND_AGENT_ID,
-    usedVerifications: 2,
-    identity: {
-      agentId: WORLD_HUMAN_SECOND_AGENT_ID,
-      humanBacked: true,
-      backingKind: "human",
-      source: "demo",
-      nullifierHash: HUMAN_CLUSTER,
-      clusterId: HUMAN_CLUSTER
-    }
-  },
-  workerHistory: ALICE_HISTORY,
-  recipientHistory: ALICE_HISTORY,
-  submission: {
-    recipientAddress: ALICE_ADDRESS,
-    recipientName: ALICE_NAME,
-    invoice: {
-      invoiceId: "INV-4090-0004",
-      seller: ALICE_NAME,
-      item: "NVIDIA GeForce RTX 4090 Founders Edition",
-      amount: 689,
-      currency: "USDC"
-    },
-    sourceListing: {
-      url: "https://www.newegg.com/p/rtx-4090-fe",
-      marketplace: "Newegg",
-      title: "NVIDIA GeForce RTX 4090 24GB GDDR6X Founders Edition"
-    },
-    shippingProof: { carrier: "UPS", tracking: "1Z999AA10123456784" },
-    evidenceHash: "0xsamehuman000000000000000000000000000000000000000000samehuman"
-  }
-};
-
-/** Enterprise-backed: no World free trial, but a shared company trust subject. */
-export const ENTERPRISE_CLEAN_SUBMISSION: DemoSubmission = {
-  id: "enterprise-clean",
-  label: "Run valid output / enterprise",
-  hint: "Agent tied to a verified enterprise wallet cluster",
-  worldAgent: {
-    agentId: WORLD_ENTERPRISE_AGENT_ID,
-    usedVerifications: 0,
-    identity: {
-      agentId: WORLD_ENTERPRISE_AGENT_ID,
-      humanBacked: false,
-      backingKind: "enterprise",
-      source: "enterprise",
-      ownerAddress: "0x2222222222222222222222222222222222222222",
-      clusterId: "walmart:verified-wallet",
-      enterpriseName: "Walmart"
-    }
-  },
-  recipientHistory: ALICE_HISTORY,
-  submission: {
-    recipientAddress: ALICE_ADDRESS,
-    recipientName: ALICE_NAME,
-    invoice: {
-      invoiceId: "INV-4090-0005",
-      seller: ALICE_NAME,
-      item: "NVIDIA GeForce RTX 4090 Founders Edition",
-      amount: 689,
-      currency: "USDC"
-    },
-    sourceListing: {
-      url: "https://www.newegg.com/p/rtx-4090-fe",
-      marketplace: "Newegg",
-      title: "NVIDIA GeForce RTX 4090 24GB GDDR6X Founders Edition"
-    },
-    shippingProof: { carrier: "UPS", tracking: "1Z999AA10123456784" },
-    evidenceHash: "0xenterprise000000000000000000000000000000000000000000enterprise"
-  }
-};
-
 /** BAD: poisoned lookalike wallet AND 879 USDC (> 700) → reject/pause. */
 export const BAD_SUBMISSION: DemoSubmission = {
   id: "bad",
   label: "Run bad output",
   hint: "Poisoned lookalike wallet + price over 700 USDC",
   // no workerHistory → weak agentTrust; no recipientHistory → unknown wallet
-  worldAgent: {
-    agentId: WORLD_HUMAN_AGENT_ID,
-    usedVerifications: 1,
-    identity: {
-      agentId: WORLD_HUMAN_AGENT_ID,
-      humanBacked: true,
-      backingKind: "human",
-      source: "demo",
-      nullifierHash: HUMAN_CLUSTER,
-      clusterId: HUMAN_CLUSTER
-    }
-  },
   submission: {
     recipientAddress: POISONED_LOOKALIKE,
     recipientName: ALICE_NAME,
@@ -258,8 +140,6 @@ export const BAD_SUBMISSION: DemoSubmission = {
 
 export const DEMO_SUBMISSIONS: DemoSubmission[] = [
   CLEAN_SUBMISSION,
-  SAME_HUMAN_SECOND_AGENT_SUBMISSION,
-  ENTERPRISE_CLEAN_SUBMISSION,
   UNKNOWN_CLEAN_SUBMISSION,
   BAD_SUBMISSION
 ];
