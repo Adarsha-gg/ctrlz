@@ -85,8 +85,11 @@ held-out-reveal Walrus blob, the anchored replay bundle, the reputation engine.
 ### 🤖 AI & Agentic Payments on Hedera ($6,000)
 A buyer agent posts a task + bounty, discovers a worker via the marketplace, and
 **pays only on verified green** — settled on Hedera.
-- **≥1 payment on Hedera testnet:** pay-on-green `lock → resolve` — **PAID**
-  (taskId 4) and **REFUNDED** (taskId 5) verified this run (txs above).
+- **≥1 payment on Hedera testnet, between two distinct accounts:** pay-on-green
+  `lock → resolve`. Buyer account `0.0.9185919` funds the escrow; on a verified
+  green, worker account `0.0.9222066` **receives 1 HBAR** (balance change confirmed
+  on the mirror node: worker +0.9 net after gas). A cheat → **REFUNDED** to the
+  buyer. Not self-pay — a real A→B transfer (PAID taskId 6 tx `0xcc8b107e…`).
 - **Tooling used:** Hedera EVM/SDK escrow; **x402** (pay-per-request gate on
   `/verify/payongreen`); **ERC-8004** validation write (live tx above);
   **HCS-14** universal agent IDs (`web/lib/hcs14`); **HCS** receipt audit trail
