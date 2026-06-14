@@ -1,132 +1,140 @@
-# CTRL+Z Verify Submission
+# CTRL+Z Verify — Submission
 
-## One-Liner
+**Live demo:** https://ctrlz-zeta.vercel.app
 
-CTRL+Z Verify lets buyer agents hire worker agents with explicit acceptance
-criteria, checker-agent verification, Walrus (Sui) verifiable evidence, Hedera
-settlement hooks, and ERC-8004 reputation for both workers and checkers.
+## One-liner
 
-## Current Story
+CTRL+Z Verify is the **verification + settlement layer for agents paying agents**:
+a buyer agent posts a task with a machine-checkable acceptance standard, a worker
+agent delivers, deterministic checkers decide pass/fail against the evidence, and
+the verdict moves money on Hedera and updates ERC-8004 reputation — with the
+evidence anchored on Walrus so any third party can re-run the check.
 
-The submission is **not** the old Arc undo-payment checkout as the primary
-product. That work remains useful prior art and stretch material. The current
-G2 framing is:
+## The wedge — pay-on-green
 
-**Hedera settlement + Walrus (Sui) verifiable evidence + ERC-8004 checker reputation.**
+The flagship is the narrowest verifiable job, where "correct" is binary and cheap
+to check: **a worker submits a patch; payment releases the moment the test suite
+goes green.** Held-out tests (commit-reveal) stop the worker hardcoding the
+answer. It's the SWE-bench format wired to escrow + reputation instead of a
+leaderboard. Why this and not "verify chain data" or "delegate a swap": those are
+already solved (ZK coprocessors; intents/solvers like CoW). The unsolved gap is
+verified settlement for agent work that **isn't** ZK-provable — which is most of
+it. See [PAY_ON_GREEN.md](PAY_ON_GREEN.md).
 
-The demo should emphasize that CTRL+Z Verify does not make a subjective oracle.
-It turns task requirements into explicit constraints, runs bounded checkers, and
-scores the checkers by whether later outcomes agreed with them.
+## Verified live this run (real transactions, not claims)
 
-## What Shipped
-
-- `/verify` web demo for a GPU invoice task with clean and bad submissions.
-- Checker registry and runner.
-- Demo checkers: schema, price cap, wallet risk, and source/listing.
-- Split scoring: output validity, agent trust, payment risk, recommendation.
-- LLM explanation reused only as explanation, never as the decision engine.
-- Walrus (Sui) evidence layer for manifest/evidence hashes, publisher store,
-  aggregator read, a round-trip retrievability proof, and local fallback.
-- Checker meta-reputation in scoring/UI using seeded outcome history and replay
-  checks.
-- Hedera EVM sanity transfer, live verify escrow deployment, and lock/accept/submit/resolve transaction flow.
-- HCS receipt topic/message for the C2 evidence hash, score, and recommendation.
-- ERC-8004 IdentityRegistry registrations and ReputationRegistry feedback writes
-  for the worker and checker agents on Hedera testnet.
-
-## Shipped vs Blocked
-
-| Item | Status | Notes |
+| Flow | Result | Proof |
 |---|---|---|
-| A/B verification UI, checkers, split scoring | Shipped | Demo surface is live in the web app. |
-| E1/E2 Walrus (Sui) evidence | Shipped | Hash anchor always works; Walrus publisher/aggregator store+read path plus a round-trip retrievability proof are implemented. |
-| B3 checker meta-reputation | Shipped + persisted | Influence weighting is in scoring/UI; checker accuracy feedback is written to ERC-8004 agent `102`. |
-| C1 Hedera sanity write | Shipped live | EVM sanity transfer tx: `0x9236c06cbd4021ce15c531a4d184d325b88c8ab852585bcf69c2a63733b09e97`. |
-| C2 Hedera EVM escrow deploy + live lock/resolve | Shipped live | Escrow: `0xa2ac71dd9e7835af08e6be33ec047c47a35b2462`; deploy `0xcd4b8b44fb3292a932a2e40b7f4c08a49847dc9c56f8419b825ccd28d23843f0`; resolve `0xdbdb8f5236d1a1473bebb7f95c0e12683bebfbdf9f857628e62e69e9fbbeeb10`. This run pins the exact clean `/verify` sha256 anchors: spec `0xc558bf1d075e6d7c622aaba021c8409b1cbbdf17c8cc527aa59c7326e9279d84`, evidence `0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7`. |
-| C3 HCS receipt | Shipped live | Topic `0.0.9222881`; canonical receipt tx `0.0.9222066@1781356716.807172813`; payload references the exact `/verify` evidence hash, score `9200`, recommendation `proceed`, and the **real Walrus evidence blob** `https://aggregator.walrus-testnet.walrus.space/v1/blobs/eDxE69ZD3dua2R7xO8Z1KlYa9RvKgpNZHzXIkO63frk`. Earlier receipts remain on the append-only topic and are superseded. |
-| D1 ERC-8004 identity registration | Shipped live | Worker agent `101` tx `0xd4912aef78fb8f76a0e77e583516bcf0f84ac3e14de5d46d5c78c39dd0863c94`; checker agent `102` tx `0xff802ef5cd713ab8075e3b195329ac3664633dfa648f61fff156e84582d8f80f`. |
-| D2 ERC-8004 reputation feedback | Shipped live | Worker outcome feedback tx `0x3745fa1efa69f725481f5798d3e2d76d856123510569f09f2a59c277f3e0fb0f`; checker accuracy feedback tx `0xa42eb5c0142e0fd26362c900357fd4def575691d91800040147bec7ee6078bbc`. |
-| Google BigQuery / ERC-8004 explorer | Shipped | `/marketplace` queries raw Ethereum mainnet ERC-8004 Identity, Reputation, and Validation registry events through Google BigQuery, ranks agents by feedback breadth/concentration/validation signals, and flags x402-payable agents from registered metadata. |
-| Arc / Ledger | Prior or stretch | Do not pitch as the primary G2 product. |
+| Pay-on-green PASS (honest fix) | escrow **PAID** (released to worker) | escrow `0xa2ac71dd9e7835af08e6be33ec047c47a35b2462`, taskId 4, resolve `0x65884ceece33dad2c0f0fd7f6c2b2de449191a7ca9472d8c82ed03f00ecc1601` |
+| Pay-on-green FAIL (cheat caught by **held-out** tests) | escrow **REFUNDED** (buyer made whole) | taskId 5, resolve `0xa06f6b8e142bbe8b84c37730d85393658512ebeca82328e62913f3d5a9241a31` |
+| ERC-8004 validation write | **written** on-chain | request `0x1051f471185ea178009165dfdbdaee437c3c3c5f2858a1e372bb1619cd610d83`, response tx `0xbd1c0ea603d7016ecd570db69fddaf10ef28cb19870e3dd6d526902dd18d0708` |
+| Marketplace — Ethereum | **82 live agents** via Google BigQuery | dataset `bigquery-public-data.goog_blockchain_ethereum_mainnet_us` |
+| Marketplace — Hedera | **208 live agents** via Hedera Mirror Node (no BigQuery needed) | `testnet.mirrornode.hedera.com` |
+| Reputation engine | **7/7 invariants pass** | `web/lib/reputation` selfcheck |
 
-C1/C2/C3/D1/D2 now have real Hedera testnet confirmations. The latest C2/C3
-run pins the exact clean `/verify` sha256 anchors on Hedera and in HCS.
+The cheat→refund case is the thesis in one shot: the worker hardcoded the answer
+to pass the *visible* test, the **held-out** tests caught it, and the chain
+refunded the buyer — no human in the loop.
 
-Google bounty minimum is covered by the `/marketplace` route:
+## What's live in the deployed app
 
-- BigQuery core dataset:
-  `bigquery-public-data.goog_blockchain_ethereum_mainnet_us`.
-- EF ERC-8004 mainnet registries:
-  Identity `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, Reputation
+- **`/verify/payongreen-demo`** — pay-on-green end to end: run green / cheat, see
+  the verdict, the anchored replay bundle, and the on-chain settle button
+  (release/refund on Hedera).
+- **`/reputation`** — interactive operator-cluster reputation: inject fraud and
+  watch siblings drag, the offender drop to ~0, and a fraud *pattern* collapse the
+  whole operator. Runs the real `web/lib/reputation` engine in-browser.
+- **`/marketplace`** (+ `/marketplace/[agentKey]`) — live ERC-8004 agent explorer,
+  Ethereum (BigQuery) ↔ Hedera (mirror node) toggle, Sybil/rater-concentration
+  lens, x402 badges.
+- **`/verify`** — the original constraint-based verification surface (checker
+  registry, split scoring, Walrus evidence, LLM used only to *explain*, never to
+  decide).
+- **`/api/deploy/status`** — reports which credential groups are configured
+  (no secrets).
+
+## How it works
+
+1. **Acceptance standard, committed.** Buyer commits a spec + held-out tests
+   (`sha256` commitment); worker commits its patch. Neither side can move after
+   the fact.
+2. **Deterministic check.** The runner applies the patch and runs the suite; the
+   pure `tests_pass` checker compares the run to the acceptance set → pass/fail.
+   The baked demo runs **in-process** (pure JS, Vercel-safe); untrusted caller
+   workspaces run in an isolated **Vercel Sandbox** microVM (gated, off by default).
+3. **Evidence anchored.** Spec + patch + run results go into a content-addressed
+   Walrus blob; its `sha256` is the on-chain anchor — so anyone can re-run the
+   check and catch a lying verifier.
+4. **Settle + reputation.** The verdict maps to `resolve(PASS|FAIL|UNCERTAIN, …)`
+   on the Hedera escrow (release/refund) and an ERC-8004 validation/feedback write.
+
+## Prize-track alignment
+
+### 🌱 Walrus & Sui stack ($3,000) — best new build
+Walrus does **load-bearing** work, not decoration: every verdict's evidence blob
+*and* the held-out-test reveal are stored on Walrus, content-addressed by
+`sha256`. The verdict is auditable **only because** those inputs are retrievable
+from Walrus — that's what makes a lying verifier catchable (re-run the blob,
+compare the hash). New this hackathon: the pay-on-green checker, the
+held-out-reveal Walrus blob, the anchored replay bundle, the reputation engine.
+- **Verified live:** `evidenceStore: walrus`, evidence blob
+  `https://aggregator.walrus-testnet.walrus.space/v1/blobs/apqZ4qpbZUp2eIguhWxYSvLYnsez4o_jbxPL4e8BmUY`
+  (aggregator read `200`); held-out reveal also stored on Walrus; `sha256` anchor
+  always computed with local fallback.
+
+### 🤖 AI & Agentic Payments on Hedera ($6,000)
+A buyer agent posts a task + bounty, discovers a worker via the marketplace, and
+**pays only on verified green** — settled on Hedera.
+- **≥1 payment on Hedera testnet:** pay-on-green `lock → resolve` — **PAID**
+  (taskId 4) and **REFUNDED** (taskId 5) verified this run (txs above).
+- **Tooling used:** Hedera EVM/SDK escrow; **x402** (pay-per-request gate on
+  `/verify/payongreen`); **ERC-8004** validation write (live tx above);
+  **HCS-14** universal agent IDs (`web/lib/hcs14`); **HCS** receipt audit trail
+  (topic `0.0.9222881`).
+- ⚠️ **Required and not done:** the ≤5-minute demo video of the autonomous
+  payment flow.
+
+### 🤖 On-Chain Agent Economy / BigQuery ($5,000)
+`/marketplace` is a direct hit on every requirement.
+- **BigQuery as the core:** queries `bigquery-public-data.goog_blockchain_ethereum_mainnet_us`
+  for ERC-8004 Identity/Reputation/Validation events (**82 live agents** this run).
+- **Specific EF mainnet registries:** Identity
+  `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, Reputation
   `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`, Validation
   `0x8004Cc8439f36fd5F9F049D9fF86523Df6dAAB58`.
-- Lightweight frontend: Next.js `/marketplace` and per-agent detail pages with
-  search, category/policy/trust/client/x402 filters, rater concentration
-  warnings, and x402 evidence.
+- **Ranking + x402 + frontend:** ranks by feedback breadth/concentration +
+  validation signals; flags x402-payable agents from metadata; Next.js UI with
+  search/filters + a Sybil/rater-concentration lens. Hedera tab adds 208 more
+  agents via the mirror node.
 
-## Demo Commands
+## Honest scope (don't overclaim)
+
+- **Trust model is "CTRL+Z is the v1 verifier."** The anchored, deterministic
+  replay makes a lying verifier *catchable* (re-run the blob), but automatic
+  dispute / multi-verifier slashing (REPUTATION.md §8) is designed, not built.
+- **Untrusted code execution is gated off** by default (`403`); the demo only runs
+  the safe in-process baked fixture. Real untrusted patches need the Vercel
+  Sandbox (`PAYONGREEN_SANDBOX=1`).
+- **Marketplace shows fixture data** when GCP creds aren't set; on the live deploy
+  they are set, so it's real.
+- **Reputation engine is the math + an interactive demo**; it is not yet fed by a
+  production operator-identity data layer, and bonds/disputes are the chain lane.
+
+## Run locally
 
 ```sh
-# Local G1 rehearsal readiness check (no Hedera secrets required; sends no txs)
-npm run demo:check
+# web app (in web/)
+pnpm install && pnpm --filter web build && pnpm --filter web dev
 
-# Web build
-pnpm --filter web build
-
-# Verification and checker meta-reputation selfcheck
+# deterministic selfchecks (no secrets, no txs)
+node --experimental-strip-types web/lib/reputation/selfcheck.ts
 node --experimental-strip-types web/lib/scoring/selfcheck.ts
 
-# Hedera scripts: live tx paths
-npm run hedera:evm-sanity
-npm run hedera:verify-demo
-
-# Store the evidence on Walrus first → prints a real aggregator URI + sha256 anchor
-node --experimental-strip-types scripts/hedera/store-evidence.mjs \
-  --task-id=1 \
-  --contract=0xa2ac71dd9e7835af08e6be33ec047c47a35b2462 \
-  --spec-hash=0xc558bf1d075e6d7c622aaba021c8409b1cbbdf17c8cc527aa59c7326e9279d84 \
-  --evidence-hash=0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7 \
-  --score-bps=9200 \
-  --recommendation=proceed
-
-# Hedera HCS receipt — pass the real Walrus URI printed above as --walrus-uri
-# (a non-Walrus URL, e.g. a GitHub link, is now rejected by the script).
-pnpm hedera:sanity
-npm run hedera:hcs -- \
-  --task-id=1 \
-  --contract=0xa2ac71dd9e7835af08e6be33ec047c47a35b2462 \
-  --evidence-hash=0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7 \
-  --score-bps=9200 \
-  --recommendation=proceed \
-  --walrus-uri=https://aggregator.walrus-testnet.walrus.space/v1/blobs/eDxE69ZD3dua2R7xO8Z1KlYa9RvKgpNZHzXIkO63frk
+# pay-on-green, no server needed (baked, in-process)
+#   POST /verify/payongreen {"demo":"green"}  → PASS / release
+#   POST /verify/payongreen {"demo":"cheat"}  → FAIL / refund (held-out catches it)
 ```
 
-Expected current behavior: web/scoring checks should pass if dependencies
-are installed; `npm run hedera:evm-sanity` and `npm run hedera:verify-demo`
-return real Hedera testnet tx hashes with the current env. The ERC-8004
-registration and feedback scripts have already produced live tx hashes. The HCS
-script now works with portal-style ECDSA private keys and has produced a live
-receipt on topic `0.0.9222881`.
-
-`npm run demo:check` bundles the scoring selfcheck and `npm run
-build` in `web/`, then reports Hedera environment readiness by variable presence
-only. It does not print secrets, submit transactions, or mark G1 complete.
-
-See [TODO.md](TODO.md) for the remaining G1 rehearsal/video checklist and all open work.
-
-## Prize Box Language
-
-- **Hedera:** live C1 sanity transfer, C2 verify escrow deploy/lock/resolve, and
-  C3 HCS receipt are complete.
-- **Walrus (Sui):** implemented content-addressed manifest/evidence storage,
-  aggregator read path, and a round-trip retrievability proof, with local fallback.
-- **ERC-8004:** worker/checker identities and worker/checker feedback writes are
-  live on Hedera testnet.
-- **Google BigQuery:** not shipped unless sponsor approves the Hedera data
-  source.
-
-## G Status
-
-- **G1:** leave undone until the demo runs clean start-to-finish five times.
-- **G2:** complete for docs/submission framing. The shipped-vs-blocked boundary
-  now includes live C1/C2/C3/D1/D2 Hedera confirmations.
+Deploy config (Hedera settle, ERC-8004 writes, BigQuery, x402) is in
+[VERCEL.md](VERCEL.md). Open work (demo video G1, marketplace sibling-linkage,
+chain-lane bonds/disputes) is in [TODO.md](TODO.md).
