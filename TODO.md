@@ -58,8 +58,9 @@ rehearse**, not code.
 
 ## P1 — Reputation engine (post-submission) → [REPUTATION.md](REPUTATION.md)
 
-- [ ] **R1.1** `web/lib/reputation/` — operator-root + cluster model
-      (`floor(tier, standing) + earned − contamination`). *(Claude/web)*
+- [x] **R1.1** `web/lib/reputation/` — operator-root + cluster model
+      (`clamp(floor + earned − contamination, 0, cap)`) + fraud classifier +
+      tunable config + deterministic selfcheck (7/7 invariants). *(Claude/web)*
 - [ ] **R1.2** Public sibling linkage in the verdict UI ("1 of N under `<operator>`").
 - [ ] **R3.1/R3.2** Event typing (`fraud | quality | success`) + contamination math + selfcheck.
 - [ ] **R2.x** Self-serve **domain proof** (reuse ERC-8004's well-known domain format).
