@@ -85,20 +85,36 @@ set `X402_DEMO_MODE=1` and send `X-PAYMENT: demo-x402:<id>`.
 
 ## Runner Safety
 
-Keep this unset or `0` on Vercel:
-
-```sh
-PAYONGREEN_ALLOW_RUN=0
-```
-
 The baked `demo=green|cheat` path runs **in-process** (pure JS — applies the diff
 and evaluates the trusted module; no `git`, no child process, no filesystem), so
-it works on Vercel's serverless runtime and is deterministically replayable.
+it works on Vercel's serverless runtime and is deterministically replayable. It
+needs no flags.
 
-Caller-supplied workspaces (`run`) use the subprocess runner (`git apply` +
-`node --test`), which is **not** available on Vercel — they execute arbitrary
-code and must run only in a separate container/microVM worker behind
-`PAYONGREEN_ALLOW_RUN=1`. Keep it unset/`0` on Vercel.
+Caller-supplied workspaces (`run`) execute **arbitrary code**. There are two
+executors; pick one with an env var (without either, `run` returns `403`):
+
+| Env | Executor | Use |
+|---|---|---|
+| `PAYONGREEN_SANDBOX=1` | **Vercel Sandbox** (isolated Firecracker microVM) | the safe path — use this on Vercel |
+| `PAYONGREEN_ALLOW_RUN=1` | local subprocess (`git apply` + `node --test`) | trusted dev box ONLY; does not work on Vercel |
+
+**Never set `PAYONGREEN_ALLOW_RUN=1` on Vercel** (no `git`/subprocess there, and
+it would run untrusted code on the host). Use the sandbox instead:
+
+```sh
+# isolated execution of untrusted worker patches
+vercel env add PAYONGREEN_SANDBOX production   # = 1
+```
+
+The Sandbox SDK (`@vercel/sandbox`) authenticates automatically via **OIDC on
+Vercel deployments** — no token needed. For local testing of the sandbox path,
+set `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, and `VERCEL_PROJECT_ID`. If
+`PAYONGREEN_SANDBOX=1` but auth is missing, `run` returns `503` (never executes
+on the host).
+
+Each `run` spins up a fresh microVM (writes the workspace → `git apply` → runs
+the suite → parses JUnit → tears down). For faster cold starts, pre-bake a
+sandbox snapshot with `git` installed and pass its id (see Vercel Sandbox docs).
 
 ## Verify The Deploy
 

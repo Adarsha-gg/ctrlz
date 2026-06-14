@@ -40,7 +40,9 @@ import { commitPatch, verifyPatchReveal } from "@/lib/checkers/patchwork";
 import {
   payOnGreenDemoInProc,
   runInProcess,
+  runInSandbox,
   runTests,
+  sandboxConfigured,
   type InProcCase,
   type RunOutcome
 } from "@/lib/runner";
@@ -153,6 +155,7 @@ export async function POST(request: Request) {
   let replayCommand = DEFAULT_COMMAND;
   let replayReportPath = "report.xml";
   let runnerSource: "demo" | "caller-run" | "injected-results" = "injected-results";
+  let runnerExecutor: "in-process" | "vercel-sandbox" | "local-subprocess" | "injected" = "injected";
   let runOutcome: RunOutcome | null = null;
   let replayInProc:
     | { moduleSource: string; patch: string; exportName: string; cases: InProcCase[]; patchedSource: string }
@@ -185,28 +188,42 @@ export async function POST(request: Request) {
     replayCommand = ["ctrlz:in-process"];
     replayReportPath = "(in-process)";
     runnerSource = "demo";
+    runnerExecutor = "in-process";
   } else if (body.run && body.run.files) {
-    // Caller-supplied workspaces execute arbitrary code — gate behind an explicit
-    // sandbox opt-in. The command + report path are FIXED (no caller-chosen
-    // binary/args/env/read-path); callers may only supply files + a timeout.
-    if (process.env.PAYONGREEN_ALLOW_RUN !== "1") {
+    // Caller-supplied workspaces execute ARBITRARY CODE. The safe path is the
+    // isolated Vercel Sandbox (PAYONGREEN_SANDBOX=1). A local subprocess
+    // (PAYONGREEN_ALLOW_RUN=1) is permitted only for trusted dev boxes. The
+    // command + report path are FIXED; callers may only supply files + a timeout.
+    const useSandbox = process.env.PAYONGREEN_SANDBOX === "1";
+    const allowLocal = process.env.PAYONGREEN_ALLOW_RUN === "1";
+    if (!useSandbox && !allowLocal) {
       return NextResponse.json(
         {
           error:
-            "caller-supplied `run` executes arbitrary code and is disabled. Set PAYONGREEN_ALLOW_RUN=1 in a sandboxed environment, or use `demo`."
+            "caller-supplied `run` executes arbitrary code and is disabled. Set PAYONGREEN_SANDBOX=1 (isolated Vercel Sandbox) or, on a trusted dev box, PAYONGREEN_ALLOW_RUN=1 — or use `demo`."
         },
         { status: 403 }
       );
     }
+    if (useSandbox && !sandboxConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            "PAYONGREEN_SANDBOX=1 but the Vercel Sandbox is not authenticated. On Vercel this is automatic (OIDC); locally set VERCEL_TOKEN + VERCEL_TEAM_ID + VERCEL_PROJECT_ID."
+        },
+        { status: 503 }
+      );
+    }
+    const runSpec = {
+      files: body.run.files,
+      patch: diff,
+      command: DEFAULT_COMMAND,
+      reportPath: "report.xml",
+      ...(typeof body.run.timeoutMs === "number" ? { timeoutMs: body.run.timeoutMs } : {})
+    };
     let outcome: RunOutcome;
     try {
-      outcome = await runTests({
-        files: body.run.files,
-        patch: diff,
-        command: DEFAULT_COMMAND,
-        reportPath: "report.xml",
-        ...(typeof body.run.timeoutMs === "number" ? { timeoutMs: body.run.timeoutMs } : {})
-      });
+      outcome = useSandbox ? await runInSandbox(runSpec) : await runTests(runSpec);
     } catch (e) {
       return NextResponse.json(
         { error: `runner rejected workspace: ${(e as Error).message}` },
@@ -218,6 +235,7 @@ export async function POST(request: Request) {
     runMeta = runMetaOf(outcome);
     replayFiles = body.run.files;
     runnerSource = "caller-run";
+    runnerExecutor = useSandbox ? "vercel-sandbox" : "local-subprocess";
   }
 
   if (typeof diff !== "string" || diff.length === 0) {
@@ -325,7 +343,13 @@ export async function POST(request: Request) {
       command: replayCommand,
       reportPath: replayReportPath,
       node: runnerSource === "demo" ? "ctrlz:in-process (pure JS, Vercel-safe)" : "node --test",
-      sandbox: process.env.PAYONGREEN_ALLOW_RUN === "1" ? "external-sandbox-required" : "baked-demo-or-injected"
+      executor: runnerExecutor,
+      sandbox:
+        runnerExecutor === "vercel-sandbox"
+          ? "vercel-sandbox (isolated microVM)"
+          : runnerExecutor === "local-subprocess"
+            ? "local-subprocess (trusted dev only)"
+            : "in-process (baked demo / injected)"
     },
     workspace: replayFiles ? { files: replayFiles } : undefined,
     inProcess: replayInProc,

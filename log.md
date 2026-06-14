@@ -9,6 +9,26 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-14 · agent (Claude) · Vercel Sandbox for the untrusted `run` path
+
+- **Did:** Added `web/lib/runner/sandbox.ts` (`runInSandbox`) — runs untrusted
+  worker patches inside an ephemeral **Vercel Sandbox** microVM (write workspace →
+  `git apply` → `node --test` → parse JUnit → tear down). Same `RunSpec →
+  RunOutcome` contract as the local runner, so it's a drop-in. SDK: `@vercel/
+  sandbox` (added to web deps).
+- **Route gating:** the `run` branch now picks an executor —
+  `PAYONGREEN_SANDBOX=1` → isolated microVM (the safe path; OIDC auto-auth on
+  Vercel), `PAYONGREEN_ALLOW_RUN=1` → local subprocess (trusted dev only), else
+  `403`. `PAYONGREEN_SANDBOX=1` without auth → `503` (never runs on the host).
+  Replay bundle records the executor.
+- **Verified locally:** tsc clean; module loads (SDK import resolves → bundles in
+  Next); `sandboxConfigured()` false without creds → 503 not a crash. Live microVM
+  execution validates on Vercel (OIDC) — can't exercise locally without a token.
+- **Docs:** VERCEL.md runner table (sandbox vs local), `.env.example`
+  (`PAYONGREEN_SANDBOX` + VERCEL_* for local), deploy/status reports sandbox state.
+- **Next (perf):** pre-bake a sandbox snapshot with git installed for sub-second
+  cold starts.
+
 ## 2026-06-14 · agent (Claude) · Vercel-safe in-process runner + settle wiring
 
 - **Vercel blocker fixed:** the demo path spawned `git apply` + `node --test` —
