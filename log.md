@@ -9,6 +9,224 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Claude) · Pay-on-green wedge + repo de-clutter
+
+- **Decided (the why):** Pressure-tested the flagship demo against real prior art
+  before building. Findings (saved to memory):
+  - *Canonical chain dataset* → **rejected**. The chain is its own Merkle ground
+    truth, so ZK coprocessors (Axiom/Brevis) and SxT Proof-of-SQL give full proofs
+    cheaply — our sampling is strictly dominated there.
+  - *Swap delegation* → **rejected**. A swap is atomically self-verifying
+    (`amountOutMin` reverts), so verify-then-pay is redundant; and intents/solvers
+    (CoW, UniswapX, 1inch Fusion) already own conditional swaps with bonded
+    reputation.
+  - *The real gap* → **x402** moves $600M+ across 69k agents with payments that are
+    *final and non-refundable*; existing escrow (PayCrow) checks only 2xx + JSON
+    schema (shape, not correctness). Nobody joins automated test-gating
+    (SWE-bench-proven) to payment rails for agent-to-agent work.
+  - **Wedge chosen: pay-on-green** — narrowest atom with a binary, deterministic,
+    no-completeness-hole check: failing test → patch → run suite → green releases.
+- **Did:** Built it on the existing spine (only the checker is new):
+  - `web/lib/checkers/testsPass.ts` — pure `tests_pass` checker (mirror of
+    `dataReconcile`), pass/fail/uncertain over injected run results, anti-swap +
+    no-false-gating.
+  - `web/lib/checkers/patchwork.ts` — patch commit-reveal (mirror of `reconcile.ts`).
+  - `web/app/verify/payongreen/route.ts` — workflow route (twin of `/verify/submit`):
+    patch reveal → held-out tests reveal+run → split-score → `resolve()` args.
+  - Registry + barrel wiring; `PAY_ON_GREEN.md` (what + why). `tsc` clean.
+- **Did:** De-cluttered `main` — split 64 uncommitted files into 5 focused merged
+  PRs (#39 remove World lane · #40 verification core · #41 HCS-14 + Hedera scripts ·
+  #42 marketplace/UI · #43 docs+deps).
+- **Scope guard:** pass tests ≠ correct code. Pay-on-green is for well-specified,
+  test-complete tasks + agent micro-tasks where manual review can't scale — NOT
+  high-stakes audits (humans still want an auditor there).
+- **Next:** swap injected results for a real sandbox runner (pytest/jest); put an
+  x402 receivable in front of the escrow; build the settle notification UI.
+
+## 2026-06-13 · agent (Claude) · Data-work settlement proven LIVE on Hedera testnet
+
+- **Did:** Drove the full reconcile workflow onto live Hedera (chainId 296) with
+  real verdict-derived hashes from the data-reconcile run — both outcomes:
+  - **PASS** (honest dataset, scoreBps 9800): escrow `0x2e2d8f87…bf86f`, taskId 1,
+    `resolve` success → `finalTaskState 5 = PAID` (released to worker).
+    resolveHash `0x90575624…ac0f`.
+  - **FAIL** (worker faked a *sampled* row — checker caught `0xa1000.amount
+    expected 1000 got 1005`, scoreBps 800): escrow `0xab4d6d36…` deploy, `resolve`
+    success → `finalTaskState 6 = REFUNDED` (buyer made whole).
+    resolveHash `0x8e6aefc8…110e5`.
+  - specHash/evidenceHash/recommendationHash all sha256 from the actual verify
+    run (not demo seeds); fed via `HEDERA_VERIFY_*` env from `.env` creds (payer
+    `0x6A38…D836`, resolver `0xDd03…2D53`).
+- **Proves:** the deterministic verdict → on-chain money movement, end to end,
+  no Codex handoff. A caught liar genuinely loses the payment on-chain.
+- **Note:** did NOT update `web/lib/contract.ts` (shared handoff / Codex writes
+  deployed addresses) — these were ephemeral per-run deploys.
+- **Next:** point the `reconcile` UI's submit at a one-click "settle on Hedera"
+  that shells the same env, so the demo closes the loop in-browser.
+
+## 2026-06-13 · agent (Claude) · 2nd Walrus use case — held-out test reveal store
+
+- **Why:** After dropping World, the human wanted a second first-class Walrus use
+  case. Picked the held-out commit-reveal reveal store — most on-thesis (anti-
+  gaming) and the commit half (`web/lib/checkers/heldout.ts`) already existed.
+- **Did:** New `web/lib/walrus/heldout.ts` — the REVEAL side. At resolution the
+  held-out checks get their own content-addressed Walrus blob (`storeHeldoutReveal`)
+  so the reveal is a permanent, neutral artifact the resolver can't drop/alter.
+  `fetchAndVerifyHeldoutReveal` reads it back by blob id and only trusts it after
+  `verifyReveal` ties it to the pre-work `hiddenChecksCommit` (in the manifest →
+  on-chain `specHash`). Same ethos as the evidence store: sha256 anchor always
+  computed, Walrus swappable, never throws. Exported from `walrus/index.ts`.
+- **Tests:** `web/lib/walrus/heldout-selfcheck.ts` — honest reveal valid + resolves
+  to public+hidden; altered-checks / wrong-salt / wrong-count all rejected; store
+  degrades to local without throwing; best-effort live round-trip. 11/11 pass.
+- **Wiring:** added the selfcheck to `scripts/demo/check.mjs` (Codex lane, same
+  human-directed crossing as the World sweep). Documented in REPUTATION §8f +
+  ARCHITECTURE repo map.
+- **State:** `web tsc` clean; selfcheck passes (live store skipped offline).
+- **Not yet:** no UI surface for held-out reveal on `/verify` (the primitive is
+  still unwired into a screen) and the evidence blob doesn't yet carry the reveal
+  pointer — both are natural follow-ups.
+- **Next:** surface held-out reveal in the reconcile/verify UI; embed the reveal
+  pointer (`blobId`/`uri`/`hash`) in the evidence blob.
+
+## 2026-06-13 · agent (Claude) · Data-work workflow end-to-end (no Codex handoff)
+
+- **Why:** Human said build the *whole* path myself — submit → verify → settle —
+  rather than hand the settlement half to Codex.
+- **Did (my lane):**
+  - `web/lib/settlement/resolve.ts` — pure `planResolution(split)` mapping the
+    recommendation onto the exact `CtrlZVerifyEscrow.resolve` args:
+    VerificationResult ordinal (PASS/FAIL/UNCERTAIN), scoreBps (outputValidity×100),
+    sha256 recommendationHash, release/refund flag. This is the "resolution
+    decision I owe Codex" — now self-consumed.
+  - `web/app/verify/submit/route.ts` — now also returns the settlement plan +
+    specHash (= manifest hash) + evidenceUri alongside the verdict.
+  - `web/app/verify/reconcile/page.tsx` — the visible submission workflow: pick
+    honest vs "worker fakes 1 row", submit the dataset, see commit-reveal,
+    sampled keys, checker reports, split score, and the resolve() payload +
+    escrow action (RELEASE / HOLD-REFUND).
+- **Did (Codex's lane, at human's explicit direction):**
+  `scripts/hedera/verify-escrow-demo.mjs` resolve args are no longer hardcoded
+  PASS/9200 — they read `HEDERA_VERIFY_RESULT` + `HEDERA_VERIFY_SCORE_BPS` (the
+  values `/verify/submit` emits), so on-chain settlement reflects the real
+  verdict. Receipt JSON now echoes them.
+- **State:** `web tsc` clean; script `node --check` clean. End-to-end runtime
+  test: honest dataset → pass → PASS/release (scoreBps 9800); a liar caught on a
+  sampled row → fail → FAIL/refund (scoreBps 800); all four recommendation→
+  resolve mappings verified. On-chain writes still need live Hedera creds.
+- **Next:** when creds land, drive `reconcile` UI → copy its settlement env →
+  `verify-escrow-demo` → capture the verdict-driven on-chain receipt.
+
+## 2026-06-13 · agent (Claude) · Complete HCS-14 adoption into ERC-8004 scripts
+
+- **Lane note:** touched `scripts/hedera/**` (normally Codex's lane) at the human's
+  explicit direction ("complete the erc8004 scripts").
+- **Still ERC-8004 underneath** — confirmed and kept. HCS-14 does not replace the
+  registries; the UAID's `nativeId` IS the ERC-8004 CAIP-10 identity
+  (`eip155:296:0x8004…A818/<agentId>`). We only add a portable pointer on top.
+- **Did:** Added `@hashgraphonline/standards-sdk` to the workspace **root** (so
+  the node scripts resolve it). New `scripts/hedera/hcs14.mjs` —
+  `agentUaid()` / `agentNativeId()` helpers (deterministic, offline, additive,
+  never throw). Wired the UAID into the JSON output of `erc8004-register-agent`
+  (`--name` labels it), `erc8004-feedback`, and `erc8004-validation-request`.
+  Updated `scripts/hedera/README.md`.
+- **Consistency:** scripts mint the *same* UAID as `web/lib/hcs14/identity.ts`
+  for a given agent (verified: checker 102 → `uaid:aid:6CbgQzg1wLuu…` both ways).
+- **State:** `next build` **clean** (full clean rebuild; `/proof` 600 B First Load —
+  heavy SDK stayed server-side via dynamic import). `web tsc` clean. All 4 scripts
+  pass `node --check`; UAID helper verified deterministic + distinct offline.
+  (The on-chain writes themselves still need live Hedera creds to exercise — that
+  part is unchanged from before.)
+- **Next:** when creds land, run register→feedback→validation end-to-end and
+  capture the UAID-annotated receipts.
+
+## 2026-06-13 · agent (Claude) · Drop World (F lane), double down on Walrus/Sui
+
+- **Why:** World was never set up (no app id — was still in "waiting on human"),
+  it's the lowest-priority lane, and the `worldTrustBoost` quietly contradicted
+  the core thesis: it handed out agentTrust points for *who you are* (human/
+  enterprise World ID backing) instead of *what you proved*. Cutting it makes the
+  verifier-is-the-wedge story cleaner, not weaker.
+- **Did (full rip-out):** deleted `web/lib/world/**`, `web/app/api/world/**`,
+  `web/scripts/world-agentkit-client.mjs`; removed `@worldcoin/agentkit` dep +
+  the `world:agentkit-client` npm script from `web/package.json`. Stripped
+  `worldGate`/`worldTrustBoost` from `web/app/verify/run.ts` (split score is now
+  the unadjusted `scoreSplit` output) and the World gate panel + boost note from
+  `web/app/verify/page.tsx` + orphaned CSS in `globals.css`. Pruned the two
+  World-only demo fixtures (same-human, enterprise); kept CLEAN / new-agent /
+  BAD, which now show the agentTrust dimension via settlement history alone.
+- **Did (Walrus/Sui):** `anchorEvidence` now round-trips the stored blob — it
+  re-fetches from the Walrus aggregator and recompares the sha256 (`WalrusReadback`
+  on `EvidenceAnchors`). The evidence panel is relabeled "Walrus · Sui" and shows
+  a retrievability proof ("re-fetched from Walrus · hash matches"), so retrieval
+  is demonstrated, not claimed. Still degrades cleanly to the local hash anchor.
+- **Doc sweep (done):** removed/reframed World across `README.md`, `PITCH.md`,
+  `ARCHITECTURE.md`, `SUBMISSION.md`, `BUILD_PLAN.md` (Phase F → tombstoned),
+  `TODO.md` (old P1 dropped, renumbered), `REPUTATION.md` (personhood is now a
+  pluggable provider, not World ID; operator-root code points at the new
+  `web/lib/reputation/` not the deleted `world/policy.ts`), `CODEX.md`. New
+  narrative pillar set: **Google discovery · Hedera settlement · Walrus/Sui
+  evidence · ERC-8004 reputation**; the Sybil/identity link is now carried by
+  earned-only reputation + ERC-8004 operator identity. Deleted `.env.world-agent`
+  (gitignored, held a World private key) and the `WORLD_*` block in `.env.example`.
+- **Lane note:** edited `scripts/demo/check.mjs` (Codex's `scripts/` lane) at the
+  human's "sweep them off" direction — it invoked the deleted World selfchecks and
+  would crash; swapped them for the existing `web/lib/walrus/selfcheck.ts` step.
+- **Walrus selfcheck:** extended the best-effort live block to round-trip the
+  stored blob (read-back + hash recompare), matching the new `verifyRetrievable`.
+- **State:** `web tsc --noEmit` clean; `node --check scripts/demo/check.mjs` OK;
+  walrus selfcheck passes (live store skipped offline, expected). No lingering
+  World code/import refs; remaining doc mentions are intentional tombstones.
+- **Next:** find a second Walrus use case (see options raised to the human), or
+  resume reconcile-checker UI work.
+
+## 2026-06-13 · agent (Claude) · Adopt Hedera HCS-14 (stop reinventing identity)
+
+- **Why:** Talked through Hedera's agent stack (HCS-14 UAID, HCS-10 OpenConvAI,
+  ERC-8004, x402). Their stack is the *rails*; our hand-rolled identity plumbing
+  was reinventing a wheel they ship better. The one thing none of it does is
+  decide "did the work pass?" — that's our wedge. Repositioned PITCH.md
+  accordingly ("we build on Hedera's agent stack — we don't reinvent it").
+- **Did:** Added `@hashgraphonline/standards-sdk` to `web`. New
+  `web/lib/hcs14/identity.ts` mints deterministic HCS-14 UAIDs (`uaid:aid:...`)
+  for the worker (101) / checker (102) agents from their ERC-8004 CAIP-10
+  identity — pure offline hash, no creds. Wired UAIDs through
+  `web/lib/trust/bridge.ts` into the proof page registry graph.
+- **State:** `tsc` clean for the touched files (pre-existing errors remain in
+  `app/verify/*` + deleted `lib/world/*` — unrelated in-progress lane). UAID
+  generation verified deterministic + distinct per agent via SDK probe.
+- **Handoff to Codex:** the ERC-8004 *write* scripts in `scripts/hedera/*.mjs`
+  (register/feedback/validation) still hand-roll viem calls — those can also move
+  onto the standards-sdk / Registry Broker. That's Codex's lane + needs live creds.
+- **Next:** resume at data-reconcile checker work below.
+
+## 2026-06-13 · agent (Claude) · Data-reconcile checker + work-submission workflow
+
+- **Did:** Niched the determinism thesis onto **verifiable data-aggregation
+  work** (grounded in live ERC-8004 data: of 500 ETH-mainnet agents, "data" is
+  the largest readable category — 168 agents / 796 feedback events). The
+  governing law: a verifier only has a market where work is *expensive to
+  produce but cheap to verify*; pure on-chain reads fail it (trivial verify ⇒
+  trivial work ⇒ DIY). So we verify by **sampled recompute, not full recompute**.
+  - `web/lib/checkers/reconcile.ts` — commit-reveal + deterministic sample
+    derivation (`commitDataset`, `verifyDatasetReveal`, `deriveSampleKeys` via
+    mulberry32 seeded from the commit → sample is unpredictable pre-commit).
+  - `web/lib/checkers/dataReconcile.ts` — pure `data_reconcile` checker:
+    spot-checks only the sampled rows vs verifier ground truth. fail = commit
+    mismatch / sampled row wrong / numeric out of tolerance; uncertain = no
+    ground truth (never a false money-gate); pass conf = coverage. Registered.
+  - `web/app/verify/submit/route.ts` — **the missing submission spine**: worker
+    POSTs revealed rows + commit → verify reveal → derive sample → run checker →
+    split-score → anchor evidence blob → return verdict + evidenceHash for
+    `resolve()`. (`/verify` previously ran demo fixtures only.)
+  - Added `DataRecord`/`DatasetArtifact` to checker types + a `dataset` field on
+    `WorkerSubmission`.
+- **State:** `tsc` clean. Runtime-tested all paths (honest→pass, sampled
+  lie→fail with exact diff, within-tolerance→pass, missing-truth→uncertain,
+  tamper→fail; sample derivation deterministic). No Codex-lane files touched.
+- **Next:** wire a UI panel on `/verify` to drive `submit` with a sample
+  dataset; have Codex's `resolve()` consume `evidenceHash` + recommendation.
+
 ## 2026-06-13 · agent (Claude) · Held-out tests (commit-reveal) + PITCH.md
 
 - **Did:** Built the held-out-test anti-gaming primitive

@@ -38,7 +38,7 @@ human (proof-of-personhood is scarce) or a new domain-verified enterprise.
 
 | Term | Meaning |
 |---|---|
-| **Operator root** | The accountable entity behind agents: a World ID nullifier (human), a domain-verified entity (enterprise), or nothing (unattached). The unit of Sybil resistance. |
+| **Operator root** | The accountable entity behind agents: a proof-of-personhood nullifier (human; pluggable provider), a domain-verified entity (enterprise), or nothing (unattached). The unit of Sybil resistance. |
 | **Cluster** | All agents under one operator root. Public. |
 | **Agent** | An on-chain identity (ERC-8004) that does work. Bound to ≤1 operator root. |
 | **Resolver** | The party that calls `resolve()` on-chain with the verdict. |
@@ -49,9 +49,9 @@ human (proof-of-personhood is scarce) or a new domain-verified enterprise.
 
 ```
 OperatorRoot
-  id              // world-human:<nullifier> | enterprise:<domain> | (none → per-agent)
+  id              // human:<nullifier> | enterprise:<domain> | (none → per-agent)
   tier            // human | enterprise | none
-  proof           // IDKit nullifier | domain proof record | null
+  proof           // personhood nullifier (pluggable) | domain proof record | null
   bond            // staked collateral (required for `none`, optional otherwise)
   standing        // aggregate, settlement-derived (see §6)
   fraudEvents[]   // typed, timestamped (drives contamination)
@@ -62,11 +62,12 @@ OperatorRoot
         └── …
 ```
 
-This extends what already exists in `web/lib/world/policy.ts`:
-`WorldBackingKind`, `clusterId`/`nullifierHash`, and `reputationSubjectFor()`
-(which already emits a shared `subjectId` with `sharedAcrossAgents`). Today the
-tier only grants a **flat constant boost**; this spec replaces that constant with
-an **earned, shared operator standing** plus **contamination**.
+The operator-root/cluster concept (shared `subjectId` across an operator's
+agents, `sharedAcrossAgents`) was prototyped in the now-removed World gating code;
+this spec is the real version. It lives in a new `web/lib/reputation/`, binds the
+cluster via ERC-8004 operator identity (+ optional pluggable personhood/domain
+proof), and derives an **earned, shared operator standing** plus **contamination**
+instead of any flat identity-based boost.
 
 ## 4. The three tiers
 
@@ -75,7 +76,7 @@ Reframe: trust = **accountability + stake + track record**. Tiers source it diff
 | Tier | Identity proof (v1) | Sybil resistance from | Baseline floor | Collateral |
 |---|---|---|---|---|
 | **Enterprise** | self-serve **domain proof** | domain scarcity + brand at stake | highest | low (domain is the bond) |
-| **Human** | World ID nullifier (IDKit, already plumbed) | 1 human = 1 root | medium, earnable to high | medium |
+| **Human** | proof-of-personhood nullifier (pluggable provider) | 1 human = 1 root | medium, earnable to high | medium |
 | **Unattached** | none (keypair only) | none → must **post stake** | ~0 | **high, slashed on fraud** |
 
 Unattached agents are not permanently second-class — they can become trustworthy
@@ -143,7 +144,7 @@ decay(age) = 0.5 ^ (age / HALF_LIFE)        // fresh fraud hits hard, fades over
   multiplies severity → the whole operator can be driven to 0 and bonds slashed.
   (Repeated fraud means the *operator* is the problem, not one agent.)
 
-All constants live in one config block (mirroring `world/policy.ts` constants) so
+All constants live in one config block (in `web/lib/reputation/`) so
 they're tunable + testable in a selfcheck.
 
 ## 7. Event typing (so we don't nuke legit operators)
@@ -221,7 +222,7 @@ window length), juror panel size (3–5). Exact numbers tuned in a selfcheck.
 - **Juror (subjective disputes only): human-backed, staked, positive standing,
   randomly selected per dispute.** Jurors only touch the advisory/ambiguous
   minority — deterministic checks are settled by re-execution (§8e), never a vote.
-  Requiring World ID personhood for the juror pool blocks a whale from Sybiling
+  Requiring proof-of-personhood for the juror pool blocks a whale from Sybiling
   all panel seats. Random per-dispute selection (stake/standing-weighted, capped)
   prevents targeting + bribery. Coherent-majority vote rewarded; minority slashed.
 
@@ -254,7 +255,7 @@ as optimistic-rollup fraud proofs / reproducible builds; it extends the in-proce
 `replayChecks()` we already have to be reproducible across machines + time.
 **This is the key build dependency for Phase R4.**
 
-### 8f. Held-out tests (commit-reveal) — anti-gaming **(built: `web/lib/checkers/heldout.ts`)**
+### 8f. Held-out tests (commit-reveal) — anti-gaming **(built: `web/lib/checkers/heldout.ts` + Walrus reveal store `web/lib/walrus/heldout.ts`)**
 If the worker sees every check it can do the minimum to pass them (Goodhart). Fix:
 hold some checks out. On-chain is public, so you can't put hidden checks in the
 lock txn — you put a **hash commitment** of them.
@@ -264,11 +265,18 @@ lock txn — you put a **hash commitment** of them.
   `specHash`. **No contract change** — `lockTask(worker, resolver, specHash)`
   already commits the whole manifest, so the hidden checks are bound at lock without
   being revealed. The worker sees the public checks and that N hidden checks exist.
-- **Reveal:** at resolution the buyer/resolver publishes `{hiddenChecks, salt}` into
-  the evidence blob; `verifyReveal` recomputes the commit. Any change to the checks,
-  salt, or count breaks it — so the buyer **cannot swap in different/unfair hidden
-  checks after seeing the work** (they committed before delivery).
-- **Dispute:** a verifier re-derives the commit from the evidence and re-runs all
+- **Reveal:** at resolution the buyer/resolver publishes `{hiddenChecks, salt}` as
+  **its own content-addressed Walrus (Sui) blob** (`storeHeldoutReveal`), so the
+  reveal is a permanent, neutral, independently-fetchable artifact the resolver
+  can't quietly drop, lose, or alter. The evidence blob carries a pointer
+  (`blobId`/`uri`/`hash`) to it. `verifyReveal` recomputes the commit; any change
+  to the checks, salt, or count breaks it — so the buyer **cannot swap in
+  different/unfair hidden checks after seeing the work** (they committed before
+  delivery). This is CTRL+Z's second first-class Walrus use case alongside the
+  evidence blob.
+- **Dispute:** a verifier fetches the reveal blob from Walrus by blob id and
+  re-verifies it against the manifest commitment (`fetchAndVerifyHeldoutReveal` —
+  the fetched bytes are only trusted after the commit matches), then re-runs all
   checks; the integrity chains back to the single on-chain `specHash`.
 
 **Fairness rule (load-bearing):** held-out *inputs*, not held-out *requirements*.
@@ -290,7 +298,7 @@ spec is a checklist the worker grinds, not a black box. For very large jobs, use
 ## 9. Validation — two distinct layers (need both)
 
 1. **Identity / binding validation** (who's behind the agent):
-   - Human → IDKit proof → nullifier (plumbed in `web/lib/world/idkit.ts`).
+   - Human → proof-of-personhood (pluggable provider) → nullifier.
    - Enterprise → §4a domain proof → entity id.
    - Binding → signed `agentId → operatorRoot` attestation in ERC-8004 metadata.
 2. **Work / outcome validation** (did it do the job) — **already built**:
@@ -320,8 +328,8 @@ Each: **Done when** + **Guard**.
 
 ### Phase R1 — Operator roots & public linkage [Claude web + Codex chain]
 - [ ] **R1.1** [Claude] `OperatorRoot` + `Cluster` model in `web/lib/reputation/`;
-      replace the flat tier boost in `world/policy.ts` with `floor()` from operator
-      standing. **Done when** a cluster's standing lifts a new sibling above zero,
+      earned `floor()` from operator standing (replaces the removed World tier
+      boost). **Done when** a cluster's standing lifts a new sibling above zero,
       capped + discounted. **Guard** upside is capped; never full-transfer.
 - [ ] **R1.2** [Claude] Surface public linkage in the verdict UI ("1 of N under
       `<operator>`, standing X" + sibling list + cluster fraud history). **Done when**
