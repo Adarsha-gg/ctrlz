@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 
-type ActiveSurface = "marketplace" | "verify" | "buyer" | "cli" | "proof";
+type ActiveSurface = "marketplace" | "verify" | "reputation" | "buyer" | "cli" | "proof";
 
 const navItems: Array<{ key: ActiveSurface; label: string; href: string }> = [
   { key: "marketplace", label: "Marketplace", href: "/marketplace" },
   { key: "verify", label: "Verify", href: "/verify" },
+  { key: "reputation", label: "Reputation", href: "/reputation" },
   { key: "buyer", label: "Buyer Demo", href: "/buyer" },
   { key: "cli", label: "Agent CLI", href: "/cli" },
   { key: "proof", label: "Proof", href: "/proof" }
