@@ -59,7 +59,12 @@ export function deploymentStatus() {
     },
     payOnGreenRunner: {
       demoEnabled: true,
-      callerRunEnabled: process.env.PAYONGREEN_ALLOW_RUN === "1"
+      demoExecutor: "in-process",
+      sandboxEnabled: process.env.PAYONGREEN_SANDBOX === "1",
+      sandboxAuthenticated:
+        !!process.env.VERCEL_OIDC_TOKEN ||
+        (!!process.env.VERCEL_TOKEN && !!process.env.VERCEL_TEAM_ID && !!process.env.VERCEL_PROJECT_ID),
+      localSubprocessEnabled: process.env.PAYONGREEN_ALLOW_RUN === "1"
     },
     walrus: {
       configured: true,
