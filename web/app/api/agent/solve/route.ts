@@ -35,6 +35,7 @@ export async function POST(request: Request) {
   const x402 = await verifyX402ForRequest(request, {
     payTo:
       process.env.HEDERA_WORKER_ADDRESS ||
+      process.env.HEDERA_RESOLVER_ADDRESS ||
       process.env.X402_PAY_TO ||
       process.env.X402_RECEIVER_ADDRESS,
     network: process.env.X402_HEDERA_NETWORK || "eip155:296",

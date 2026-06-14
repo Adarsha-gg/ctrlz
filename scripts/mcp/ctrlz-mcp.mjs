@@ -123,7 +123,7 @@ const tools = [
         paymentHeader: {
           type: "string",
           description:
-            "Optional base64 x402 PAYMENT-SIGNATURE override. If omitted, the MCP server negotiates from PAYMENT-REQUIRED and retries."
+            "Optional payment header override. If omitted, the MCP server negotiates from PAYMENT-REQUIRED and retries."
         }
       },
       additionalProperties: false
@@ -411,12 +411,24 @@ function choosePaymentPolicy(agent, requested, threshold) {
 
 function directSettlementReceipt(run, paymentPolicy) {
   if (paymentPolicy !== "direct-x402") return null;
+  const receipt = run.x402?.receipt ?? null;
+  if (receipt?.mode !== "hedera-direct") {
+    return {
+      mode: "direct-x402-unsettled",
+      chain: run.paymentPolicy?.network ?? run.x402?.requirements?.network ?? "eip155:296",
+      asset: run.paymentPolicy?.asset ?? run.x402?.requirements?.asset ?? "HBAR",
+      payTo: run.paymentPolicy?.payTo ?? run.x402?.requirements?.payTo,
+      receipt,
+      note:
+        "Trusted direct x402 was selected, but the backend did not return a Hedera direct receipt. Deploy the direct-worker x402 backend or call the deterministic direct path."
+    };
+  }
   return {
     mode: "direct-x402",
-    chain: run.paymentPolicy?.network ?? "eip155:296",
-    asset: run.paymentPolicy?.asset ?? "HBAR",
-    payTo: run.paymentPolicy?.payTo,
-    receipt: run.x402?.receipt ?? null,
+    chain: run.paymentPolicy?.network ?? run.x402?.requirements?.network ?? "eip155:296",
+    asset: run.paymentPolicy?.asset ?? run.x402?.requirements?.asset ?? "HBAR",
+    payTo: run.paymentPolicy?.payTo ?? run.x402?.requirements?.payTo,
+    receipt,
     note: "Trusted agent paid through x402 V2 with Hedera testnet settlement; escrow settlement skipped."
   };
 }
@@ -666,7 +678,7 @@ function trimSource(source) {
 }
 
 function paymentHeaders(value) {
-  const signature = value ?? process.env.CTRLZ_PAYMENT_HEADER;
+  const signature = value;
   return signature ? { "PAYMENT-SIGNATURE": signature, "x-payment": signature } : {};
 }
 
@@ -686,6 +698,13 @@ function createPaymentSignature(data, response) {
     throw new Error("Backend returned 402 without x402 payment requirements");
   }
   const paymentIdentifier = `ctrlz-mcp:${Date.now()}:${randomUUID()}`;
+  if (requirement.extra?.settlement !== "direct-worker-trusted") {
+    if (process.env.CTRLZ_PAYMENT_HEADER) return process.env.CTRLZ_PAYMENT_HEADER;
+    if (process.env.CTRLZ_ALLOW_DEMO_X402 === "1") return `demo-x402:${paymentIdentifier}`;
+    throw new Error(
+      "Backend returned a non-direct x402 quote. Set CTRLZ_PAYMENT_HEADER for a real facilitator payment, or CTRLZ_ALLOW_DEMO_X402=1 for the demo receipt path."
+    );
+  }
   return encodeBase64Json({
     x402Version: 2,
     scheme: requirement.scheme,

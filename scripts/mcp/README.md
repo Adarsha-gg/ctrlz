@@ -43,7 +43,8 @@ Optional env:
 - `CTRLZ_API_BASE`: backend base URL. Defaults to `https://ctrlz-zeta.vercel.app`.
 - `CTRLZ_VERCEL_BYPASS_TOKEN`: Vercel Protection Bypass for Automation token when Deployment Protection is enabled.
 - `VERCEL_AUTOMATION_BYPASS_SECRET`: alternate env name for the same bypass token.
-- `CTRLZ_PAYMENT_HEADER`: optional base64 x402 `PAYMENT-SIGNATURE` override. Usually leave unset; the MCP server negotiates from `PAYMENT-REQUIRED` and retries automatically.
+- `CTRLZ_PAYMENT_HEADER`: optional fallback payment header for non-direct/demo routes. Usually leave unset; direct Hedera x402 negotiates from `PAYMENT-REQUIRED` and retries automatically.
+- `CTRLZ_ALLOW_DEMO_X402`: set to `1` only when intentionally testing the legacy `demo-x402:<id>` non-direct receipt path.
 - `CTRLZ_MCP_TIMEOUT_MS`: backend request timeout. Defaults to `120000`.
 - `TRUSTED_DIRECT_X402_THRESHOLD`: minimum score for automatic Hedera direct x402. Defaults to `80`.
 

@@ -39,7 +39,8 @@ These are the main things you can set on the MCP process:
 | `CTRLZ_API_BASE` | `https://ctrlz-zeta.vercel.app` | Backend URL the MCP server calls. Set this for preview deployments or custom domains. |
 | `CTRLZ_VERCEL_BYPASS_TOKEN` | unset | Vercel Protection Bypass for Automation token. Required when Deployment Protection is enabled. |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` | unset | Alternate env name for the same Vercel bypass token. |
-| `CTRLZ_PAYMENT_HEADER` | unset | Optional base64 x402 `PAYMENT-SIGNATURE` override. If unset, the MCP server negotiates from `PAYMENT-REQUIRED` and retries automatically. |
+| `CTRLZ_PAYMENT_HEADER` | unset | Optional fallback payment header for non-direct/demo routes. Direct Hedera x402 normally ignores this and negotiates from `PAYMENT-REQUIRED`. |
+| `CTRLZ_ALLOW_DEMO_X402` | unset | Set to `1` only when intentionally testing the legacy `demo-x402:<id>` non-direct receipt path. |
 | `CTRLZ_MCP_TIMEOUT_MS` | `120000` | Backend request timeout in milliseconds. |
 | `TRUSTED_DIRECT_X402_THRESHOLD` | `80` | Minimum trust score for automatic Hedera direct x402 instead of escrow. |
 
