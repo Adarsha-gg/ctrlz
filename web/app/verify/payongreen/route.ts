@@ -7,19 +7,23 @@
  * tests once), binary (green or not). This route is the spine — a near-twin of
  * /verify/submit, but the artifact is a patch and the checker is `tests_pass`.
  *
+ * Ground truth comes from one of three sources, in priority order:
+ *   demo    → a baked fixture run for REAL on `node --test` (green / cheat)
+ *   run     → a caller-supplied workspace, patched + run for REAL by the runner
+ *   results → pre-injected TestResult[] (the original inject-first path)
+ *
  * Flow (commit-reveal, mirrors /verify/submit + held-out tests):
- *   1. Worker reveals its `patch` (diff) + the `patchCommit` it locked. We verify
- *      the reveal hashes to the commit (anti-swap).
- *   2. The verifier's run of the suite against that patch (`results`) is injected
- *      onto the check — the exact analog of data_reconcile's re-fetched `sample`.
- *      (Inject-first; a real sandbox runner is a drop-in behind this interface.)
+ *   1. Worker's patch (diff) is verified against its commit (anti-swap).
+ *   2. The runner applies the patch and RUNS the suite → TestResult[] ground
+ *      truth (the analog of data_reconcile's re-fetched `sample`).
  *   3. The deterministic `tests_pass` checker compares the run against the
  *      acceptance set → pass/fail. Held-out tests (buyer's hidden suite) are
  *      committed pre-work and revealed here, run alongside the public set.
  *   4. Split-score it, anchor a replayable evidence blob, return the verdict +
  *      hashes the escrow `resolve()` consumes. Green → release; red → refund.
  *
- * The checkers decide; no LLM is in this path.
+ * The checkers decide; no LLM is in this path. nodejs runtime — the runner
+ * spawns a child process and touches the filesystem.
  */
 
 import { NextResponse } from "next/server";
@@ -33,6 +37,7 @@ import {
 } from "@/lib/checkers";
 import { buildHeldoutManifest, randomSalt } from "@/lib/checkers/heldout";
 import { commitPatch, verifyPatchReveal } from "@/lib/checkers/patchwork";
+import { payOnGreenDemo, runTests, type RunOutcome } from "@/lib/runner";
 import { scoreSplit, type ScoredCheck } from "@/lib/scoring/score";
 import { planResolution } from "@/lib/settlement/resolve";
 import {
@@ -45,43 +50,58 @@ import {
   type HeldoutRevealPointer
 } from "@/lib/walrus";
 
+export const runtime = "nodejs";
+
+const DEFAULT_COMMAND = [
+  "node",
+  "--test",
+  "--test-reporter=junit",
+  "--test-reporter-destination=report.xml"
+];
+
 type PayOnGreenBody = {
   intent?: string;
   /** the worker's code patch, revealed at submit */
   patch?: { diff?: string; patchCommit?: string };
   /** the public acceptance tests the worker sees (names that MUST pass) */
   requiredTests?: string[];
-  /**
-   * The verifier's run of the FULL suite (public + any held-out) against the
-   * patch — ground truth, injected here like data_reconcile's `sample`. A real
-   * sandbox runner would produce this; inject-first lets the loop run end-to-end.
-   */
+  /** pre-injected run results (used only when neither `demo` nor `run` is given) */
   results?: TestResult[];
   /** the wallet the buyer would pay, for the evidence record */
   recipientAddress?: string;
   recipientName?: string;
-  /**
-   * Optional held-out audit (REPUTATION §8f): the buyer commits a secret set of
-   * test names it will additionally require, pre-work. The worker never sees
-   * WHICH tests — only that a held-out check exists — so it can't hardcode to the
-   * public set. Revealed at resolution, stored on Walrus, verified against the
-   * commit, and run alongside the public acceptance set.
-   */
+  /** buyer's held-out tests: committed pre-work, revealed + run at resolution */
   heldout?: {
-    /** the buyer's secret test names (run against the same `results`) */
     hiddenTests: string[];
-    /** salt for the hiding commitment (auto-generated if omitted) */
     salt?: string;
+  };
+  /** run a baked, self-contained fixture for real on `node --test` */
+  demo?: "green" | "cheat";
+  /** run a caller-supplied workspace for real (patch = `patch.diff`) */
+  run?: {
+    files: Record<string, string>;
+    command?: string[];
+    reportPath?: string;
+    timeoutMs?: number;
   };
 };
 
 function isTestResultArray(value: unknown): value is TestResult[] {
   return (
     Array.isArray(value) &&
-    value.every(
-      (r) => r && typeof r === "object" && typeof (r as TestResult).name === "string"
-    )
+    value.every((r) => r && typeof r === "object" && typeof (r as TestResult).name === "string")
   );
+}
+
+function runMetaOf(outcome: RunOutcome) {
+  return {
+    ran: true,
+    applied: outcome.applied,
+    exitCode: outcome.exitCode,
+    timedOut: outcome.timedOut,
+    reportFound: outcome.reportFound,
+    totalTests: outcome.results.length
+  };
 }
 
 export async function POST(request: Request) {
@@ -92,10 +112,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid JSON" }, { status: 400 });
   }
 
-  const diff = body.patch?.diff;
+  const intent = body.intent ?? "Deliver a patch that makes the acceptance suite green";
+  const recipientAddress = body.recipientAddress ?? "0x0000000000000000000000000000000000000000";
+
+  // --- Resolve ground truth: demo run > caller run > injected results ---------
+  let diff: string | undefined = body.patch?.diff;
+  let results: TestResult[] = body.results ?? [];
+  let requiredTests: string[] = Array.isArray(body.requiredTests) ? body.requiredTests : [];
+  let heldoutHidden: string[] | undefined = body.heldout?.hiddenTests;
+  let runMeta: ReturnType<typeof runMetaOf> | { ran: false } = { ran: false };
+
+  if (body.demo === "green" || body.demo === "cheat") {
+    const fx = payOnGreenDemo(body.demo);
+    const outcome = await runTests({
+      files: fx.files,
+      patch: fx.patch,
+      command: fx.command,
+      reportPath: fx.reportPath
+    });
+    diff = fx.patch;
+    results = outcome.results;
+    requiredTests = fx.requiredTests;
+    heldoutHidden = fx.hiddenTests;
+    runMeta = runMetaOf(outcome);
+  } else if (body.run && body.run.files) {
+    const outcome = await runTests({
+      files: body.run.files,
+      patch: diff,
+      command: body.run.command ?? DEFAULT_COMMAND,
+      reportPath: body.run.reportPath ?? "report.xml",
+      ...(typeof body.run.timeoutMs === "number" ? { timeoutMs: body.run.timeoutMs } : {})
+    });
+    results = outcome.results;
+    runMeta = runMetaOf(outcome);
+  }
+
   if (typeof diff !== "string" || diff.length === 0) {
     return NextResponse.json(
-      { error: "`patch.diff` must be a non-empty string" },
+      { error: "provide `demo`, a `run` workspace, or a non-empty `patch.diff`" },
       { status: 400 }
     );
   }
@@ -106,11 +160,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const intent = body.intent ?? "Deliver a patch that makes the acceptance suite green";
-  const recipientAddress = body.recipientAddress ?? "0x0000000000000000000000000000000000000000";
-  const requiredTests = Array.isArray(body.requiredTests) ? body.requiredTests : [];
-  const results = body.results ?? [];
-
   // 1. Commit-reveal integrity. If the worker locked a commit, the revealed diff
   //    must reproduce it; if it didn't supply one, we compute the canonical one.
   const patchCommit = body.patch?.patchCommit ?? (await commitPatch(diff));
@@ -118,18 +167,13 @@ export async function POST(request: Request) {
   const runVerified = await verifyPatchReveal(patch);
 
   // 2. The public check def (what the worker sees) + its runtime form (with the
-  //    verifier's injected run results). Per §8f, the committed def binds the
-  //    *requirement* (which tests must pass); `results` is the held-out input.
-  const publicDef: CheckSpec = {
-    type: "tests_pass",
-    hardGate: true,
-    requiredTests
-  };
+  //    verifier's injected/real run results).
+  const publicDef: CheckSpec = { type: "tests_pass", hardGate: true, requiredTests };
   const runtimePublic: CheckSpec = { ...publicDef, results, runVerified };
 
   // 2b. Optional held-out audit: the buyer's secret test names, committed
   //     pre-work and revealed here. Stored on Walrus, verified against the
-  //     commit, then run against the same injected results as the public set.
+  //     commit, then run against the same results as the public set.
   let runtimeChecks: CheckSpec[] = [runtimePublic];
   let resolvedDefs: CheckSpec[] = [publicDef];
   let heldoutReveal: HeldoutRevealPointer | undefined;
@@ -146,16 +190,11 @@ export async function POST(request: Request) {
     revealHash?: string;
   } = { used: false };
 
-  if (body.heldout && Array.isArray(body.heldout.hiddenTests) && body.heldout.hiddenTests.length > 0) {
-    const hiddenTests = body.heldout.hiddenTests;
-    const hiddenDef: CheckSpec = {
-      type: "tests_pass",
-      hardGate: true,
-      requiredTests: hiddenTests
-    };
-    const salt = body.heldout.salt ?? randomSalt();
+  if (heldoutHidden && heldoutHidden.length > 0) {
+    const hiddenTests = heldoutHidden;
+    const hiddenDef: CheckSpec = { type: "tests_pass", hardGate: true, requiredTests: hiddenTests };
+    const salt = body.heldout?.salt ?? randomSalt();
 
-    // Commit (binds the hidden tests at "lock"), then reveal + publish to Walrus.
     const heldoutManifest = await buildHeldoutManifest({
       intent,
       publicChecks: [publicDef],
@@ -166,11 +205,9 @@ export async function POST(request: Request) {
     const verified = await verifyHeldoutReveal(heldoutManifest, reveal);
     heldoutReveal = await storeHeldoutReveal(reveal);
 
-    // Inject runtime inputs into each revealed hidden check, then run public + hidden.
     const runtimeHidden = reveal.hiddenChecks.map((c) => ({ ...c, results, runVerified }));
     runtimeChecks = [runtimePublic, ...runtimeHidden];
     resolvedDefs = [publicDef, ...reveal.hiddenChecks];
-    // The on-chain specHash binds the HELD-OUT manifest (commit included).
     specHash = await hashBlob(heldoutManifest);
     heldout = {
       used: true,
@@ -214,10 +251,7 @@ export async function POST(request: Request) {
     recommendation: split.recommendation,
     ...(heldoutReveal ? { heldoutReveal } : {})
   });
-  const [stored, settlement] = await Promise.all([
-    storeEvidence(evidence),
-    planResolution(split)
-  ]);
+  const [stored, settlement] = await Promise.all([storeEvidence(evidence), planResolution(split)]);
 
   // 4. The settlement decision: the exact resolve() args the escrow consumes.
   return NextResponse.json({
@@ -226,6 +260,8 @@ export async function POST(request: Request) {
     runVerified,
     requiredTests,
     totalRequired: requiredTests.length + (heldout.hiddenCount ?? 0),
+    run: runMeta,
+    results,
     reports,
     split,
     recommendation: split.recommendation,
