@@ -70,6 +70,18 @@ export const testsPassChecker: Checker = (check: CheckSpec, ctx: TaskContext): C
     };
   }
 
+  // Hard gate: the patch must have applied cleanly. An unapplied patch was never
+  // run against the suite, so it cannot be graded green — fail, never release.
+  if (check.patchApplied === false) {
+    return {
+      checker: CHECKER,
+      result: "fail",
+      confidence: 1,
+      detail: "Worker patch did not apply cleanly to the target repo — cannot be verified.",
+      evidenceHash
+    };
+  }
+
   if (requiredTests.length === 0) {
     return {
       checker: CHECKER,
