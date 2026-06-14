@@ -18,6 +18,7 @@ type MarketplaceQuery = {
   minTrust?: string;
   minClients?: string;
   hideThin?: string;
+  x402?: string;
   sort?: string;
   refresh?: string;
 };
@@ -92,6 +93,8 @@ function queryText(agent: AgentMarketplaceRow) {
     agent.workLabel,
     agent.risk,
     actionLabel[agent.action],
+    agent.x402Support ? "x402 payable payment required" : "not x402",
+    ...(agent.x402Evidence ?? []),
     ...(agent.categoryEvidence ?? [])
   ]
     .join(" ")
@@ -113,7 +116,7 @@ function makeHref(current: MarketplaceQuery, patch: Partial<MarketplaceQuery>) {
 
 function detailHref(agent: AgentMarketplaceRow, query: MarketplaceQuery) {
   const params = new URLSearchParams();
-  for (const key of ["chain", "kind", "policy", "q", "minTrust", "minClients", "hideThin", "sort"] as const) {
+  for (const key of ["chain", "kind", "policy", "q", "minTrust", "minClients", "hideThin", "x402", "sort"] as const) {
     const value = query[key];
     if (value && value !== "all" && value !== "rank" && value !== "0") params.set(key, value);
   }
@@ -218,6 +221,7 @@ export default async function MarketplacePage({
   const minTrust = Math.max(0, Math.min(100, asNumber(params.minTrust, 0)));
   const minClients = Math.max(0, asNumber(params.minClients, 0));
   const hideThin = params.hideThin === "1";
+  const x402Only = params.x402 === "1";
   const search = (params.q ?? "").trim().toLowerCase();
   const currentQuery: MarketplaceQuery = {
     chain: selectedChain,
@@ -227,6 +231,7 @@ export default async function MarketplacePage({
     minTrust: String(minTrust),
     minClients: String(minClients),
     hideThin: hideThin ? "1" : "",
+    x402: x402Only ? "1" : "",
     sort
   };
 
@@ -238,7 +243,8 @@ export default async function MarketplacePage({
       const trustMatch = agent.trustScore >= minTrust;
       const clientMatch = agent.uniqueClients >= minClients;
       const thinMatch = !hideThin || !["thin", "needs-validation", "unknown"].includes(agent.risk);
-      return kindMatch && policyMatch && searchMatch && trustMatch && clientMatch && thinMatch;
+      const x402Match = !x402Only || agent.x402Support;
+      return kindMatch && policyMatch && searchMatch && trustMatch && clientMatch && thinMatch && x402Match;
     }),
     sort
   );
@@ -249,6 +255,7 @@ export default async function MarketplacePage({
   const escrowCount = data.agents.filter((agent) => agent.action === "escrow").length;
   const strictCount = data.agents.filter((agent) => agent.action === "strict-validation").length;
   const blockedCount = data.agents.filter((agent) => agent.action === "reject").length;
+  const x402Count = data.stats.x402Agents ?? data.agents.filter((agent) => agent.x402Support).length;
 
   return (
     <main className="terminal-app marketplace-surface">
@@ -297,6 +304,10 @@ export default async function MarketplacePage({
           <span>{formatNumber(data.stats.agentsWithFeedback ?? data.agents.filter((agent) => agent.feedbackCount > 0).length)}</span>
           <p>agents reviewed</p>
         </div>
+        <div>
+          <span>{formatNumber(x402Count)}</span>
+          <p>x402 payable</p>
+        </div>
       </section>
 
       <section className="market-search-shell">
@@ -315,6 +326,7 @@ export default async function MarketplacePage({
           <input type="hidden" name="minTrust" value={minTrust} />
           <input type="hidden" name="minClients" value={minClients} />
           {hideThin ? <input type="hidden" name="hideThin" value="1" /> : null}
+          {x402Only ? <input type="hidden" name="x402" value="1" /> : null}
           <button type="submit">Search</button>
           <span>{filteredAgents.length} agents</span>
         </form>
@@ -330,7 +342,7 @@ export default async function MarketplacePage({
 
         <details
           className="market-filter-strip"
-          open={selectedKind !== "all" || selectedPolicy !== "all" || minTrust > 0 || minClients > 0 || hideThin || sort !== "rank"}
+          open={selectedKind !== "all" || selectedPolicy !== "all" || minTrust > 0 || minClients > 0 || hideThin || x402Only || sort !== "rank"}
         >
           <summary>
             <span>Advanced</span>
@@ -392,12 +404,33 @@ export default async function MarketplacePage({
             </div>
           </div>
 
+          <div>
+            <p className="market-filter-label">Payment metadata</p>
+            <div className="market-chip-row">
+              <Link
+                className={!x402Only ? "market-chip active" : "market-chip"}
+                href={makeHref(currentQuery, { x402: "" })}
+              >
+                All payment states
+                <span>{data.agents.length}</span>
+              </Link>
+              <Link
+                className={x402Only ? "market-chip x402 active" : "market-chip x402"}
+                href={makeHref(currentQuery, { x402: "1" })}
+              >
+                x402 only
+                <span>{x402Count}</span>
+              </Link>
+            </div>
+          </div>
+
           <form className="market-thresholds" action="/marketplace">
             <input type="hidden" name="kind" value={selectedKind} />
             <input type="hidden" name="policy" value={selectedPolicy} />
             <input type="hidden" name="chain" value={selectedChain} />
             <input type="hidden" name="q" value={params.q ?? ""} />
             <input type="hidden" name="sort" value={sort} />
+            {x402Only ? <input type="hidden" name="x402" value="1" /> : null}
             <label>
               Min trust
               <input name="minTrust" type="number" min="0" max="100" defaultValue={minTrust} />
@@ -409,6 +442,10 @@ export default async function MarketplacePage({
             <label className="market-check">
               <input name="hideThin" type="checkbox" value="1" defaultChecked={hideThin} />
               Hide thin history
+            </label>
+            <label className="market-check">
+              <input name="x402" type="checkbox" value="1" defaultChecked={x402Only} />
+              x402 payable only
             </label>
             <button type="submit">Apply</button>
             <Link href={makeHref(currentQuery, { refresh: "1" })}>Refresh index</Link>
@@ -437,7 +474,10 @@ export default async function MarketplacePage({
                   <strong>{agentLabel(agent)}</strong>
                   <code>{shortAddress(agent.ownerAddress)}</code>
                 </div>
-                <span className={`category-pill ${agent.workKind}`}>{agent.workLabel}</span>
+                <div className="market-card-pills">
+                  <span className={`category-pill ${agent.workKind}`}>{agent.workLabel}</span>
+                  {agent.x402Support ? <span className="x402-pill">x402</span> : null}
+                </div>
               </div>
 
               <p>{trustExplanation(agent)}</p>
@@ -463,6 +503,7 @@ export default async function MarketplacePage({
 
               <div className="market-agent-foot">
                 <span className={`tier-pill ${tier}`}>{riskLabel[agent.risk]}</span>
+                {agent.x402Support ? <span className="payment-pill">Payable</span> : null}
                 <strong>{actionLabel[agent.action]} →</strong>
               </div>
             </Link>

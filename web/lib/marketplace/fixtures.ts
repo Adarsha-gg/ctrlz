@@ -9,7 +9,8 @@ export const fixtureMarketplaceData: MarketplaceData = {
     validationTransactions: 1,
     activeAgents: 49305,
     feedbackEvents: 3173,
-    uniqueFeedbackClients: 42
+    uniqueFeedbackClients: 42,
+    x402Agents: 1
   },
   agents: [
     {
@@ -19,6 +20,8 @@ export const fixtureMarketplaceData: MarketplaceData = {
       ownerAddress: "0x6083998f73e26631d8d08f01e9927999b1969a81",
       agentUri: "https://mcp.surfliquid.com/agent.json",
       domain: "mcp.surfliquid.com",
+      x402Support: true,
+      x402Evidence: ["metadata explicitly mentions x402", "metadata exposes payment requirements"],
       workKind: "commerce",
       workLabel: "Commerce",
       categoryEvidence: [
@@ -70,6 +73,8 @@ export const fixtureMarketplaceData: MarketplaceData = {
       ownerAddress: "0xde152afb7db5373f34876e1499fbd893a82dd336",
       agentUri: "https://exquisites.es/.well-known/agent-card/4345.json",
       domain: "exquisites.es",
+      x402Support: false,
+      x402Evidence: [],
       workKind: "general",
       workLabel: "General",
       categoryEvidence: [
@@ -111,6 +116,8 @@ export const fixtureMarketplaceData: MarketplaceData = {
       ownerAddress: "0xde152afb7db5373f34876e1499fbd893a82dd336",
       agentUri: "https://exquisites.es/.well-known/agent-card/7509.json",
       domain: "exquisites.es",
+      x402Support: false,
+      x402Evidence: [],
       workKind: "general",
       workLabel: "General",
       categoryEvidence: [

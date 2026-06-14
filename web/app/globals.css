@@ -2979,6 +2979,12 @@ dd {
   color: #b23b2e;
 }
 
+.market-chip.x402.active {
+  border-color: #0f766e;
+  background: #e7f0ee;
+  color: #0f766e;
+}
+
 .market-filter-row {
   justify-content: space-between;
 }
@@ -3191,6 +3197,32 @@ dd {
   color: #5a584f;
 }
 
+.market-card-pills {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.x402-pill,
+.payment-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #e7f0ee;
+  color: #0f766e;
+  padding: 4px 9px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.payment-pill {
+  background: #ecfdf5;
+  color: #047857;
+}
+
 .market-agent-card > p {
   min-height: 58px;
   margin: 0;
@@ -3357,6 +3389,12 @@ dd {
   padding: 5px 9px;
   font-size: 0.76rem;
   font-weight: 800;
+}
+
+.agent-detail-badges .x402-pill {
+  border-color: #b7ded5;
+  background: #e7f0ee;
+  color: #0f766e;
 }
 
 .terminal-trust-card.cleared strong {
