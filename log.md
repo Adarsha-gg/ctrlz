@@ -9,6 +9,25 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Claude) · Harden the pay-on-green runner (review fixes)
+
+- **Fixed (3 review findings):**
+  1. **RCE surface** — caller `run` executes arbitrary code (test files), so it's
+     now gated behind `PAYONGREEN_ALLOW_RUN=1` (→ 403 otherwise), and the command
+     + report path are FIXED (no caller-chosen binary/args/env/read-path). `demo`
+     stays open (baked, our code).
+  2. **Path traversal** — `run.files` paths are `safeResolve`d under the temp
+     workspace; `..`/absolute escapes throw → route returns 400.
+  3. **Unapplied patch wasn't a gate** — if `git apply` fails the runner now
+     returns `applied:false` with NO results (doesn't run the base tree), and
+     `tests_pass` hard-fails on `patchApplied===false` → never releases.
+- **Verified** against shipped code (Node type-strip, no server): traversal
+  rejected · bad patch → applied=false/suite-skipped · checker → fail · clean
+  patch still green. `tsc` clean for the changed files (unrelated marketplace/
+  settlement type churn is concurrent Codex work, not in this change).
+- **Next:** move the spawn into a real sandbox (container/microVM) before
+  enabling `PAYONGREEN_ALLOW_RUN` in any shared deploy.
+
 ## 2026-06-13 · agent (Claude) · Pay-on-green real runner — proven live
 
 - **Did:** Built the real test runner (the impure ground-truth step):

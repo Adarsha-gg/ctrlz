@@ -75,13 +75,17 @@ type PayOnGreenBody = {
     hiddenTests: string[];
     salt?: string;
   };
-  /** run a baked, self-contained fixture for real on `node --test` */
+  /** run a baked, self-contained fixture for real on `node --test` (safe; our code) */
   demo?: "green" | "cheat";
-  /** run a caller-supplied workspace for real (patch = `patch.diff`) */
+  /**
+   * Run a caller-supplied workspace for real (patch = `patch.diff`). This
+   * EXECUTES ARBITRARY CODE (the test files are caller-provided), so it is
+   * disabled unless PAYONGREEN_ALLOW_RUN=1 is set in a sandboxed environment.
+   * The command is fixed (`node --test`) and report path is fixed — callers
+   * cannot choose the binary, args, env, or read path.
+   */
   run?: {
     files: Record<string, string>;
-    command?: string[];
-    reportPath?: string;
     timeoutMs?: number;
   };
 };
@@ -136,13 +140,33 @@ export async function POST(request: Request) {
     heldoutHidden = fx.hiddenTests;
     runMeta = runMetaOf(outcome);
   } else if (body.run && body.run.files) {
-    const outcome = await runTests({
-      files: body.run.files,
-      patch: diff,
-      command: body.run.command ?? DEFAULT_COMMAND,
-      reportPath: body.run.reportPath ?? "report.xml",
-      ...(typeof body.run.timeoutMs === "number" ? { timeoutMs: body.run.timeoutMs } : {})
-    });
+    // Caller-supplied workspaces execute arbitrary code — gate behind an explicit
+    // sandbox opt-in. The command + report path are FIXED (no caller-chosen
+    // binary/args/env/read-path); callers may only supply files + a timeout.
+    if (process.env.PAYONGREEN_ALLOW_RUN !== "1") {
+      return NextResponse.json(
+        {
+          error:
+            "caller-supplied `run` executes arbitrary code and is disabled. Set PAYONGREEN_ALLOW_RUN=1 in a sandboxed environment, or use `demo`."
+        },
+        { status: 403 }
+      );
+    }
+    let outcome: RunOutcome;
+    try {
+      outcome = await runTests({
+        files: body.run.files,
+        patch: diff,
+        command: DEFAULT_COMMAND,
+        reportPath: "report.xml",
+        ...(typeof body.run.timeoutMs === "number" ? { timeoutMs: body.run.timeoutMs } : {})
+      });
+    } catch (e) {
+      return NextResponse.json(
+        { error: `runner rejected workspace: ${(e as Error).message}` },
+        { status: 400 }
+      );
+    }
     results = outcome.results;
     runMeta = runMetaOf(outcome);
   }
@@ -167,9 +191,12 @@ export async function POST(request: Request) {
   const runVerified = await verifyPatchReveal(patch);
 
   // 2. The public check def (what the worker sees) + its runtime form (with the
-  //    verifier's injected/real run results).
+  //    verifier's injected/real run results). `patchApplied` is a hard gate: when
+  //    the runner ran and the patch did not apply, tests_pass fails (no release).
+  const patchApplied: boolean | undefined = runMeta.ran ? runMeta.applied : undefined;
+  const appliedField = patchApplied !== undefined ? { patchApplied } : {};
   const publicDef: CheckSpec = { type: "tests_pass", hardGate: true, requiredTests };
-  const runtimePublic: CheckSpec = { ...publicDef, results, runVerified };
+  const runtimePublic: CheckSpec = { ...publicDef, results, runVerified, ...appliedField };
 
   // 2b. Optional held-out audit: the buyer's secret test names, committed
   //     pre-work and revealed here. Stored on Walrus, verified against the
@@ -205,7 +232,7 @@ export async function POST(request: Request) {
     const verified = await verifyHeldoutReveal(heldoutManifest, reveal);
     heldoutReveal = await storeHeldoutReveal(reveal);
 
-    const runtimeHidden = reveal.hiddenChecks.map((c) => ({ ...c, results, runVerified }));
+    const runtimeHidden = reveal.hiddenChecks.map((c) => ({ ...c, results, runVerified, ...appliedField }));
     runtimeChecks = [runtimePublic, ...runtimeHidden];
     resolvedDefs = [publicDef, ...reveal.hiddenChecks];
     specHash = await hashBlob(heldoutManifest);

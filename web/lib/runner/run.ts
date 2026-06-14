@@ -49,6 +49,15 @@ export type RunOutcome = {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+/** Resolve `rel` under `dir`, throwing if it escapes the workspace (`..`, absolute). */
+function safeResolve(dir: string, rel: string): string {
+  const full = path.resolve(dir, rel);
+  if (full !== dir && !full.startsWith(dir + path.sep)) {
+    throw new Error(`path escapes workspace: ${rel}`);
+  }
+  return full;
+}
+
 type SpawnResult = { code: number | null; timedOut: boolean; stdout: string; stderr: string };
 
 function run(
@@ -95,19 +104,33 @@ export async function runTests(spec: RunSpec): Promise<RunOutcome> {
   const timeoutMs = spec.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const dir = await mkdtemp(path.join(tmpdir(), "ponr-"));
   try {
-    // 1. Write the base workspace files.
+    // 1. Write the base workspace files — reject any path escaping the workspace.
     for (const [rel, content] of Object.entries(spec.files)) {
-      const full = path.join(dir, rel);
+      const full = safeResolve(dir, rel);
       await mkdir(path.dirname(full), { recursive: true });
       await writeFile(full, content);
     }
 
-    // 2. Apply the worker's patch (the committed, revealed diff).
+    // 2. Apply the worker's patch (the committed, revealed diff). If it does NOT
+    //    apply cleanly, do NOT run the suite — an unapplied patch can't be
+    //    verified, and running the base tree would grade the wrong thing. Return
+    //    applied=false with no results so the caller hard-gates it.
     let applied = true;
     if (spec.patch && spec.patch.trim().length > 0) {
       await writeFile(path.join(dir, ".ponr.patch"), spec.patch);
       const g = await run("git", ["apply", "--whitespace=nowarn", ".ponr.patch"], { cwd: dir }, timeoutMs);
       applied = g.code === 0;
+      if (!applied) {
+        return {
+          results: [],
+          applied: false,
+          exitCode: g.code,
+          timedOut: g.timedOut,
+          reportFound: false,
+          stdout: g.stdout,
+          stderr: g.stderr
+        };
+      }
     }
 
     // 3. Run the suite.
@@ -118,7 +141,7 @@ export async function runTests(spec: RunSpec): Promise<RunOutcome> {
     let results: TestResult[] = [];
     let reportFound = false;
     try {
-      const xml = await readFile(path.join(dir, spec.reportPath), "utf8");
+      const xml = await readFile(safeResolve(dir, spec.reportPath), "utf8");
       results = parseJUnit(xml);
       reportFound = true;
     } catch {
