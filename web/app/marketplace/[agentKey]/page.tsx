@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TerminalHeader } from "@/app/components/TerminalHeader";
-import { ethereumErc8004Registries, getMarketplaceData } from "@/lib/google/bigquery";
+import { ethereumErc8004Registries, getMarketplaceData, hederaErc8004Registries } from "@/lib/google/bigquery";
 import { getTrustBridgeData } from "@/lib/trust/bridge";
 import type { AgentMarketplaceRow } from "@/lib/marketplace/types";
 
 export const dynamic = "force-dynamic";
 
 type DetailQuery = {
+  chain?: string;
   kind?: string;
   policy?: string;
   q?: string;
@@ -53,6 +54,13 @@ const actionLabel = {
   reject: "Manual review"
 } as const;
 
+const settlementModeLabel = {
+  "auto-hire": "Direct pay",
+  escrow: "Escrow",
+  "strict-validation": "Strict validation",
+  reject: "Manual review"
+} as const;
+
 const policyCopy = {
   "auto-hire": {
     title: "Direct payment can be allowed",
@@ -84,6 +92,10 @@ function etherscanAddress(address: string) {
   return `https://etherscan.io/address/${address}`;
 }
 
+function hashscanAddress(address: string) {
+  return `https://hashscan.io/testnet/contract/${address}`;
+}
+
 function buyerHref(agent: AgentMarketplaceRow) {
   const params = new URLSearchParams({
     agent: agent.agentKey,
@@ -98,9 +110,56 @@ function buyerHref(agent: AgentMarketplaceRow) {
   return `/buyer?${params.toString()}`;
 }
 
+function agentLabel(agent: AgentMarketplaceRow) {
+  if (agent.domain && !["unknown", "embedded metadata"].includes(agent.domain.toLowerCase())) {
+    return agent.domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  }
+  return `Agent ${agent.agentId}`;
+}
+
+function agentInitial(agent: AgentMarketplaceRow) {
+  return agentLabel(agent).replace(/^agent\s+/i, "").slice(0, 1).toUpperCase() || "A";
+}
+
+function tierClass(agent: AgentMarketplaceRow) {
+  if (agent.action === "auto-hire") return "cleared";
+  if (agent.action === "reject") return "blocked";
+  return "caution";
+}
+
+function scoreColorClass(value: number) {
+  if (value >= 75) return "cleared";
+  if (value >= 45) return "caution";
+  return "blocked";
+}
+
+function splitScores(agent: AgentMarketplaceRow) {
+  const feedbackValidity =
+    agent.feedbackCount > 0 && agent.averageScore !== null
+      ? Math.max(0, Math.min(100, Math.round(agent.averageScore)))
+      : agent.validationCount > 0
+        ? 82
+        : 38;
+  const validationBacking = Math.max(0, Math.min(100, agent.validationCount * 28 + agent.identitySignals * 4));
+  const paymentRisk =
+    agent.action === "auto-hire"
+      ? 92
+      : agent.action === "escrow"
+        ? 68
+        : agent.action === "strict-validation"
+          ? 42
+          : 14;
+
+  return [
+    { label: "Output validity", value: feedbackValidity, status: feedbackValidity >= 70 ? "pass" : feedbackValidity >= 45 ? "warn" : "unknown" },
+    { label: "Agent trust", value: agent.trustScore, status: agent.risk },
+    { label: "Payment risk", value: paymentRisk, status: settlementModeLabel[agent.action] }
+  ];
+}
+
 function backHref(query?: DetailQuery) {
   const params = new URLSearchParams();
-  for (const key of ["kind", "policy", "q", "minTrust", "minClients", "hideThin", "sort"] as const) {
+  for (const key of ["chain", "kind", "policy", "q", "minTrust", "minClients", "hideThin", "sort"] as const) {
     const value = query?.[key];
     if (value && value !== "all" && value !== "rank" && value !== "0") {
       params.set(key, value);
@@ -230,8 +289,9 @@ export default async function AgentDetailPage({
 }) {
   const [{ agentKey }, query] = await Promise.all([params, searchParams]);
   const refresh = query?.refresh === "1";
+  const selectedChain = query?.chain === "hedera" ? "hedera" : "ethereum";
   const [data, bridge] = await Promise.all([
-    getMarketplaceData({ refresh }),
+    getMarketplaceData({ refresh, chain: selectedChain }),
     getTrustBridgeData({ refresh })
   ]);
   const decodedKey = decodeURIComponent(agentKey).toLowerCase();
@@ -253,27 +313,40 @@ export default async function AgentDetailPage({
       "category came from an older cached row without detailed evidence",
       agent.agentUri ? `agent metadata URI: ${agent.agentUri}` : "no agent metadata URI published"
     ];
+  const label = agentLabel(agent);
+  const tier = tierClass(agent);
+  const split = splitScores(agent);
+  const firstSeenDays = agent.feedbackSpanHours > 0 ? Math.max(1, Math.round(agent.feedbackSpanHours / 24)) : 0;
+  const registries = selectedChain === "hedera" ? hederaErc8004Registries : ethereumErc8004Registries;
+  const registryAddressUrl = selectedChain === "hedera" ? hashscanAddress : etherscanAddress;
 
   return (
     <main className="terminal-app">
       <TerminalHeader active="marketplace" />
 
-      <section className="terminal-detail-head">
-        <div>
+      <section className="agent-profile-hero">
+        <div className={`market-avatar xl ${agent.workKind}`}>{agentInitial(agent)}</div>
+        <div className="agent-profile-title">
           <Link className="back-link" href={backHref(query)}>
-            Back to marketplace
+            ← All agents
           </Link>
-          <p className="terminal-eyebrow">ERC-8004 agent profile</p>
-          <h1>Agent {agent.agentId}</h1>
+          <div className="agent-profile-name">
+            <h1>{label}</h1>
+            <span className={`tier-pill ${tier}`}>{riskLabel[agent.risk]}</span>
+          </div>
+          <code>{agent.agentKey}</code>
           <div className="agent-detail-badges">
             <span className={`work-badge ${agent.workKind}`}>{agent.workLabel}</span>
-            <span className={`risk-badge ${agent.risk}`}>{riskLabel[agent.risk]}</span>
+            <span>{agent.domain}</span>
+            <span>registered {formatDate(agent.registeredAt)}</span>
           </div>
           <p>
-            {agent.domain} · registered {formatDate(agent.registeredAt)}
+            This profile turns public ERC-8004 activity into a concrete settlement decision. The
+            score is not a review star; it is a policy input for whether an autonomous buyer should
+            pay directly, escrow, validate strictly, or stop.
           </p>
         </div>
-        <div className="terminal-trust-card">
+        <div className={`terminal-trust-card ${tier}`}>
           <span>Trust</span>
           <strong>{agent.trustScore}</strong>
           <p>{policy.mode}</p>
@@ -284,7 +357,34 @@ export default async function AgentDetailPage({
         <div className="terminal-detail-main">
           <section className="terminal-panel">
             <p className="terminal-eyebrow">Why this score</p>
-            <h2>Evidence breakdown</h2>
+            <h2>Evidence summary</h2>
+            <p>
+              {agent.feedbackCount > 0
+                ? `${label} has ${formatNumber(agent.feedbackCount)} feedback signal${agent.feedbackCount === 1 ? "" : "s"} from ${formatNumber(agent.uniqueClients)} distinct client${agent.uniqueClients === 1 ? "" : "s"}${firstSeenDays ? ` across ${firstSeenDays} day${firstSeenDays === 1 ? "" : "s"}` : ""}.`
+                : `${label} has no public feedback signals in the indexed window yet.`}{" "}
+              {agent.validationCount > 0
+                ? `${agent.validationCount} validation-backed result${agent.validationCount === 1 ? "" : "s"} raises confidence because it can be replayed from evidence.`
+                : "There are no validation-backed results yet, so payment terms stay more conservative."}
+            </p>
+            <div className="score-split-grid">
+              {split.map((item) => (
+                <div key={item.label}>
+                  <span>{item.label}</span>
+                  <strong className={scoreColorClass(item.value)}>{item.value}</strong>
+                  <p>{item.status}</p>
+                </div>
+              ))}
+            </div>
+            <div className={`recommendation-banner ${tier}`}>
+              <span />
+              <strong>Recommendation: {policy.title}</strong>
+              <p>{policy.body}</p>
+            </div>
+          </section>
+
+          <section className="terminal-panel">
+            <p className="terminal-eyebrow">Score inputs</p>
+            <h2>Exact signals behind the recommendation</h2>
             <div className="score-breakdown">
               {breakdown.map((item) => (
                 <div key={item.label}>
@@ -382,32 +482,32 @@ export default async function AgentDetailPage({
 
           <section className="terminal-panel">
             <p className="terminal-eyebrow">Registry links</p>
-            <h2>Ethereum ERC-8004 source graph</h2>
-            <dl className="terminal-ledger">
-              <div>
-                <dt>IdentityRegistry</dt>
-                <dd>
-                  <a href={etherscanAddress(ethereumErc8004Registries.identity)} target="_blank" rel="noreferrer">
-                    {shortAddress(ethereumErc8004Registries.identity)}
+          <h2>{selectedChain === "hedera" ? "Hedera ERC-8004 source graph" : "Ethereum ERC-8004 source graph"}</h2>
+          <dl className="terminal-ledger">
+            <div>
+              <dt>IdentityRegistry</dt>
+              <dd>
+                  <a href={registryAddressUrl(registries.identity)} target="_blank" rel="noreferrer">
+                    {shortAddress(registries.identity)}
                   </a>
-                </dd>
-              </div>
-              <div>
-                <dt>ReputationRegistry</dt>
-                <dd>
-                  <a href={etherscanAddress(ethereumErc8004Registries.reputation)} target="_blank" rel="noreferrer">
-                    {shortAddress(ethereumErc8004Registries.reputation)}
+              </dd>
+            </div>
+            <div>
+              <dt>ReputationRegistry</dt>
+              <dd>
+                  <a href={registryAddressUrl(registries.reputation)} target="_blank" rel="noreferrer">
+                    {shortAddress(registries.reputation)}
                   </a>
-                </dd>
-              </div>
-              <div>
-                <dt>ValidationRegistry</dt>
-                <dd>
-                  <a href={etherscanAddress(ethereumErc8004Registries.validation)} target="_blank" rel="noreferrer">
-                    {shortAddress(ethereumErc8004Registries.validation)}
+              </dd>
+            </div>
+            <div>
+              <dt>ValidationRegistry</dt>
+              <dd>
+                  <a href={registryAddressUrl(registries.validation)} target="_blank" rel="noreferrer">
+                    {shortAddress(registries.validation)}
                   </a>
-                </dd>
-              </div>
+              </dd>
+            </div>
             </dl>
           </section>
 
@@ -452,6 +552,9 @@ export default async function AgentDetailPage({
             <p>{policy.body}</p>
             <Link className="primary-action" href={buyerHref(agent)}>
               {actionLabel[agent.action]}
+            </Link>
+            <Link className="secondary-action" href={`/cli?tab=hire`}>
+              Hiring as an agent? Use CLI →
             </Link>
           </section>
 
