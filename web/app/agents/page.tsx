@@ -55,6 +55,7 @@ export default function AgentsDemoPage() {
   const [pog, setPog] = useState<PogResponse | null>(null);
   const [settle, setSettle] = useState<SettleResponse | null>(null);
   const [busy, setBusy] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState("");
 
   const say = (actor: Actor, text: string) => setLog((prev) => [...prev, { actor, text }]);
 
@@ -64,6 +65,7 @@ export default function AgentsDemoPage() {
     setPog(null);
     setSettle(null);
     setBusy(false);
+    setGeneratedCode("");
   }
 
   function postTask() {
@@ -109,6 +111,42 @@ export default function AgentsDemoPage() {
       await settleOnChain(data);
     } catch (e) {
       say("verifier", `request failed: ${e instanceof Error ? e.message : "unknown"}`);
+      setBusy(false);
+      setPhase("done");
+    }
+  }
+
+  async function workerSolveWithAI() {
+    setBusy(true);
+    setGeneratedCode("");
+    setPhase("verifying");
+    say("worker", "reading the buggy code + the one sample test… asking my model (Claude) for a fix. I do NOT get the held-out tests.");
+    try {
+      const res = await fetch("/api/agent/solve", { method: "POST" });
+      const data = (await res.json()) as PogResponse & {
+        generatedSource?: string;
+        heldoutTests?: string[];
+        results?: Array<{ name: string; status: string }>;
+      };
+      if (data.error || !data.settlement) {
+        say("worker", `couldn't generate a fix: ${data.error ?? "no verdict"}`);
+        setBusy(false);
+        setPhase("done");
+        return;
+      }
+      if (data.generatedSource) setGeneratedCode(data.generatedSource);
+      say("worker", "Claude returned a fix → submitting it for verification.");
+      const pass = data.settlement.resultLabel === "PASS";
+      say(
+        "verifier",
+        pass
+          ? `ran the worker's code — sample ✓ AND held-out tests ✓ (it generalized, didn't just pass the one it saw) → PASS. evidence on Walrus ${short(data.evidenceUri)}.`
+          : `ran the worker's code — it failed the held-out tests → FAIL, no payout.`
+      );
+      setPog(data);
+      await settleOnChain(data);
+    } catch (e) {
+      say("worker", `request failed: ${e instanceof Error ? e.message : "unknown"}`);
       setBusy(false);
       setPhase("done");
     }
@@ -209,15 +247,33 @@ export default function AgentsDemoPage() {
               <p className="muted">{phase === "posted" ? "worker-agent is discovering the open task…" : "Post a task and a worker will pick it up."}</p>
             ) : (
               <>
-                <p className="muted">The worker claimed the task. Choose how it behaves (this is the demo's lever):</p>
+                <p className="muted">The worker claimed the task. It can do real work (Claude generates the fix) or try to game it:</p>
                 <div className="action-row">
-                  <button className="primary-action" disabled={busy || phase === "done"} onClick={() => void workerSubmit("green")}>
-                    {busy ? "working…" : "Submit honest fix → get paid"}
+                  <button className="primary-action" disabled={busy || phase === "done"} onClick={() => void workerSolveWithAI()}>
+                    {busy ? "working…" : "🤖 Solve it with Claude → earn the bounty"}
                   </button>
                   <button className="secondary-action" disabled={busy || phase === "done"} onClick={() => void workerSubmit("cheat")}>
                     Try to cheat → get caught
                   </button>
                 </div>
+                {generatedCode ? (
+                  <div style={{ marginTop: "0.85rem" }}>
+                    <p className="terminal-eyebrow">worker-agent's generated fix — live from Claude</p>
+                    <pre
+                      style={{
+                        background: "#0d0d0d",
+                        border: "1px solid #222",
+                        borderRadius: 6,
+                        padding: "0.75rem",
+                        overflow: "auto",
+                        fontSize: "0.82rem",
+                        lineHeight: 1.5
+                      }}
+                    >
+                      {generatedCode}
+                    </pre>
+                  </div>
+                ) : null}
                 {settled ? (
                   <div className="key-value-list" style={{ marginTop: "1rem" }}>
                     <div><span>Outcome</span><strong>{settle?.finalStateLabel}</strong></div>
