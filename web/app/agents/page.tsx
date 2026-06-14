@@ -120,7 +120,7 @@ export default function AgentsDemoPage() {
     setBusy(true);
     setGeneratedCode("");
     setPhase("verifying");
-    say("worker", "reading the buggy code + the one sample test… asking my model (Claude) for a fix. I do NOT get the held-out tests.");
+    say("worker", "reading the buggy code + the one sample test… asking my model for a fix. I do NOT get the held-out tests.");
     try {
       const res = await fetch("/api/agent/solve", { method: "POST" });
       const data = (await res.json()) as PogResponse & {
@@ -250,7 +250,7 @@ export default function AgentsDemoPage() {
                 <p className="muted">The worker claimed the task. It can do real work (Claude generates the fix) or try to game it:</p>
                 <div className="action-row">
                   <button className="primary-action" disabled={busy || phase === "done"} onClick={() => void workerSolveWithAI()}>
-                    {busy ? "working…" : "🤖 Solve it with Claude → earn the bounty"}
+                    {busy ? "working…" : "🤖 Solve it with AI → earn the bounty"}
                   </button>
                   <button className="secondary-action" disabled={busy || phase === "done"} onClick={() => void workerSubmit("cheat")}>
                     Try to cheat → get caught
@@ -258,7 +258,7 @@ export default function AgentsDemoPage() {
                 </div>
                 {generatedCode ? (
                   <div style={{ marginTop: "0.85rem" }}>
-                    <p className="terminal-eyebrow">worker-agent's generated fix — live from Claude</p>
+                    <p className="terminal-eyebrow">worker-agent's generated fix — live from the model</p>
                     <pre
                       style={{
                         background: "#0d0d0d",
