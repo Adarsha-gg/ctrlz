@@ -48,7 +48,7 @@ function short(v?: string | null) {
 
 export default function AgentsDemoPage() {
   const [phase, setPhase] = useState<Phase>("idle");
-  const [bounty, setBounty] = useState("4");
+  const [bounty, setBounty] = useState("1");
   const [buyerId] = useState("buyer-0x9f4c");
   const [workerId, setWorkerId] = useState("101");
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -180,7 +180,7 @@ export default function AgentsDemoPage() {
             </div>
             <div className="agent-filter-grid">
               <label>
-                <span>Bounty (HBAR)</span>
+                <span>Escrow amount (HBAR, settled on-chain)</span>
                 <input value={bounty} onChange={(e) => setBounty(e.target.value)} />
               </label>
               <label>
