@@ -53,6 +53,10 @@ rehearse**, not code.
 - [x] **Settle wiring** — green/red verdict → `POST /verify/settle` (release/refund on Hedera).
 - [x] **Anchored re-execution** — replay bundle (workspace + patch + results) in the evidence blob.
 - [x] x402 receivable gate + ERC-8004 validation write on the pay-on-green verdict.
+- [x] **A2A demo** `/agents` — two-sided autonomous loop: buyer posts → worker agent
+      picks up + submits → verify → settle on Hedera (real `resolve()`) → reputation.
+- [x] **Reputation demo** `/reputation` — interactive operator-cluster fraud propagation.
+- [x] **Live on Vercel** (https://ctrlz-zeta.vercel.app) with real BigQuery + Hedera + Walrus.
 
 ---
 
