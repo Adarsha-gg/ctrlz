@@ -9,6 +9,25 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-14 · agent (Claude) · MCP docs updated from live driving
+
+- **Drove the real `scripts/mcp/ctrlz-mcp.mjs` over stdio against prod** and hit
+  the gaps. Updated `MCP_DOCUMENTATION.md` (root) **and** `scripts/mcp/README.md`
+  (Codex's lane — done at the human's explicit request, docs only) with: a
+  **Connect an MCP client** section (`.mcp.json` / `claude mcp add`), a **Test
+  over stdio** snippet, a **Payment paths (direct x402 vs escrow)** table, the
+  proof-bundle shape for a successful escrow settle, and the caveat that
+  `ctrlz_hire_agent` ignores `workKind` (must pass `agentId`).
+- **Key behavior documented:** hiring a low-trust / non-x402 marketplace agent
+  (e.g. a `data` worker) with `settle:true` routes through escrow and fails with
+  "Backend returned a non-direct x402 quote" unless `CTRLZ_ALLOW_DEMO_X402=1` or
+  `CTRLZ_PAYMENT_HEADER` is set. Verified live: hired data agent `0x62`,
+  PASS/9800bps → PAID, real Hedera lock/accept/submit/resolve tx (task #26).
+- **Codex heads-up:** docs only, no MCP code changed (both `MCP_DOCUMENTATION.md`
+  and `scripts/mcp/README.md`). If you change the 402 negotiation or
+  payment-policy thresholds, sync the Payment paths table in both.
+- **Next:** rehearse main-UI runbook ×5.
+
 ## 2026-06-14 · agent (Claude) · Demo rehearsal + explainer→Gemini + drop stale console
 
 - **Rehearsed the live demo.** `/verify` and `/verify/payongreen-demo` both work

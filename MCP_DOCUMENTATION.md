@@ -40,7 +40,7 @@ These are the main things you can set on the MCP process:
 | `CTRLZ_VERCEL_BYPASS_TOKEN` | unset | Vercel Protection Bypass for Automation token. Required when Deployment Protection is enabled. |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` | unset | Alternate env name for the same Vercel bypass token. |
 | `CTRLZ_PAYMENT_HEADER` | unset | Optional fallback payment header for non-direct/demo routes. Direct Hedera x402 normally ignores this and negotiates from `PAYMENT-REQUIRED`. |
-| `CTRLZ_ALLOW_DEMO_X402` | unset | Set to `1` only when intentionally testing the legacy `demo-x402:<id>` non-direct receipt path. |
+| `CTRLZ_ALLOW_DEMO_X402` | unset | Set to `1` to let escrow-routed runs pay with a `demo-x402:<id>` receipt. **You need this (or `CTRLZ_PAYMENT_HEADER`) any time you settle a non-x402 / low-trust agent through escrow** — without it the run fails with "Backend returned a non-direct x402 quote". See [Payment paths](#payment-paths-direct-x402-vs-escrow). |
 | `CTRLZ_MCP_TIMEOUT_MS` | `120000` | Backend request timeout in milliseconds. |
 | `TRUSTED_DIRECT_X402_THRESHOLD` | `80` | Minimum trust score for automatic Hedera direct x402 instead of escrow. |
 
@@ -56,6 +56,65 @@ The production alias is public. If you point `CTRLZ_API_BASE` at a protected
 preview deployment, set `CTRLZ_VERCEL_BYPASS_TOKEN` from Vercel's Protection
 Bypass for Automation setting. The MCP server sends the token as both the Vercel
 bypass header and query parameter.
+
+## Connect an MCP client
+
+The server speaks MCP over stdio (JSON-RPC). Point any MCP client at the
+`node scripts/mcp/ctrlz-mcp.mjs` command.
+
+**Claude Code / Claude Desktop** — add to your `.mcp.json` (or run
+`claude mcp add ctrlz -- node scripts/mcp/ctrlz-mcp.mjs` from the repo root):
+
+```json
+{
+  "mcpServers": {
+    "ctrlz": {
+      "command": "node",
+      "args": ["scripts/mcp/ctrlz-mcp.mjs"],
+      "env": {
+        "CTRLZ_API_BASE": "https://ctrlz-zeta.vercel.app",
+        "CTRLZ_ALLOW_DEMO_X402": "1"
+      }
+    }
+  }
+}
+```
+
+Use an absolute path to `ctrlz-mcp.mjs` if the client's working directory is not
+the repo root. Once connected, the six `ctrlz_*` tools appear in the client.
+
+## Test it directly over stdio (no client)
+
+The server reads newline-delimited JSON-RPC on stdin and writes responses on
+stdout. To smoke-test a single tool call, pipe `initialize` then `tools/call`:
+
+```sh
+printf '%s\n%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"ctrlz_backend_status","arguments":{}}}' \
+  | node scripts/mcp/ctrlz-mcp.mjs
+```
+
+The tool result is returned as JSON in `result.content[0].text`. Both
+newline-delimited and `Content-Length`-framed messages are accepted.
+
+## Payment paths (direct x402 vs escrow)
+
+`ctrlz_hire_agent` with `paymentPolicy: "auto"` picks a path **per agent**:
+
+| Agent | Condition | Path | What you need |
+|---|---|---|---|
+| Trusted, x402-capable | `trustScore >= trustedDirectThreshold` (default 80) **and** `x402Support: true` | **direct x402** — one Hedera HBAR transfer | nothing; MCP negotiates the `402` → `PAYMENT-REQUIRED` → `PAYMENT-SIGNATURE` retry automatically. Escrow is skipped. |
+| Low-trust or non-x402 | otherwise | **Hedera escrow** (lock → accept → submit → resolve) | a payment receipt for the `402`: set `CTRLZ_ALLOW_DEMO_X402=1` (demo receipt) **or** `CTRLZ_PAYMENT_HEADER` (real facilitator). |
+
+Force a path with `paymentPolicy: "direct-x402"` or `"escrow"`.
+
+> **Common failure:** hiring a marketplace agent like a low-trust `data` worker
+> with `settle: true` and neither env set returns
+> `Backend returned a non-direct x402 quote. Set CTRLZ_PAYMENT_HEADER ... or CTRLZ_ALLOW_DEMO_X402=1`.
+> That agent routes through escrow, which needs one of those receipts. The
+> built-in `ctrlz-worker-agent-101` (trust 99, x402-capable) takes the direct
+> path and does not hit this.
 
 ## MCP Tools
 
@@ -117,6 +176,11 @@ Selects an agent, runs verification, and optionally settles the result.
 If the deployed backend does not yet expose `/api/marketplace/agents`,
 `ctrlz_hire_agent` can still hire the built-in `ctrlz-worker-agent-101` worker
 and run the real Vercel verification route.
+
+> **`ctrlz_hire_agent` does not filter by `workKind`.** When `agentId` is
+> omitted it picks the overall **top-ranked** available agent (often a
+> `developer`). To hire a specific-category agent — e.g. a `data` worker — first
+> call `ctrlz_list_agents` with `workKind`, then pass that agent's `id` here.
 
 Settable arguments:
 
@@ -181,6 +245,47 @@ Trusted-agent direct pay:
 
 When the selected agent is x402-capable and its trust score is at or above the threshold, `settle: true` does not call escrow. The MCP server follows the x402 flow: first request, `402` + `PAYMENT-REQUIRED`, retry with `PAYMENT-SIGNATURE`, then `200` + `PAYMENT-RESPONSE`. The backend settles that exact quote with a Hedera testnet HBAR transfer and returns the HashScan transaction in `x402.receipt`.
 
+Example, hire a marketplace **data** agent and settle through escrow (requires
+`CTRLZ_ALLOW_DEMO_X402=1` or `CTRLZ_PAYMENT_HEADER`, since data agents are
+low-trust / non-x402):
+
+```json
+{
+  "agentId": "0x62",
+  "mode": "green",
+  "chain": "hedera",
+  "paymentPolicy": "escrow",
+  "settle": true
+}
+```
+
+A successful escrow settlement returns the full task lifecycle as real Hedera
+testnet transactions — this is the proof bundle to capture:
+
+```jsonc
+{
+  "hired": { "id": "0x62", "name": "Agent 98", "workKind": "data", "trustScore": 2 },
+  "verification": {
+    "verdict": "PASS",
+    "scoreBps": 9800,
+    "evidenceStore": "walrus",
+    "evidenceUri": "https://aggregator.walrus-testnet.walrus.space/v1/blobs/<blobId>",
+    "results": [ /* public + held-out tests, each passed/failed */ ]
+  },
+  "settlement": {
+    "finalStateLabel": "PAID",          // or "REFUNDED" on a FAIL
+    "taskId": "26",
+    "escrowAddress": "0xa2ac71dd9e7835af08e6be33ec047c47a35b2462",
+    "lockHash": "0x…", "acceptHash": "0x…", "submitHash": "0x…", "resolveHash": "0x…",
+    "resolveStatus": "success",
+    "explorer": "https://hashscan.io/testnet/transaction/0x…"  // the resolve tx
+  }
+}
+```
+
+Build a HashScan link for any of the four hashes with
+`https://hashscan.io/testnet/transaction/<hash>`.
+
 ### `ctrlz_pay_on_green`
 
 Runs the deterministic pay-on-green route directly.
@@ -235,13 +340,15 @@ Example:
 
 ## Recommended Agent Flow
 
-1. Call `ctrlz_backend_status`.
-2. Call `ctrlz_list_agents` with `chain: "hedera"` and `status: "available"`.
-3. Choose an agent id.
-4. Call `ctrlz_hire_agent`.
-5. Inspect `verification.verdict`, `verification.evidenceHash`, and `verification.evidenceUri`.
-6. If the agent is trusted and x402-capable, use direct x402 on Hedera.
-7. Otherwise, call `ctrlz_settle_verification` or set `settle: true` in `ctrlz_hire_agent` for Hedera escrow.
+1. Call `ctrlz_backend_status` — confirm `reachable: true` and `settlement.configured: true`.
+2. Call `ctrlz_list_agents` with `chain: "hedera"`, a `workKind` filter, and `status: "available"`.
+3. Choose an agent `id` (you must pass it explicitly to hire that category — `ctrlz_hire_agent` does not filter by `workKind`).
+4. Decide the payment path ([table above](#payment-paths-direct-x402-vs-escrow)):
+   - Trusted + x402-capable → `paymentPolicy: "auto"`/`"direct-x402"`, no extra env.
+   - Low-trust / non-x402 → escrow; set `CTRLZ_ALLOW_DEMO_X402=1` (or `CTRLZ_PAYMENT_HEADER`) before launching the server.
+5. Call `ctrlz_hire_agent` with `settle: true`.
+6. Inspect `verification.verdict`, `verification.evidenceUri`, and the `settlement` block (`finalStateLabel`, the four tx hashes, `explorer`).
+7. To settle a verification later instead of inline, call `ctrlz_settle_verification` with the hashes from step 6.
 
 ## What The MCP Does Not Do
 

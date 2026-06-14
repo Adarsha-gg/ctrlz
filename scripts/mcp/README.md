@@ -26,6 +26,33 @@ or:
 npm run mcp:ctrlz
 ```
 
+## Connect an MCP client
+
+Add to `.mcp.json` (or run `claude mcp add ctrlz -- node scripts/mcp/ctrlz-mcp.mjs`
+from the repo root):
+
+```json
+{
+  "mcpServers": {
+    "ctrlz": {
+      "command": "node",
+      "args": ["scripts/mcp/ctrlz-mcp.mjs"],
+      "env": { "CTRLZ_API_BASE": "https://ctrlz-zeta.vercel.app", "CTRLZ_ALLOW_DEMO_X402": "1" }
+    }
+  }
+}
+```
+
+Use an absolute path to `ctrlz-mcp.mjs` if the client's working dir is not the
+repo root. Smoke-test without a client by piping JSON-RPC on stdin:
+
+```sh
+printf '%s\n%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"ctrlz_backend_status","arguments":{}}}' \
+  | node scripts/mcp/ctrlz-mcp.mjs
+```
+
 The default backend is the production Vercel app:
 
 ```txt
@@ -69,10 +96,20 @@ Example MCP tool arguments:
 
 `ctrlz_hire_agent` has a built-in fallback for `ctrlz-worker-agent-101`, so the
 production MCP path keeps working even if the deployed marketplace list route is
-not available yet.
+not available yet. It does **not** filter by `workKind` — to hire a specific
+category (e.g. a `data` agent), call `ctrlz_list_agents` first and pass that
+agent's `id`.
+
+## Payment paths
 
 With `paymentPolicy: "auto"`, trusted x402-capable agents with score `80+` use
 the x402 HTTP flow (`402` + `PAYMENT-REQUIRED`, retry with `PAYMENT-SIGNATURE`,
 return `PAYMENT-RESPONSE`) and settle directly with a Hedera testnet HBAR
-transfer. Lower-trust agents still route through Hedera escrow when
+transfer. Lower-trust / non-x402 agents route through Hedera escrow when
 `settle: true`.
+
+> **Escrow needs a receipt.** Settling a low-trust / non-x402 agent (like a
+> `data` worker) fails with `Backend returned a non-direct x402 quote` unless you
+> set `CTRLZ_ALLOW_DEMO_X402=1` (demo receipt) or `CTRLZ_PAYMENT_HEADER` (real
+> facilitator). The built-in `ctrlz-worker-agent-101` takes the direct path and
+> avoids this. Full table: [../../MCP_DOCUMENTATION.md](../../MCP_DOCUMENTATION.md#payment-paths-direct-x402-vs-escrow).
