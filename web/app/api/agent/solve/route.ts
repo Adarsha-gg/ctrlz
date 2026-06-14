@@ -24,7 +24,7 @@ import { runInProcess } from "@/lib/runner";
 import { scoreSplit, type ScoredCheck } from "@/lib/scoring/score";
 import { planResolution } from "@/lib/settlement/resolve";
 import { buildEvidenceBlob, buildManifest, hashBlob, storeEvidence } from "@/lib/walrus";
-import { solveWithClaude } from "@/lib/agent/worker";
+import { solveTask } from "@/lib/agent/worker";
 import { MAX_TASK } from "@/lib/agent/task";
 
 export const runtime = "nodejs";
@@ -33,7 +33,7 @@ export async function POST() {
   const task = MAX_TASK;
 
   // 1. The worker generates a fix (real LLM work).
-  const solve = await solveWithClaude({
+  const solve = await solveTask({
     buggySource: task.buggySource,
     spec: task.spec,
     publicTest: task.publicTest,
