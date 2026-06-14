@@ -106,6 +106,10 @@ function short(value?: string, head = 10, tail = 8) {
   return `${value.slice(0, head)}...${value.slice(-tail)}`;
 }
 
+function hederaTxUrl(hash?: string) {
+  return hash && hash.startsWith("0x") ? `https://hashscan.io/testnet/transaction/${hash}` : undefined;
+}
+
 function bytes32(value: string): `0x${string}` {
   return value.startsWith("0x") ? (value as `0x${string}`) : (`0x${value}` as `0x${string}`);
 }
@@ -313,20 +317,49 @@ export function PaymentDemo({ query }: { query: BuyerQuery }) {
             : "Settlement complete";
 
   const proofRows = [
-    ["Walrus evidence", walrusLabel, anchors?.evidence.uri ?? ctrlzWalrusEvidence.uri],
-    ["Evidence sha256", anchors ? bytes32(anchors.evidence.hash) : demo.evidenceHash, "content-addressed proof"],
-    ["Acceptance spec hash", anchors ? bytes32(anchors.manifestHash) : demo.specHash, selectedSpec.title],
-    ["Hedera lock tx", demo.lockHash, `escrow ${ctrlzVerifyEscrowAddress}`],
-    ["Hedera resolve tx", demo.resolveHash, `task #${demo.taskId}`],
-    [
-      "ERC-8004 validation",
-      rejected ? "manual review" : validationTx,
-      validationWrite?.mode === "written"
-        ? "new ValidationRegistry write"
-        : validationWrite?.mode === "prepared"
-          ? "prepared - signer env missing"
-          : `registry ${erc8004HederaTestnet.validationRegistry}`
-    ]
+    {
+      key: "Walrus evidence",
+      value: walrusLabel,
+      sub: anchors?.evidence.uri ?? ctrlzWalrusEvidence.uri,
+      href: anchors?.evidence.uri ?? ctrlzWalrusEvidence.uri
+    },
+    {
+      key: "Evidence sha256",
+      value: anchors ? bytes32(anchors.evidence.hash) : demo.evidenceHash,
+      sub: "content-addressed proof"
+    },
+    {
+      key: "Acceptance spec hash",
+      value: anchors ? bytes32(anchors.manifestHash) : demo.specHash,
+      sub: selectedSpec.title
+    },
+    {
+      key: "Hedera lock tx",
+      value: demo.lockHash,
+      sub: `escrow ${ctrlzVerifyEscrowAddress}`,
+      href: hederaTxUrl(demo.lockHash)
+    },
+    {
+      key: "Hedera resolve tx",
+      value: demo.resolveHash,
+      sub: `task #${demo.taskId}`,
+      href: hederaTxUrl(demo.resolveHash)
+    },
+    {
+      key: "ERC-8004 validation",
+      value: rejected ? "manual review" : validationTx,
+      sub:
+        validationWrite?.mode === "written"
+          ? "new ValidationRegistry write"
+          : validationWrite?.mode === "prepared"
+            ? "prepared - signer env missing"
+            : `registry ${erc8004HederaTestnet.validationRegistry}`,
+      href: validationWrite?.responseTx
+        ? hederaTxUrl(validationWrite.responseTx)
+        : validationWrite?.requestTx
+          ? hederaTxUrl(validationWrite.requestTx)
+          : hederaTxUrl(demo.validationResponseHash)
+    }
   ];
 
   return (
@@ -500,13 +533,19 @@ export function PaymentDemo({ query }: { query: BuyerQuery }) {
               </div>
             </div>
             <div className="payment-proof-list">
-              {proofRows.map(([key, value, sub]) => (
-                <div key={key}>
+              {proofRows.map((row) => (
+                <div key={row.key}>
                   <span>
-                    <strong>{key}</strong>
-                    <small>{sub}</small>
+                    <strong>{row.key}</strong>
+                    <small>{row.sub}</small>
                   </span>
-                  <code>{value}</code>
+                  {row.href ? (
+                    <a href={row.href} target="_blank" rel="noreferrer">
+                      {row.value}
+                    </a>
+                  ) : (
+                    <code>{row.value}</code>
+                  )}
                 </div>
               ))}
             </div>

@@ -2,21 +2,24 @@
 
 import Link from "next/link";
 
-type ActiveSurface = "marketplace" | "verify" | "buyer" | "proof";
+type ActiveSurface = "marketplace" | "verify" | "buyer" | "cli" | "proof";
 
 const navItems: Array<{ key: ActiveSurface; label: string; href: string }> = [
   { key: "marketplace", label: "Marketplace", href: "/marketplace" },
   { key: "verify", label: "Verify", href: "/verify" },
   { key: "buyer", label: "Buyer Demo", href: "/buyer" },
-  { key: "proof", label: "Docs/Proof", href: "/marketplace#proof" }
+  { key: "cli", label: "Agent CLI", href: "/cli" },
+  { key: "proof", label: "Proof", href: "/proof" }
 ];
 
 export function TerminalHeader({ active }: { active: ActiveSurface }) {
   return (
     <header className="terminal-header">
       <Link className="terminal-brand" href="/marketplace" aria-label="CTRL+Z marketplace">
-        <span>CTRL+Z</span>
-        <small>agent trust terminal</small>
+        <span>
+          CTRL<span>+Z</span>
+        </span>
+        <small>agent trust marketplace</small>
       </Link>
       <nav className="terminal-nav" aria-label="Primary">
         {navItems.map((item) => (

@@ -10,6 +10,7 @@ import {
   erc8004HederaTestnet,
   hederaTestnet
 } from "@/lib/contract";
+import { ctrlzAgentUaidMap } from "@/lib/hcs14/identity";
 
 type VerifyTaskState = "NONE" | "LOCKED" | "ACCEPTED" | "SUBMITTED" | "PAID" | "REFUNDED" | "PAUSED";
 
@@ -39,6 +40,9 @@ export type TrustBridgeData = {
       validationRegistry: string;
       workerAgentId: number;
       checkerAgentId: number;
+      /** HCS-14 Universal Agent IDs derived from the ERC-8004 identities. */
+      workerUaid: string;
+      checkerUaid: string;
     };
   };
   walrus: {
@@ -61,7 +65,10 @@ const STATE_LABELS: VerifyTaskState[] = [
 const DEFAULT_BRIDGE_CACHE_SECONDS = 60;
 const bridgeCacheSeconds = Number(process.env.TRUST_BRIDGE_CACHE_SECONDS ?? DEFAULT_BRIDGE_CACHE_SECONDS);
 
-function fallbackBridge(error?: string): TrustBridgeData {
+function fallbackBridge(
+  error?: string,
+  uaids: { worker: string; checker: string } = { worker: "", checker: "" }
+): TrustBridgeData {
   const demo = ctrlzVerifyEscrowDeployment.demo;
   return {
     hedera: {
@@ -88,7 +95,9 @@ function fallbackBridge(error?: string): TrustBridgeData {
         reputationRegistry: erc8004HederaTestnet.reputationRegistry,
         validationRegistry: erc8004HederaTestnet.validationRegistry,
         workerAgentId: 101,
-        checkerAgentId: 102
+        checkerAgentId: 102,
+        workerUaid: uaids.worker,
+        checkerUaid: uaids.checker
       }
     },
     walrus: {
@@ -100,6 +109,7 @@ function fallbackBridge(error?: string): TrustBridgeData {
 }
 
 async function readTrustBridgeData(): Promise<TrustBridgeData> {
+  const uaids = await ctrlzAgentUaidMap();
   try {
     const client = createPublicClient({
       chain: {
@@ -119,9 +129,9 @@ async function readTrustBridgeData(): Promise<TrustBridgeData> {
     });
 
     return {
-      ...fallbackBridge(),
+      ...fallbackBridge(undefined, uaids),
       hedera: {
-        ...fallbackBridge().hedera,
+        ...fallbackBridge(undefined, uaids).hedera,
         state: STATE_LABELS[Number(task[6])] ?? "NONE",
         scoreBps: Number(task[7]),
         specHash: task[4],
@@ -131,7 +141,7 @@ async function readTrustBridgeData(): Promise<TrustBridgeData> {
       }
     };
   } catch (error) {
-    return fallbackBridge(error instanceof Error ? error.message : "Hedera RPC read failed");
+    return fallbackBridge(error instanceof Error ? error.message : "Hedera RPC read failed", uaids);
   }
 }
 

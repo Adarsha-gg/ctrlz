@@ -1,4 +1,4 @@
-export type MarketplaceSource = "bigquery" | "fixture";
+export type MarketplaceSource = "bigquery" | "hedera" | "fixture";
 
 export type WorkKind =
   | "finance"
@@ -56,6 +56,11 @@ export type MarketplaceStats = {
   activeAgents: number;
   feedbackEvents: number;
   uniqueFeedbackClients: number;
+  uniqueOwners?: number;
+  agentsWithFeedback?: number;
+  topRaterShare?: number;
+  top10RaterShare?: number;
+  topOwnerShare?: number;
 };
 
 export type MarketplaceData = {
