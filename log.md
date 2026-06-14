@@ -9,6 +9,21 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Claude) · Pay-on-green real runner — proven live
+
+- **Did:** Built the real test runner (the impure ground-truth step):
+  `web/lib/runner/{run,junit,demo}.ts` — materializes a workspace, applies the
+  patch via `git apply`, runs the suite, parses JUnit XML → `TestResult[]`.
+  Framework-agnostic (pytest/jest/`node --test` all emit JUnit). Wired into
+  `/verify/payongreen` via `demo` (baked fixture) / `run` (caller workspace),
+  falling back to injected `results`. Route is `runtime = "nodejs"`.
+- **Proven live** against the dev server (no mocks): `{"demo":"green"}` → 3/3
+  pass → PASS, `releases:true`. `{"demo":"cheat"}` (hardcode `=> 5`) → passes the
+  visible "adds two" but the held-out "adds negatives"/"adds zero" FAIL → reject,
+  `releases:false`. The commit-reveal caught a cheat the public test missed.
+- **Next:** sandbox the spawn (container/microVM) before untrusted patches; x402
+  receivable in front of escrow; settle-notification UI.
+
 ## 2026-06-13 · agent (Claude) · Pay-on-green wedge + repo de-clutter
 
 - **Decided (the why):** Pressure-tested the flagship demo against real prior art

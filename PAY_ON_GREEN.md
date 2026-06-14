@@ -84,6 +84,16 @@ Pay-on-green reuses the entire existing verification spine; only the checker is 
   `/verify/submit`): verify patch reveal → reveal + run held-out tests → score →
   anchor Walrus evidence → return the `resolve()` args.
 - Registry + barrel wiring (`registry.ts`, `index.ts`).
+- `web/lib/runner/{run,junit,demo}.ts` — the **real runner**: materializes a
+  workspace, applies the patch (`git apply`), runs the suite, parses JUnit XML →
+  `TestResult[]`. Framework-agnostic (pytest/jest/`node --test` all emit JUnit).
+- `web/app/verify/payongreen/route.ts` — wired to run for real via `demo` (baked
+  fixture) or `run` (caller workspace), falling back to injected `results`.
+
+**Proven live** (`node --test`, in-process): `POST /verify/payongreen {"demo":"green"}`
+→ all tests pass → **PASS, releases**. `{"demo":"cheat"}` (hardcode `=> 5`) → passes
+the *visible* test but the **held-out** tests catch it (`-1+-1 ≠ 5`) → **FAIL, refund**.
+The commit-reveal genuinely caught a cheat the public test missed.
 
 Everything downstream — `scoreSplit`, `planResolution`, the Hedera escrow `resolve()`,
 ERC-8004 reputation, Walrus evidence — is consumed unchanged, because the checker emits
@@ -91,9 +101,10 @@ the same `CheckerReport`.
 
 ## What's next
 
-1. **Real runner** — swap injected `results` for a sandbox that actually runs
-   `pytest`/`jest` against the applied patch (local child-process first; isolated
-   microVM before untrusted use). Same interface; the route already injects results.
+1. **Sandbox the runner** — the runner exists and runs locally in a temp dir with a
+   timeout (fine for trusted/demo inputs). Before running UNTRUSTED worker patches,
+   move the spawn into a container / microVM. Interface (`RunSpec → RunOutcome`) is
+   unchanged, so it's a drop-in swap.
 2. **x402 receivable in front of the escrow** — so the demo is "an x402 payment that
    only settles on proof."
 3. **The notification / UI** — the "paid `solver-7` $4, suite green, reputation +1"
