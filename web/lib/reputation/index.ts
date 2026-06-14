@@ -17,4 +17,5 @@ export {
   scoreCluster
 } from "./score.ts";
 export { classifyResolution } from "./classify.ts";
+export { marketplaceCluster, marketplaceTrust } from "./clusters.ts";
 export { runReputationSelfcheck, type SelfcheckResult } from "./selfcheck.ts";

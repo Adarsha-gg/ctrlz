@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TerminalHeader } from "@/app/components/TerminalHeader";
 
 type Phase = "idle" | "posted" | "claimed" | "verifying" | "settling" | "done";
@@ -56,6 +56,14 @@ export default function AgentsDemoPage() {
   const [settle, setSettle] = useState<SettleResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
+  const [uaids, setUaids] = useState<{ worker: string; checker: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/agents/identity")
+      .then((r) => r.json())
+      .then((d) => setUaids(d))
+      .catch(() => setUaids(null));
+  }, []);
 
   const say = (actor: Actor, text: string) => setLog((prev) => [...prev, { actor, text }]);
 
@@ -87,7 +95,7 @@ export default function AgentsDemoPage() {
     try {
       const res = await fetch("/verify/payongreen", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-payment": "demo-x402:a2a-commission" },
         body: JSON.stringify({ demo: variant, agentId: workerId, writeValidation: true, recipientName: "worker-agent" })
       });
       const data = (await res.json()) as PogResponse;
@@ -120,14 +128,27 @@ export default function AgentsDemoPage() {
     setBusy(true);
     setGeneratedCode("");
     setPhase("verifying");
+    say("buyer", "commissioning the verification job — paying the fee via x402.");
     say("worker", "reading the buggy code + the one sample test… asking my model for a fix. I do NOT get the held-out tests.");
     try {
-      const res = await fetch("/api/agent/solve", { method: "POST" });
+      const res = await fetch("/api/agent/solve", {
+        method: "POST",
+        headers: { "x-payment": "demo-x402:a2a-commission" }
+      });
       const data = (await res.json()) as PogResponse & {
         generatedSource?: string;
         heldoutTests?: string[];
         results?: Array<{ name: string; status: string }>;
+        x402?: {
+          paid?: boolean;
+          requirements?: { maxAmountRequired?: string; asset?: string };
+          receipt?: { transaction?: string };
+        };
       };
+      if (data.x402?.paid) {
+        const req = data.x402.requirements;
+        say("settle", `x402 commission settled: ${req?.maxAmountRequired ?? ""} ${req?.asset ?? "USDC"} (${short(data.x402.receipt?.transaction)}).`);
+      }
       if (data.error || !data.settlement) {
         say("worker", `couldn't generate a fix: ${data.error ?? "no verdict"}`);
         setBusy(false);
@@ -241,6 +262,11 @@ export default function AgentsDemoPage() {
               <div>
                 <p className="terminal-eyebrow">Autonomous — worker-{workerId}</p>
                 <h2>Worker agent</h2>
+                {uaids?.worker ? (
+                  <p className="muted" style={{ fontSize: "0.72rem", wordBreak: "break-all", marginTop: "0.25rem" }}>
+                    HCS-14 identity: <code>{uaids.worker}</code>
+                  </p>
+                ) : null}
               </div>
             </div>
             {phase === "idle" || phase === "posted" ? (

@@ -26,10 +26,20 @@ import { planResolution } from "@/lib/settlement/resolve";
 import { buildEvidenceBlob, buildManifest, hashBlob, storeEvidence } from "@/lib/walrus";
 import { solveTask } from "@/lib/agent/worker";
 import { MAX_TASK } from "@/lib/agent/task";
+import { verifyX402ForRequest, x402RequiredHeaders, x402ResponseHeaders } from "@/lib/x402/payongreen";
 
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(request: Request) {
+  // The buyer commissions the verification job by paying via x402 (when enabled).
+  const x402 = await verifyX402ForRequest(request);
+  if (x402.required && !x402.paid) {
+    return NextResponse.json(
+      { error: x402.error ?? "x402 payment required to commission the job", accepts: [x402.requirements], x402 },
+      { status: 402, headers: x402RequiredHeaders(x402) }
+    );
+  }
+
   const task = MAX_TASK;
 
   // 1. The worker generates a fix (real LLM work).
@@ -89,18 +99,22 @@ export async function POST() {
   });
   const stored = await storeEvidence(evidence);
 
-  return NextResponse.json({
-    task: { id: task.id, spec: task.spec, buggySource: task.buggySource, publicTest: task.publicTest },
-    generatedSource: solve.source,
-    results: outcome.results,
-    publicTests: publicNames,
-    heldoutTests: heldoutNames,
-    reports,
-    recommendation: split.recommendation,
-    settlement,
-    specHash,
-    evidenceHash: stored.hash,
-    evidenceStore: stored.store,
-    evidenceUri: stored.uri ?? null
-  });
+  return NextResponse.json(
+    {
+      task: { id: task.id, spec: task.spec, buggySource: task.buggySource, publicTest: task.publicTest },
+      x402,
+      generatedSource: solve.source,
+      results: outcome.results,
+      publicTests: publicNames,
+      heldoutTests: heldoutNames,
+      reports,
+      recommendation: split.recommendation,
+      settlement,
+      specHash,
+      evidenceHash: stored.hash,
+      evidenceStore: stored.store,
+      evidenceUri: stored.uri ?? null
+    },
+    { headers: x402ResponseHeaders(x402) }
+  );
 }

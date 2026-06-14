@@ -81,7 +81,7 @@ function statusClass(result?: PayOnGreenResponse["settlement"]) {
 
 export default function PayOnGreenDemoPage() {
   const [mode, setMode] = useState<DemoMode>("green");
-  const [payment, setPayment] = useState("");
+  const [payment, setPayment] = useState("demo-x402:vercel-demo");
   const [agentId, setAgentId] = useState("101");
   const [pending, setPending] = useState(false);
   const [response, setResponse] = useState<PayOnGreenResponse | null>(null);
