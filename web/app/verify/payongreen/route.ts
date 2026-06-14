@@ -68,6 +68,7 @@ const DEFAULT_COMMAND = [
   "--test-reporter=junit",
   "--test-reporter-destination=report.xml"
 ];
+const TRUSTED_DIRECT_X402_THRESHOLD = Number(process.env.TRUSTED_DIRECT_X402_THRESHOLD ?? "80");
 
 type PayOnGreenBody = {
   intent?: string;
@@ -80,6 +81,9 @@ type PayOnGreenBody = {
   /** the wallet the buyer would pay, for the evidence record */
   recipientAddress?: string;
   recipientName?: string;
+  recipientTrustScore?: number;
+  recipientX402Support?: boolean;
+  paymentPolicy?: "auto" | "direct-x402" | "escrow";
   /** buyer's held-out tests: committed pre-work, revealed + run at resolution */
   heldout?: {
     hiddenTests: string[];
@@ -123,7 +127,41 @@ function runMetaOf(outcome: RunOutcome) {
 }
 
 export async function POST(request: Request) {
-  const x402 = await verifyX402ForRequest(request);
+  let body: PayOnGreenBody;
+  try {
+    body = (await request.json()) as PayOnGreenBody;
+  } catch {
+    return NextResponse.json({ error: "invalid JSON" }, { status: 400 });
+  }
+
+  const intent = body.intent ?? "Deliver a patch that makes the acceptance suite green";
+  const recipientAddress = body.recipientAddress ?? "0x0000000000000000000000000000000000000000";
+  const trustScore = typeof body.recipientTrustScore === "number" ? body.recipientTrustScore : 0;
+  const directX402 =
+    body.paymentPolicy === "direct-x402" ||
+    (body.paymentPolicy !== "escrow" &&
+      trustScore >= TRUSTED_DIRECT_X402_THRESHOLD &&
+      body.recipientX402Support !== false);
+  const directPayTo =
+    process.env.HEDERA_WORKER_ADDRESS ||
+    process.env.HEDERA_RESOLVER_ADDRESS ||
+    process.env.X402_PAY_TO ||
+    process.env.X402_RECEIVER_ADDRESS ||
+    recipientAddress;
+  const x402 = await verifyX402ForRequest(
+    request,
+    directX402
+      ? {
+          payTo: directPayTo,
+          network: process.env.X402_HEDERA_NETWORK || "eip155:296",
+          asset: process.env.X402_HEDERA_ASSET || "HBAR",
+          settlement: "direct-worker-trusted",
+          trustPolicy: `trustScore>=${TRUSTED_DIRECT_X402_THRESHOLD}`,
+          description:
+            "CTRL+Z trusted-agent direct pay on Hedera. Payment goes to the worker; verification records evidence and reputation without escrow."
+        }
+      : undefined
+  );
   if (x402.required && !x402.paid) {
     return NextResponse.json(
       {
@@ -134,16 +172,6 @@ export async function POST(request: Request) {
       { status: 402, headers: x402RequiredHeaders(x402) }
     );
   }
-
-  let body: PayOnGreenBody;
-  try {
-    body = (await request.json()) as PayOnGreenBody;
-  } catch {
-    return NextResponse.json({ error: "invalid JSON" }, { status: 400 });
-  }
-
-  const intent = body.intent ?? "Deliver a patch that makes the acceptance suite green";
-  const recipientAddress = body.recipientAddress ?? "0x0000000000000000000000000000000000000000";
 
   // --- Resolve ground truth: demo run > caller run > injected results ---------
   let diff: string | undefined = body.patch?.diff;
@@ -405,6 +433,15 @@ export async function POST(request: Request) {
       requiredTests,
       totalRequired: requiredTests.length + (heldout.hiddenCount ?? 0),
       x402,
+      paymentPolicy: {
+        mode: directX402 ? "direct-x402" : "escrow",
+        trustedThreshold: TRUSTED_DIRECT_X402_THRESHOLD,
+        recipientTrustScore: trustScore,
+        settlement: x402.required ? x402.requirements.extra.settlement : directX402 ? "direct-worker-trusted" : "escrow-after-verification",
+        payTo: x402.required ? x402.requirements.payTo : directX402 ? directPayTo : null,
+        network: x402.required ? x402.requirements.network : directX402 ? process.env.X402_HEDERA_NETWORK || "eip155:296" : null,
+        asset: x402.required ? x402.requirements.asset : directX402 ? process.env.X402_HEDERA_ASSET || "HBAR" : null
+      },
       run: runMeta,
       replay,
       results,

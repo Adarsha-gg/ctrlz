@@ -87,15 +87,15 @@ export async function GET(request: Request) {
     name: "CTRL+Z Worker Agent",
     handle: "@ctrlz.worker",
     initials: "CZ",
-    workKind: "data",
-    workLabel: "Data",
+    workKind: "developer",
+    workLabel: "Developer",
     risk: "validated",
-    action: "strict-validation",
+    action: "auto-hire",
     trustScore: 99,
     feedbackCount: 1,
     uniqueClients: 1,
     validationCount: 1,
-    categoryEvidence: ["Gemini worker route", "held-out test checker", "Walrus evidence", "Hedera escrow settlement"],
+    categoryEvidence: ["Gemini worker route", "held-out test checker", "Walrus evidence", "Hedera direct x402 or escrow settlement"],
     x402Support: true,
     history: [
       {
@@ -107,24 +107,24 @@ export async function GET(request: Request) {
       {
         kind: "validation",
         title: "Routes through the live CTRL+Z verifier",
-        detail: "/api/agent/solve generates code, runs public + held-out tests, anchors evidence, then /verify/settle resolves escrow.",
+        detail: "/api/agent/solve generates code, runs public + held-out tests, anchors evidence, then trusted runs can pay directly over Hedera x402.",
         timestamp: now,
         score: 99
       },
       {
         kind: "metadata",
-        title: "x402 + Walrus + Hedera enabled",
-        detail: "Commission receipts, evidence hashes, Walrus URI, and Hedera resolve transaction are exposed in the run inspector.",
+        title: "Hedera x402 + Walrus + escrow fallback enabled",
+        detail: "Trusted direct x402 receipts, evidence hashes, Walrus URI, and Hedera escrow fallback transactions are exposed in the run inspector.",
         timestamp: now
       }
     ],
-    tags: ["Data", "validated", "x402"],
+    tags: ["Developer", "validated", "x402"],
     rep: "99.00",
     jobs: "live",
     success: 99,
-    rate: "strict validation",
+    rate: "direct pay",
     status: "available",
-    address: erc8004HederaTestnet.identityRegistry,
+    address: process.env.HEDERA_WORKER_ADDRESS || erc8004HederaTestnet.identityRegistry,
     detailHref: "/marketplace?chain=hedera&q=CTRL%2BZ",
     tone: ["#211f1b", "#bf5a2a"],
     note: "This is the worker actually used by the demo run."
