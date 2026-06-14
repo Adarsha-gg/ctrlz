@@ -90,7 +90,31 @@ later outcomes.
 | Hedera EVM escrow | Verify lifecycle contract, live deploy, and live lock/resolve demo | Shipped live on Hedera testnet |
 | Hedera HCS | Receipt topic/message script | Shipped live on topic `0.0.9222881` |
 | ERC-8004 | Hedera testnet IdentityRegistry and ReputationRegistry scripts | Shipped live for worker/checker identity and feedback |
-| Google / ERC-8004 validation | BigQuery explorer over mainnet ERC-8004 data + CTRL+Z as a live ERC-8004 **validator** (the unsolved 3rd pillar) | Planned; Validation Registry confirmed live on Hedera — see [GOOGLE.md](GOOGLE.md) |
+| Google / ERC-8004 validation | BigQuery explorer over mainnet ERC-8004 data + x402 payment metadata flags + CTRL+Z as a live ERC-8004 **validator** (the unsolved 3rd pillar) | Shipped in `/marketplace`; Validation Registry confirmed live on Hedera — see [GOOGLE.md](GOOGLE.md) |
+
+## Google / ERC-8004 Bounty Compliance
+
+CTRL+Z includes a lightweight Next.js explorer at `/marketplace` for the
+**Best On-Chain Agent Economy Application** requirements:
+
+- **BigQuery core:** `web/lib/google/bigquery.ts` queries
+  `bigquery-public-data.goog_blockchain_ethereum_mainnet_us.logs` and
+  `.transactions` for raw Ethereum mainnet registry events.
+- **Ethereum Foundation ERC-8004 addresses:** Identity
+  `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, Reputation
+  `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`, and Validation
+  `0x8004Cc8439f36fd5F9F049D9fF86523Df6dAAB58`.
+- **Ranking and analytics:** the explorer scores agents from feedback count,
+  distinct clients, weighted feedback, rater concentration, burst/repeat
+  penalties, identity signals, and validation events.
+- **x402 transparency:** each on-chain agent URI is decoded/fetched as metadata
+  and flagged when it advertises `x402`, `paymentRequirements`, accepted payment
+  protocols, or x402 payment endpoints. The UI exposes an `x402 only` filter,
+  count, badges, and per-agent evidence.
+- **Frontend:** `/marketplace` and `/marketplace/[agentKey]` provide the
+  searchable/filterable visualization. If BigQuery credentials are absent or a
+  query fails, the page clearly marks fixture fallback instead of pretending the
+  result is live.
 
 ## Shipped vs Blocked
 
@@ -111,18 +135,13 @@ later outcomes.
   txs on testnet.
 - HCS receipt topic/message for the C2 evidence hash, score, and recommendation.
 - ERC-8004 worker/checker agent registrations and reputation feedback txs.
+- Google BigQuery marketplace over the EF ERC-8004 mainnet registries, with
+  x402 payment metadata flags and a search/filter UI.
 - Prior Arc escrow work exists as reference/stretch, including the old
   sender-undo state machine and risk engine history reads.
 
 ### Blocked / Not Shipped
 
-- **Google / ERC-8004 validation lane:** planned, not yet built. The angle is the
-  *validation pillar* (see [GOOGLE.md](GOOGLE.md)): a BigQuery explorer over
-  **mainnet/Base** ERC-8004 data, plus CTRL+Z writing verdicts to the canonical
-  ERC-8004 **Validation Registry** — confirmed live on Hedera testnet at
-  `0x8004Cb1BF31DAf7788923b405b754f57acEB4272`. Does **not** depend on Google
-  indexing Hedera. Forward design lives in [REPUTATION.md](REPUTATION.md) +
-  [GOOGLE.md](GOOGLE.md); open work is tracked in [TODO.md](TODO.md).
 - **Arc and Ledger:** prior/stretch material, not the primary G2 submission.
   Do not pitch live Arc transactions or Ledger signing as the current core.
 
@@ -186,8 +205,9 @@ Use this phrasing:
 - **ERC-8004:** worker/checker identities and reputation feedback are live;
   feedback should be described as settlement-derived and evidence-linked, not
   self-attested.
-- **Google BigQuery:** optional analytics only, pending sponsor approval of the
-  Hedera data source.
+- **Google BigQuery:** `/marketplace` uses BigQuery over raw Ethereum mainnet
+  ERC-8004 Identity, Reputation, and Validation registry events, then enriches
+  agent metadata to flag x402-payable agents.
 
 Leave G1 open until the full demo has been rehearsed end-to-end. G2 is complete
 when these docs and the submission framing stay coherent and honest.

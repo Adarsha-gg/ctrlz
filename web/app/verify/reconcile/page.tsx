@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TerminalHeader } from "@/app/components/TerminalHeader";
 
 /**
@@ -55,6 +55,24 @@ type SubmitResponse = {
   };
 };
 
+type SettleReceipt = {
+  configured?: boolean;
+  error?: string;
+  chainId?: number;
+  escrowAddress?: string;
+  taskId?: string;
+  result?: string;
+  scoreBps?: number;
+  finalState?: number;
+  finalStateLabel?: string;
+  lockHash?: string;
+  acceptHash?: string;
+  submitHash?: string;
+  resolveHash?: string;
+  resolveStatus?: string;
+  explorer?: string;
+};
+
 const INTENT =
   "Reconcile every USDC transfer for the treasury wallet over the window, keyed by tx hash.";
 
@@ -89,6 +107,26 @@ export default function ReconcilePage() {
   const [resp, setResp] = useState<SubmitResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
+  const [settling, setSettling] = useState(false);
+  const [settle, setSettle] = useState<SettleReceipt | null>(null);
+  // null = unknown (still probing). Tells the UI whether the server can settle
+  // on-chain, so a keyless deploy reads clearly instead of failing on click.
+  const [chainReady, setChainReady] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    fetch("/verify/settle")
+      .then((r) => r.json())
+      .then((d: { configured?: boolean }) => {
+        if (live) setChainReady(Boolean(d.configured));
+      })
+      .catch(() => {
+        if (live) setChainReady(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // The tampered worker fakes one row's amount AFTER producing the data. Because
   // the spot-check sample is derived from the commit of its (faked) rows, it
@@ -126,10 +164,37 @@ export default function ReconcilePage() {
         throw new Error(body.error ?? `submit failed (${res.status})`);
       }
       setResp((await res.json()) as SubmitResponse);
+      setSettle(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "submit failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // One-click settlement: hand the verdict hashes to the server, which drives
+  // the Hedera escrow lock→accept→submit→resolve. PASS → PAID, FAIL → REFUNDED.
+  async function settleOnChain() {
+    if (!resp) return;
+    setSettling(true);
+    setSettle(null);
+    try {
+      const res = await fetch("/verify/settle", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          specHash: resp.specHash,
+          evidenceHash: resp.evidenceHash,
+          recommendationHash: resp.settlement.recommendationHash,
+          result: resp.settlement.resultLabel,
+          scoreBps: resp.settlement.scoreBps
+        })
+      });
+      setSettle((await res.json()) as SettleReceipt);
+    } catch (e) {
+      setSettle({ error: e instanceof Error ? e.message : "settlement failed" });
+    } finally {
+      setSettling(false);
     }
   }
 
@@ -305,6 +370,83 @@ export default function ReconcilePage() {
               <p style={{ margin: "8px 0 0", fontSize: 12.5, color: "#9aa4b2" }}>
                 {resp.settlement.detail}
               </p>
+
+              <div
+                style={{
+                  marginTop: 14,
+                  paddingTop: 12,
+                  borderTop: "1px solid #21262d",
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "center",
+                  flexWrap: "wrap"
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => void settleOnChain()}
+                  disabled={settling || chainReady === false}
+                  style={settleBtn(settling, resp.settlement.releases, chainReady === false)}
+                >
+                  {chainReady === false
+                    ? "on-chain settle unavailable"
+                    : settling
+                      ? "settling on Hedera…"
+                      : `settle on Hedera → ${resp.settlement.releases ? "pay worker" : "refund buyer"}`}
+                </button>
+                <span style={{ fontSize: 12, color: chainReady === false ? "#d29922" : "#7d8590" }}>
+                  {chainReady === false
+                    ? "server has no Hedera creds (.env HEDERA_*_PRIVATE_KEY) — settlement is read-only here"
+                    : chainReady === null
+                      ? "checking on-chain availability…"
+                      : "drives lock→accept→submit→resolve on the live escrow"}
+                </span>
+              </div>
+
+              {settle && (
+                <div style={{ marginTop: 12 }}>
+                  {settle.error ? (
+                    <p style={{ color: "#f85149", fontFamily: "monospace", fontSize: 12.5 }}>
+                      settlement error: {settle.error}
+                    </p>
+                  ) : settle.configured === false ? (
+                    <p style={{ color: "#d29922", fontSize: 12.5 }}>
+                      {settle.error ?? "Hedera creds not configured on the server."}
+                    </p>
+                  ) : (
+                    <div style={{ display: "grid", gap: 2 }}>
+                      <Row
+                        k="final escrow state"
+                        v={`${settle.finalStateLabel} (${settle.finalState})`}
+                        tone={settle.finalStateLabel === "PAID" ? "#3fb950" : settle.finalStateLabel === "REFUNDED" ? "#f85149" : "#d29922"}
+                        mono
+                      />
+                      <Row k="escrow" v={short(settle.escrowAddress ?? "")} mono />
+                      <Row k="taskId" v={settle.taskId ?? ""} mono />
+                      <Row k="resolve tx" v={short(settle.resolveHash ?? "")} mono />
+                      {settle.explorer && (
+                        <div style={{ padding: "3px 0" }}>
+                          <a
+                            href={settle.explorer}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ fontSize: 13, color: "#2f81f7" }}
+                          >
+                            view resolve tx on HashScan ↗
+                          </a>
+                        </div>
+                      )}
+                      <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "#9aa4b2" }}>
+                        {settle.finalStateLabel === "PAID"
+                          ? "Escrow released the locked HBAR to the worker — the verdict moved real money."
+                          : settle.finalStateLabel === "REFUNDED"
+                            ? "Escrow refunded the buyer — the caught liar got nothing."
+                            : "Escrow is holding for the buyer to decide."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </Panel>
 
             {tampScratched && (
@@ -349,6 +491,20 @@ function submitBtn(busy: boolean): React.CSSProperties {
     color: "#fff",
     cursor: busy ? "wait" : "pointer",
     fontSize: 13
+  };
+}
+
+function settleBtn(busy: boolean, releases: boolean, disabled = false): React.CSSProperties {
+  const tone = disabled ? "#30363d" : releases ? "#3fb950" : "#f85149";
+  return {
+    padding: "7px 16px",
+    borderRadius: 6,
+    border: `1px solid ${tone}`,
+    background: disabled ? "transparent" : busy ? `${tone}22` : tone,
+    color: disabled ? "#7d8590" : "#fff",
+    cursor: disabled ? "not-allowed" : busy ? "wait" : "pointer",
+    fontSize: 13,
+    fontWeight: 600
   };
 }
 

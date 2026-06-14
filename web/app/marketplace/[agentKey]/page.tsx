@@ -15,6 +15,7 @@ type DetailQuery = {
   minTrust?: string;
   minClients?: string;
   hideThin?: string;
+  x402?: string;
   sort?: string;
   refresh?: string;
 };
@@ -159,7 +160,7 @@ function splitScores(agent: AgentMarketplaceRow) {
 
 function backHref(query?: DetailQuery) {
   const params = new URLSearchParams();
-  for (const key of ["chain", "kind", "policy", "q", "minTrust", "minClients", "hideThin", "sort"] as const) {
+  for (const key of ["chain", "kind", "policy", "q", "minTrust", "minClients", "hideThin", "x402", "sort"] as const) {
     const value = query?.[key];
     if (value && value !== "all" && value !== "rank" && value !== "0") {
       params.set(key, value);
@@ -245,10 +246,14 @@ function evidenceSummary(agent: AgentMarketplaceRow) {
     agent.workKind === "general"
       ? "No strong work category signal in metadata"
       : `${agent.workLabel} is inferred from metadata/domain keywords`;
+  const payment = agent.x402Support
+    ? "x402 payment metadata found"
+    : "No x402 payment metadata found in the indexed agent URI";
 
   return [
     { label: "Reputation signal", value: feedback },
     { label: "Validation signal", value: validation },
+    { label: "Payment signal", value: payment },
     { label: "Work type signal", value: category }
   ];
 }
@@ -337,6 +342,7 @@ export default async function AgentDetailPage({
           <code>{agent.agentKey}</code>
           <div className="agent-detail-badges">
             <span className={`work-badge ${agent.workKind}`}>{agent.workLabel}</span>
+            {agent.x402Support ? <span className="x402-pill">x402 payable</span> : null}
             <span>{agent.domain}</span>
             <span>registered {formatDate(agent.registeredAt)}</span>
           </div>
@@ -440,6 +446,19 @@ export default async function AgentDetailPage({
             <h2>Why this is labeled {agent.workLabel}</h2>
             <ul className="category-evidence-list">
               {categoryEvidence.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="terminal-panel">
+            <p className="terminal-eyebrow">Payment metadata</p>
+            <h2>{agent.x402Support ? "x402 support detected" : "No x402 support detected"}</h2>
+            <ul className="category-evidence-list">
+              {(agent.x402Evidence.length > 0
+                ? agent.x402Evidence
+                : ["No x402, paymentRequirements, or x402 endpoint signal was found in the registered metadata URI."]
+              ).map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
@@ -576,6 +595,10 @@ export default async function AgentDetailPage({
               <div>
                 <dt>Weighted</dt>
                 <dd>{agent.weightedFeedback.toFixed(1)}</dd>
+              </div>
+              <div>
+                <dt>x402</dt>
+                <dd>{agent.x402Support ? "supported" : "not detected"}</dd>
               </div>
               <div>
                 <dt>Signals</dt>

@@ -46,11 +46,23 @@ scores the checkers by whether later outcomes agreed with them.
 | C3 HCS receipt | Shipped live | Topic `0.0.9222881`; canonical receipt tx `0.0.9222066@1781356716.807172813`; payload references the exact `/verify` evidence hash, score `9200`, recommendation `proceed`, and the **real Walrus evidence blob** `https://aggregator.walrus-testnet.walrus.space/v1/blobs/eDxE69ZD3dua2R7xO8Z1KlYa9RvKgpNZHzXIkO63frk`. Earlier receipts remain on the append-only topic and are superseded. |
 | D1 ERC-8004 identity registration | Shipped live | Worker agent `101` tx `0xd4912aef78fb8f76a0e77e583516bcf0f84ac3e14de5d46d5c78c39dd0863c94`; checker agent `102` tx `0xff802ef5cd713ab8075e3b195329ac3664633dfa648f61fff156e84582d8f80f`. |
 | D2 ERC-8004 reputation feedback | Shipped live | Worker outcome feedback tx `0x3745fa1efa69f725481f5798d3e2d76d856123510569f09f2a59c277f3e0fb0f`; checker accuracy feedback tx `0xa42eb5c0142e0fd26362c900357fd4def575691d91800040147bec7ee6078bbc`. |
-| Google BigQuery | Conditional / not shipped | Only claim if sponsor approves Hedera testnet ERC-8004/settlement data as an eligible source. |
+| Google BigQuery / ERC-8004 explorer | Shipped | `/marketplace` queries raw Ethereum mainnet ERC-8004 Identity, Reputation, and Validation registry events through Google BigQuery, ranks agents by feedback breadth/concentration/validation signals, and flags x402-payable agents from registered metadata. |
 | Arc / Ledger | Prior or stretch | Do not pitch as the primary G2 product. |
 
 C1/C2/C3/D1/D2 now have real Hedera testnet confirmations. The latest C2/C3
 run pins the exact clean `/verify` sha256 anchors on Hedera and in HCS.
+
+Google bounty minimum is covered by the `/marketplace` route:
+
+- BigQuery core dataset:
+  `bigquery-public-data.goog_blockchain_ethereum_mainnet_us`.
+- EF ERC-8004 mainnet registries:
+  Identity `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, Reputation
+  `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`, Validation
+  `0x8004Cc8439f36fd5F9F049D9fF86523Df6dAAB58`.
+- Lightweight frontend: Next.js `/marketplace` and per-agent detail pages with
+  search, category/policy/trust/client/x402 filters, rater concentration
+  warnings, and x402 evidence.
 
 ## Demo Commands
 

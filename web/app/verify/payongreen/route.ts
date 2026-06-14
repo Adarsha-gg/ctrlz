@@ -40,6 +40,7 @@ import { commitPatch, verifyPatchReveal } from "@/lib/checkers/patchwork";
 import { payOnGreenDemo, runTests, type RunOutcome } from "@/lib/runner";
 import { scoreSplit, type ScoredCheck } from "@/lib/scoring/score";
 import { planResolution } from "@/lib/settlement/resolve";
+import { writeValidationResponse, type ValidationWriteResult } from "@/lib/erc8004/validation";
 import {
   buildEvidenceBlob,
   buildManifest,
@@ -49,6 +50,7 @@ import {
   verifyHeldoutReveal,
   type HeldoutRevealPointer
 } from "@/lib/walrus";
+import { verifyX402ForRequest, x402RequiredHeaders, x402ResponseHeaders } from "@/lib/x402/payongreen";
 
 export const runtime = "nodejs";
 
@@ -88,6 +90,10 @@ type PayOnGreenBody = {
     files: Record<string, string>;
     timeoutMs?: number;
   };
+  /** agent receiving ERC-8004 validation; defaults to PAYONGREEN_ERC8004_AGENT_ID when set */
+  agentId?: string;
+  /** request a ValidationRegistry write/prepared payload for the pay-on-green verdict */
+  writeValidation?: boolean;
 };
 
 function isTestResultArray(value: unknown): value is TestResult[] {
@@ -109,6 +115,18 @@ function runMetaOf(outcome: RunOutcome) {
 }
 
 export async function POST(request: Request) {
+  const x402 = await verifyX402ForRequest(request);
+  if (x402.required && !x402.paid) {
+    return NextResponse.json(
+      {
+        error: x402.error ?? "x402 payment required",
+        accepts: [x402.requirements],
+        x402
+      },
+      { status: 402, headers: x402RequiredHeaders(x402) }
+    );
+  }
+
   let body: PayOnGreenBody;
   try {
     body = (await request.json()) as PayOnGreenBody;
@@ -125,6 +143,11 @@ export async function POST(request: Request) {
   let requiredTests: string[] = Array.isArray(body.requiredTests) ? body.requiredTests : [];
   let heldoutHidden: string[] | undefined = body.heldout?.hiddenTests;
   let runMeta: ReturnType<typeof runMetaOf> | { ran: false } = { ran: false };
+  let replayFiles: Record<string, string> | undefined;
+  let replayCommand = DEFAULT_COMMAND;
+  let replayReportPath = "report.xml";
+  let runnerSource: "demo" | "caller-run" | "injected-results" = "injected-results";
+  let runOutcome: RunOutcome | null = null;
 
   if (body.demo === "green" || body.demo === "cheat") {
     const fx = payOnGreenDemo(body.demo);
@@ -136,9 +159,14 @@ export async function POST(request: Request) {
     });
     diff = fx.patch;
     results = outcome.results;
+    runOutcome = outcome;
     requiredTests = fx.requiredTests;
     heldoutHidden = fx.hiddenTests;
     runMeta = runMetaOf(outcome);
+    replayFiles = fx.files;
+    replayCommand = fx.command;
+    replayReportPath = fx.reportPath;
+    runnerSource = "demo";
   } else if (body.run && body.run.files) {
     // Caller-supplied workspaces execute arbitrary code — gate behind an explicit
     // sandbox opt-in. The command + report path are FIXED (no caller-chosen
@@ -168,7 +196,10 @@ export async function POST(request: Request) {
       );
     }
     results = outcome.results;
+    runOutcome = outcome;
     runMeta = runMetaOf(outcome);
+    replayFiles = body.run.files;
+    runnerSource = "caller-run";
   }
 
   if (typeof diff !== "string" || diff.length === 0) {
@@ -239,7 +270,7 @@ export async function POST(request: Request) {
     heldout = {
       used: true,
       hiddenTests,
-      hiddenCount: heldoutManifest.hiddenCount,
+      hiddenCount: hiddenTests.length,
       commit: heldoutManifest.hiddenChecksCommit,
       revealVerified: verified.valid,
       revealStore: heldoutReveal.store,
@@ -266,6 +297,29 @@ export async function POST(request: Request) {
   const reports = runChecks(runtimeChecks, ctx);
   const scored: ScoredCheck[] = runtimeChecks.map((check, i) => ({ check, report: reports[i] }));
   const split = scoreSplit({ checks: scored });
+  const settlement = await planResolution(split);
+
+  const replay = {
+    protocol: "ctrlz.payongreen.replay.v1",
+    trustModel: "CTRL+Z server is the v1 verifier; this bundle is enough for third-party replay/audit of deterministic inputs and outputs.",
+    runner: {
+      source: runnerSource,
+      command: replayCommand,
+      reportPath: replayReportPath,
+      node: "node --test",
+      sandbox: process.env.PAYONGREEN_ALLOW_RUN === "1" ? "external-sandbox-required" : "baked-demo-or-injected"
+    },
+    workspace: replayFiles ? { files: replayFiles } : undefined,
+    patch,
+    publicTests: requiredTests,
+    heldout,
+    run: runMeta,
+    results,
+    stdout: runOutcome?.stdout,
+    stderr: runOutcome?.stderr,
+    checkerRuntime: buildCheckerRuntimeManifest(runtimeChecks),
+    settlement
+  };
 
   // 3. Anchor a replayable evidence blob — the hash the escrow resolves against.
   const manifest = buildManifest({ intent, checks: resolvedDefs });
@@ -276,27 +330,52 @@ export async function POST(request: Request) {
     checkerRuntime: buildCheckerRuntimeManifest(runtimeChecks),
     splitScore: split,
     recommendation: split.recommendation,
+    replay,
     ...(heldoutReveal ? { heldoutReveal } : {})
   });
-  const [stored, settlement] = await Promise.all([storeEvidence(evidence), planResolution(split)]);
+  const stored = await storeEvidence(evidence);
+  const responseHash = (stored.hash.startsWith("0x") ? stored.hash : `0x${stored.hash}`) as `0x${string}`;
+  const evidenceURI = stored.uri ?? `urn:sha256:${stored.hash}`;
+  const shouldValidate = body.writeValidation === true || process.env.PAYONGREEN_WRITE_ERC8004 === "1";
+  const agentId = body.agentId ?? process.env.PAYONGREEN_ERC8004_AGENT_ID;
+  let erc8004Validation: ValidationWriteResult | { mode: "skipped"; reason: string } = {
+    mode: "skipped",
+    reason: agentId ? "writeValidation was false and PAYONGREEN_WRITE_ERC8004 is not enabled" : "missing agentId"
+  };
+  if (agentId && shouldValidate) {
+    erc8004Validation = await writeValidationResponse({
+      agentId,
+      score: split.outputValidity.score,
+      requestURI: `payongreen:${settlement.resultLabel.toLowerCase()}:${patchCommit}`,
+      responseURI: evidenceURI,
+      responseHash,
+      tag: `ctrlz.payongreen.${settlement.resultLabel.toLowerCase()}`
+    });
+  }
 
   // 4. The settlement decision: the exact resolve() args the escrow consumes.
-  return NextResponse.json({
-    intent,
-    patchCommit,
-    runVerified,
-    requiredTests,
-    totalRequired: requiredTests.length + (heldout.hiddenCount ?? 0),
-    run: runMeta,
-    results,
-    reports,
-    split,
-    recommendation: split.recommendation,
-    evidenceHash: stored.hash,
-    evidenceStore: stored.store,
-    evidenceUri: stored.uri ?? null,
-    specHash,
-    heldout,
-    settlement
-  });
+  return NextResponse.json(
+    {
+      intent,
+      patchCommit,
+      runVerified,
+      requiredTests,
+      totalRequired: requiredTests.length + (heldout.hiddenCount ?? 0),
+      x402,
+      run: runMeta,
+      replay,
+      results,
+      reports,
+      split,
+      recommendation: split.recommendation,
+      evidenceHash: stored.hash,
+      evidenceStore: stored.store,
+      evidenceUri: stored.uri ?? null,
+      specHash,
+      heldout,
+      settlement,
+      erc8004Validation
+    },
+    { headers: x402ResponseHeaders(x402) }
+  );
 }

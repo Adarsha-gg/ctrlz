@@ -30,6 +30,8 @@ export type AgentMarketplaceRow = {
   ownerAddress: string;
   agentUri: string;
   domain: string;
+  x402Support: boolean;
+  x402Evidence: string[];
   workKind: WorkKind;
   workLabel: string;
   categoryEvidence: string[];
@@ -56,6 +58,7 @@ export type MarketplaceStats = {
   activeAgents: number;
   feedbackEvents: number;
   uniqueFeedbackClients: number;
+  x402Agents?: number;
   uniqueOwners?: number;
   agentsWithFeedback?: number;
   topRaterShare?: number;

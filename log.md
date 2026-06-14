@@ -9,6 +9,48 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-13 · agent (Codex) · Google ERC-8004 explorer + x402 flags
+
+- **Did:** Closed the Google bounty minimum: `/marketplace` now uses Google
+  BigQuery over raw Ethereum mainnet ERC-8004 Identity/Reputation/Validation
+  registry events, enriches registered agent metadata, flags x402/payment
+  capability, and exposes x402 counts, filters, badges, and per-agent evidence.
+- **Docs:** Updated README, GOOGLE, TODO, and SUBMISSION so the Google lane is
+  no longer described as planned/conditional.
+- **Verified:** `next build` and `tsc --noEmit` clean. Local marketplace render
+  showed live BigQuery-backed counts and x402-payable agents.
+- **Next:** deploy with `GOOGLE_CLOUD_PROJECT` / BigQuery credentials set so the
+  public judging URL uses live data instead of fixture fallback.
+
+## 2026-06-13 · agent (Claude) · One-click settle-on-Hedera from the reconcile UI
+
+- **Did:** Fused verdict → on-chain settlement into one button so the demo closes
+  the loop in-browser (no script shelling).
+  - `web/lib/settlement/hedera.ts` (server-only) — `settleOnHedera()` drives
+    lock→accept→submit→resolve against the **already-deployed** escrow
+    (`ctrlzVerifyEscrowAddress`, no per-click deploy) via viem; reads keys from
+    the repo-root `.env` (walks up from cwd since Next runs in `web/`); derives
+    the new taskId from the `TaskLocked` event (the exported ABI has no
+    `nextTaskId`). `hederaConfigured()` gates it.
+  - `web/app/verify/settle/route.ts` — GET status probe returns `{configured}`;
+    POST validates + normalizes the bare-or-0x sha256 hashes from
+    `/verify/submit`, returns the receipt or `{configured:false}` when creds are
+    absent (graceful in prod).
+  - `web/app/verify/reconcile/page.tsx` — "settle on Hedera → pay worker / refund
+    buyer" button under the settlement panel; probes chain availability on mount,
+    disables the money-moving button on keyless deploys, and renders final escrow
+    state + HashScan link.
+- **Proven LIVE through the HTTP routes** (dev server, real `.env` creds, canonical
+  escrow `0xa2ac71dd…2462`): honest → `/verify/submit` PASS/9800 → `/verify/settle`
+  HTTP 200 → **PAID** (state 5, taskId 2). Tampered (all rows wrong, checker
+  "6/6 sampled rows disagree") → FAIL/800 → **REFUNDED** (state 6, taskId 3,
+  refund tx `0xba975a92…370d`).
+- **State:** `web tsc` clean. (Dev-server flakiness note: Next dev intermittently
+  500s a route with `ENOENT …/route.js`; a clean restart fixes it — not a code
+  bug, the honest path settled first try.)
+- **Next:** keep the route server-only and only enable settlement on deploys with
+  intentional Hedera credentials.
+
 ## 2026-06-13 · agent (Claude) · Harden the pay-on-green runner (review fixes)
 
 - **Fixed (3 review findings):**
