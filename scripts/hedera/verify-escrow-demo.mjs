@@ -49,6 +49,20 @@ const specHash = specHashInput.value;
 const evidenceHash = evidenceHashInput.value;
 const recommendationHash = recommendationHashInput.value;
 
+// The verdict that drives settlement. Defaults to the original demo (PASS, 92%),
+// but a real run feeds these from the /verify/submit settlement plan so the
+// on-chain resolve reflects what the checkers actually decided.
+const VERIFICATION_RESULT = { PASS: 0, FAIL: 1, UNCERTAIN: 2 };
+const resultLabel = (optionalEnv("HEDERA_VERIFY_RESULT", "PASS") || "PASS").toUpperCase();
+if (!(resultLabel in VERIFICATION_RESULT)) {
+  throw new Error(`HEDERA_VERIFY_RESULT must be PASS | FAIL | UNCERTAIN, got ${resultLabel}`);
+}
+const verificationResult = VERIFICATION_RESULT[resultLabel];
+const scoreBps = Number(optionalEnv("HEDERA_VERIFY_SCORE_BPS", "9200"));
+if (!Number.isInteger(scoreBps) || scoreBps < 0 || scoreBps > 10000) {
+  throw new Error(`HEDERA_VERIFY_SCORE_BPS must be an integer 0..10000, got ${scoreBps}`);
+}
+
 const artifact = JSON.parse(
   fs.readFileSync("contracts/out/CtrlZVerifyEscrow.sol/CtrlZVerifyEscrow.json", "utf8"),
 );
@@ -106,7 +120,7 @@ const resolveHash = await resolverClient.writeContract({
   address: escrowAddress,
   abi,
   functionName: "resolve",
-  args: [taskId, 0, evidenceHash, 9200, recommendationHash],
+  args: [taskId, verificationResult, evidenceHash, scoreBps, recommendationHash],
   gas: resolveGas,
 });
 const resolveReceipt = await publicClient.waitForTransactionReceipt({ hash: resolveHash });
@@ -130,6 +144,8 @@ printJson({
   specHash,
   evidenceHash,
   recommendationHash,
+  verificationResult: resultLabel,
+  scoreBps,
   hashSources: {
     specHash: specHashInput.source,
     evidenceHash: evidenceHashInput.source,

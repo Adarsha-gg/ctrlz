@@ -5,6 +5,7 @@ import {
   normalizeBytes32,
   readAbi,
 } from "./evm.mjs";
+import { agentUaid } from "./hcs14.mjs";
 
 const args = parseArgs();
 loadDotenv();
@@ -45,11 +46,15 @@ const hash = await walletClient.writeContract({
 
 const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
+// HCS-14 UAID of the agent being rated (portable pointer to the ERC-8004 identity).
+const hcs14 = await agentUaid({ agentId: agentId.toString() });
+
 printJson({
   network: "hedera-testnet",
   reputationRegistry: reputationRegistryAddress,
   clientAddress: account.address,
   agentId: agentId.toString(),
+  agentUaid: hcs14?.uaid ?? null,
   value: value.toString(),
   valueDecimals,
   tag1,

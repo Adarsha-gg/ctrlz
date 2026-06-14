@@ -6,7 +6,6 @@ import { computeCheckerMetas } from "../../web/lib/checkers/metaReputation.ts";
 import { scoreSplit } from "../../web/lib/scoring/score.ts";
 import { hashBlob } from "../../web/lib/walrus/store.ts";
 import { buildEvidenceBlob, buildManifest } from "../../web/lib/walrus/evidence.ts";
-import { applyWorldTrustBoost, decideWorldGate } from "../../web/lib/world/policy.ts";
 import {
   CHECKER_HISTORY,
   CLEAN_SUBMISSION,
@@ -33,13 +32,7 @@ const scored = checks.map((check, index) => ({
   report: reports[index],
   metaWeight: checkerMeta[index]?.weight
 }));
-const rawSplit = scoreSplit({ checks: scored, workerHistory: demo.workerHistory });
-const worldGate = decideWorldGate({
-  agentId: demo.worldAgent.agentId,
-  usedVerifications: demo.worldAgent.usedVerifications,
-  identity: demo.worldAgent.identity
-});
-const { split } = applyWorldTrustBoost(rawSplit, worldGate, demo.worldAgent.identity);
+const split = scoreSplit({ checks: scored, workerHistory: demo.workerHistory });
 const manifest = buildManifest({ intent: DEMO_ACCEPTANCE_SPEC.intent, checks });
 const evidence = buildEvidenceBlob({
   taskSpec: manifest,
