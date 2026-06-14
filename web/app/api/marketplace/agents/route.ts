@@ -70,6 +70,8 @@ function mapAgent(row: AgentMarketplaceRow, index: number) {
     status,
     address: row.ownerAddress,
     detailHref: `/marketplace/${row.agentKey}`,
+    agentUri: row.agentUri,
+    domain: row.domain,
     tone: tonePairs[index % tonePairs.length],
     note: row.action === "reject" ? "Live marketplace policy blocks direct hiring until validation improves." : undefined
   };
@@ -126,6 +128,8 @@ export async function GET(request: Request) {
     status: "available",
     address: process.env.HEDERA_WORKER_ADDRESS || erc8004HederaTestnet.identityRegistry,
     detailHref: "/marketplace?chain=hedera&q=CTRL%2BZ",
+    agentUri: "https://raw.githubusercontent.com/Adarsha-gg/ctrlz/main/docs/agents/ctrlz-worker-agent.json",
+    domain: "ctrlz.worker",
     tone: ["#211f1b", "#bf5a2a"],
     note: "This is the worker actually used by the demo run."
   };

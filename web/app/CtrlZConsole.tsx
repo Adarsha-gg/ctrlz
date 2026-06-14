@@ -85,6 +85,15 @@ type SettleResult = {
   finalStateLabel?: string;
   resolveHash?: string;
 };
+type ExternalDispatch = {
+  dispatchId: string;
+  agentId: string;
+  agentName: string;
+  address: string;
+  profileHref: string;
+  agentUri?: string;
+  submittedAt: string;
+};
 
 type Agent = {
   id: string;
@@ -111,6 +120,8 @@ type Agent = {
   status: "available" | "busy";
   address: string;
   detailHref: string;
+  agentUri?: string;
+  domain?: string;
   tone: string[];
   note?: string;
 };
@@ -130,6 +141,7 @@ type Identity = {
 
 const WORKER_START = 124.8371;
 const PAGE_SIZE = 4;
+const OWN_AGENT_ID = "ctrlz-worker-agent-101";
 const WORK_FILTERS = [
   { key: "all", label: "All" },
   { key: "finance", label: "Finance" },
@@ -198,6 +210,32 @@ function identityFromUaid(uaid: string, fallback: Identity): Identity {
     uaid,
     short: uaid.length > 28 ? `${uaid.slice(0, 18)}...${uaid.slice(-7)}` : uaid,
     address: ""
+  };
+}
+
+function identityForAgent(agent: Agent, ownWorker: Identity | null): Identity {
+  if (agent.id === OWN_AGENT_ID && ownWorker) return ownWorker;
+  return {
+    uaid: `erc8004:agent:${agent.id}`,
+    short: agent.id.length > 22 ? `${agent.id.slice(0, 10)}...${agent.id.slice(-8)}` : agent.id,
+    address: agent.address
+  };
+}
+
+function isOwnWorker(agent?: Agent | null) {
+  return agent?.id === OWN_AGENT_ID;
+}
+
+function externalDispatchFor(agent: Agent): ExternalDispatch {
+  const randomId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+  return {
+    dispatchId: `dispatch:${agent.id}:${randomId}`,
+    agentId: agent.id,
+    agentName: agent.name,
+    address: agent.address,
+    profileHref: agent.detailHref,
+    agentUri: agent.agentUri,
+    submittedAt: new Date().toISOString()
   };
 }
 
@@ -294,6 +332,7 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
   const [runError, setRunError] = useState("");
   const [settleResult, setSettleResult] = useState<SettleResult | null>(null);
   const [x402Receipt, setX402Receipt] = useState("");
+  const [externalDispatch, setExternalDispatch] = useState<ExternalDispatch | null>(null);
   const [inspectedStage, setInspectedStage] = useState<number | null>(null);
   const [hashes, setHashes] = useState({
     spec: "",
@@ -400,7 +439,7 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
     if (!next || next.status !== "available") return;
     setSelectedId(next.id);
     setDetailOpen(false);
-    setWorker((prev) => prev ?? makeIdentity("101", next.address));
+    setWorker((prev) => identityForAgent(next, prev));
     setPhase("compose");
   }
 
@@ -428,6 +467,7 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
     setRunError("");
     setSettleResult(null);
     setX402Receipt("");
+    setExternalDispatch(null);
     setInspectedStage(null);
     setHashes({
       spec: "",
@@ -439,6 +479,7 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
       resolve: "",
       task: ""
     });
+    setWorker((prev) => identityForAgent(agent, prev));
 
     const go = (stage: number) => {
       setCurrent(stage);
@@ -455,6 +496,17 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
 
       go(2);
       await wait(450);
+      if (!isOwnWorker(agent)) {
+        const dispatchEnvelope = externalDispatchFor(agent);
+        setExternalDispatch(dispatchEnvelope);
+        setHashes((prev) => ({
+          ...prev,
+          task: dispatchEnvelope.dispatchId
+        }));
+        setStatuses((prev) => ({ ...prev, 2: "live" }));
+        setCurrent(2);
+        return;
+      }
       finish(2);
 
       go(3);
@@ -816,11 +868,15 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
           </div>
 
           <button className="cz-primary cz-dispatch" type="button" onClick={() => dispatch("green")}>
-            Dispatch to {agent.name} -&gt;
+            {isOwnWorker(agent) ? `Dispatch to ${agent.name} ->` : `Request acceptance from ${agent.name} ->`}
           </button>
-          <button className="cz-link-button" type="button" onClick={() => dispatch("cheat")}>
-            simulate a cheating worker
-          </button>
+          {isOwnWorker(agent) ? (
+            <button className="cz-link-button" type="button" onClick={() => dispatch("cheat")}>
+              simulate a cheating worker
+            </button>
+          ) : (
+            <p className="cz-agent-note">External agents wait for acceptance; verifier and cheat-path tests run only after a real response is available.</p>
+          )}
         </section>
       ) : null}
 
@@ -830,7 +886,7 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
             <div>
               <span>{cheat ? "LIVE RUN - CHEAT PATH" : "LIVE RUN - MISSION CONTROL"}</span>
               <h2>
-                {agent.name} is fixing <code>maximum()</code>
+                {externalDispatch ? `${agent.name} is reviewing the task` : `${agent.name} is fixing`} <code>maximum()</code>
               </h2>
             </div>
             <div className="cz-balance">
@@ -853,6 +909,7 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
                   hashes={hashes}
                   hbar={hbar}
                   heldoutTests={heldoutTests}
+                  externalDispatch={externalDispatch}
                   inspected={inspectedStage === stage}
                   key={label}
                   label={label}
@@ -875,6 +932,16 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
               );
             })}
           </div>
+
+          {externalDispatch ? (
+            <div className="cz-external-wait">
+              <strong>Waiting for external acceptance</strong>
+              <span>{externalDispatch.dispatchId}</span>
+              <button type="button" onClick={() => setPhase("market")}>
+                Back to marketplace
+              </button>
+            </div>
+          ) : null}
 
           {runDone ? (
             <Receipt
@@ -1061,6 +1128,7 @@ function Stage(props: {
   checker: Identity | null;
   cheat: boolean;
   current: number;
+  externalDispatch: ExternalDispatch | null;
   hashes: { spec: string; specUri: string; evidence: string; evidenceUri: string; x402: string; blob: string; resolve: string; task: string };
   heldoutTests: string[];
   hbar: number;
@@ -1108,6 +1176,7 @@ function StageInspection(props: Parameters<typeof Stage>[0]) {
     agent,
     bounty,
     checker,
+    externalDispatch,
     hashes,
     heldoutTests,
     publicTests,
@@ -1119,12 +1188,14 @@ function StageInspection(props: Parameters<typeof Stage>[0]) {
     verdict,
     worker
   } = props;
-  const x402Receipt = runReceipt?.x402?.receipt as { mode?: string; transaction?: string; verifiedAt?: string } | undefined;
+  const x402Receipt = runReceipt?.x402?.receipt as { mode?: string; transaction?: string; verifiedAt?: string; explorer?: string } | undefined;
   const x402Requirements = runReceipt?.x402?.requirements;
   const x402Mode =
     runReceipt?.x402?.enabled === false
       ? "disabled in env"
       : x402Receipt?.mode ?? (runReceipt?.x402?.paid ? "paid" : runReceipt?.x402?.required ? "required" : "pending");
+  const x402Transaction = x402Receipt?.transaction ?? hashes.x402;
+  const x402Href = isTxHash(x402Transaction) ? (x402Receipt?.explorer ?? `https://hashscan.io/testnet/transaction/${x402Transaction}`) : "";
 
   if (stage === 1) {
     return (
@@ -1137,6 +1208,25 @@ function StageInspection(props: Parameters<typeof Stage>[0]) {
   }
 
   if (stage === 2) {
+    if (externalDispatch) {
+      return (
+        <div className="cz-inspector" onClick={(event) => event.stopPropagation()}>
+          <InfoBlock label="DISPATCH STATUS" value="waiting for remote agent acceptance" blue />
+          <InfoBlock label="TARGET AGENT" value={`${externalDispatch.agentName} · ${externalDispatch.agentId}`} />
+          <InfoBlock label="TARGET ADDRESS" value={externalDispatch.address || "not indexed"} />
+          <InfoBlock label="REGISTERED AGENT URI" value={externalDispatch.agentUri || "not indexed"} />
+          <InfoBlock label="DISPATCH ID" value={externalDispatch.dispatchId} />
+          <a className="cz-proof-link" href={externalDispatch.profileHref} target="_blank" rel="noreferrer">
+            Open indexed agent profile -&gt;
+          </a>
+          {externalDispatch.agentUri?.startsWith("http") ? (
+            <a className="cz-proof-link" href={externalDispatch.agentUri} target="_blank" rel="noreferrer">
+              Open registered agent URI -&gt;
+            </a>
+          ) : null}
+        </div>
+      );
+    }
     return (
       <div className="cz-inspector" onClick={(event) => event.stopPropagation()}>
         <InfoBlock label="BOUNTY" value={`${bounty} HBAR`} />
@@ -1152,7 +1242,13 @@ function StageInspection(props: Parameters<typeof Stage>[0]) {
     return (
       <div className="cz-inspector" onClick={(event) => event.stopPropagation()}>
         <InfoBlock label="x402 MODE" value={x402Mode} />
-        <InfoBlock label="x402 TRANSACTION / RECEIPT" value={x402Receipt?.transaction ?? hashes.x402 ?? "not issued"} blue />
+        <InfoBlock
+          label="x402 TRANSACTION / RECEIPT"
+          value={x402Transaction || "not issued"}
+          href={x402Href}
+          action={x402Href ? "open HashScan receipt ->" : undefined}
+          blue
+        />
         <InfoBlock label="ASSET" value={x402Requirements?.asset ?? "HBAR"} />
         <InfoBlock label="MAX REQUIRED" value={x402Requirements?.maxAmountRequired ?? "0.01"} />
       </div>
@@ -1231,6 +1327,7 @@ function StageLive(props: Parameters<typeof Stage>[0]) {
     bounty,
     checker,
     cheat,
+    externalDispatch,
     hashes,
     heldoutTests,
     hbar,
@@ -1256,6 +1353,28 @@ function StageLive(props: Parameters<typeof Stage>[0]) {
     );
   }
   if (stage === 2) {
+    if (externalDispatch) {
+      return (
+        <div className="cz-stage-body">
+          <div className="cz-two">
+            <InfoBlock label="DISPATCH TARGET" value={`${externalDispatch.agentName} · ${externalDispatch.agentId}`} />
+            <InfoBlock label="STATUS" value="waiting for agent acceptance" blue />
+          </div>
+          <p className="cz-green-note">
+            This BigQuery-indexed agent is not routed through the CTRL+Z worker. The task is addressed to its indexed profile and remains pending until
+            the agent accepts over its own A2A/MCP surface.
+          </p>
+          <a className="cz-proof-link" href={externalDispatch.profileHref} target="_blank" rel="noreferrer">
+            Open indexed agent profile -&gt;
+          </a>
+          {externalDispatch.agentUri?.startsWith("http") ? (
+            <a className="cz-proof-link" href={externalDispatch.agentUri} target="_blank" rel="noreferrer">
+              Open registered agent URI -&gt;
+            </a>
+          ) : null}
+        </div>
+      );
+    }
     return (
       <div className="cz-stage-body">
         <div className="cz-two">
@@ -1394,6 +1513,7 @@ function StageSummary({
   agent,
   bounty,
   cheat,
+  externalDispatch,
   hashes,
   hbar,
   heldoutTests,
@@ -1405,6 +1525,7 @@ function StageSummary({
   worker
 }: Parameters<typeof Stage>[0]) {
   if (runError && stage === 3) return <p className="cz-stage-summary cz-red-text">{runError}</p>;
+  if (externalDispatch && stage === 2) return <p className="cz-stage-summary">waiting for {agent.name} to accept · {shortHash(externalDispatch.dispatchId)}</p>;
   const summaries: Record<number, string> = {
     1: `${worker?.short ?? "worker"} - checker bound`,
     2: `${bounty} HBAR escrowed - held-out tests committed`,
@@ -1430,11 +1551,32 @@ function StageSummary({
   return <p className="cz-stage-summary">{summaries[stage]}</p>;
 }
 
-function InfoBlock({ label, value, blue, danger }: { label: string; value: string; blue?: boolean; danger?: boolean }) {
+function InfoBlock({
+  label,
+  value,
+  href,
+  action,
+  blue,
+  danger
+}: {
+  label: string;
+  value: string;
+  href?: string;
+  action?: string;
+  blue?: boolean;
+  danger?: boolean;
+}) {
   return (
     <div className={`cz-info ${blue ? "blue" : ""} ${danger ? "danger" : ""}`}>
       <span>{label}</span>
-      <code>{value}</code>
+      {href ? (
+        <a href={href} target="_blank" rel="noreferrer">
+          <code>{value}</code>
+          <small>{action ?? "open proof ->"}</small>
+        </a>
+      ) : (
+        <code>{value}</code>
+      )}
     </div>
   );
 }
