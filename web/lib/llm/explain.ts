@@ -1,21 +1,22 @@
 import "server-only";
-import Anthropic from "@anthropic-ai/sdk";
 import type { RiskVerdict } from "@/lib/risk";
 
 /**
- * P3.1 — the AI explainer. ONE Claude call that turns the deterministic
+ * P3.1 — the AI explainer. ONE Gemini call that turns the deterministic
  * verdict's signals into a plain-English explanation for the payment sender.
  *
  * Ethos guard: the LLM EXPLAINS, it never DECIDES. `verdict.tier` is computed
  * by the deterministic risk engine (web/lib/risk) and is the single source of
  * truth — this call never changes it. Every failure path (no key, API error,
- * refusal, empty output) degrades to the raw deterministic reasons so a send
- * is never blocked on the model.
+ * empty output) degrades to the raw deterministic reasons so a send is never
+ * blocked on the model.
+ *
+ * Uses the Gemini API over plain REST (no SDK), authenticated by GEMINI_API_KEY
+ * — the same path as the worker agent (web/lib/agent/worker.ts).
  */
 
-// Default per the claude-api skill; the explainer is a small, latency-sensitive
-// call so it runs at low effort.
-const MODEL = "claude-opus-4-8";
+const MODEL = "gemini-2.5-flash";
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 const TIER_LABEL: Record<RiskVerdict["tier"], string> = {
   red: "HIGH RISK",
@@ -57,31 +58,32 @@ function buildPrompt(verdict: RiskVerdict): string {
 }
 
 export async function explainVerdict(verdict: RiskVerdict): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return fallbackExplanation(verdict);
 
+  let data: unknown;
   try {
-    const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 300,
-      output_config: { effort: "low" },
-      system: SYSTEM,
-      messages: [{ role: "user", content: buildPrompt(verdict) }]
+    const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM }] },
+        contents: [{ parts: [{ text: buildPrompt(verdict) }] }],
+        // thinkingBudget 0 — this is a short explanation; without it Gemini 2.5
+        // Flash spends the token budget "thinking" and truncates the answer.
+        generationConfig: { temperature: 0, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: 0 } }
+      })
     });
-
-    // Safety classifiers can decline (HTTP 200, stop_reason "refusal").
-    if (response.stop_reason === "refusal") return fallbackExplanation(verdict);
-
-    const text = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("")
-      .trim();
-
-    return text || fallbackExplanation(verdict);
+    if (!res.ok) return fallbackExplanation(verdict);
+    data = await res.json();
   } catch {
     // Network error, bad key, rate limit — never block a send on the explainer.
     return fallbackExplanation(verdict);
   }
+
+  const parts = (data as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> })
+    ?.candidates?.[0]?.content?.parts;
+  const text = (parts ?? []).map((p) => p.text ?? "").join("").trim();
+
+  return text || fallbackExplanation(verdict);
 }

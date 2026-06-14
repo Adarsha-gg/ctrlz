@@ -9,6 +9,26 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-14 · agent (Claude) · Demo rehearsal + explainer→Gemini + drop stale console
+
+- **Rehearsed the live demo.** `/verify` and `/verify/payongreen-demo` both work
+  end-to-end against the dev server: `demo:"green"` → PASS/9800bps → **PAID** and
+  `demo:"cheat"` → FAIL/800bps → **REFUNDED**, each with real Hedera resolve tx
+  hashes (HashScan) + real Walrus blob URIs. The fail/refund path is now live
+  (BUILD_PLAN §12 "not separately live-replayed yet" is stale — it replays live).
+- **Explainer moved off Anthropic → Gemini** (`web/lib/llm/explain.ts`). No
+  `ANTHROPIC_API_KEY` in env, only `GEMINI_API_KEY`, so `/api/explain` was silently
+  in deterministic fallback (echoing reasons). Rewrote to the same Gemini REST path
+  as `web/lib/agent/worker.ts` (`gemini-2.5-flash`, `thinkingBudget: 0` to stop the
+  thinking budget truncating the answer). Verified live: clean 1-2 sentence
+  explanations for both red/green tiers in ~0.7s. All degradation paths preserved.
+- **Deleted stale `web/app/console/`** — its honest/PASS button hit `/api/agent/solve`
+  with the demo x402 header, which the `direct-worker-trusted` path rejects (needs a
+  real base64 signature), so it died on stage 3. The real demo is the main UI.
+- **Next:** rehearse the main-UI runbook ×5. (Heads-up: `CtrlZConsole.tsx` +
+  `api/marketplace/agents` show uncommitted edits not made in this session — likely
+  Codex in parallel; 2 pre-existing tsc errors live in `CtrlZConsole.tsx`, not mine.)
+
 ## 2026-06-14 · agent (Claude) · Live deploy verified + reputation engine R1.1
 
 - **Deployed to Vercel prod** (https://ctrlz-zeta.vercel.app) — project linked,
