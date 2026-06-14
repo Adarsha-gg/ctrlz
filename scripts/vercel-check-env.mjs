@@ -23,6 +23,10 @@ const groups = [
     ]
   },
   {
+    name: "Gemini worker agent",
+    required: ["GEMINI_API_KEY"]
+  },
+  {
     name: "Hedera settlement",
     anyGroups: [
       ["HEDERA_PAYER_PRIVATE_KEY", "HEDERA_EVM_PRIVATE_KEY"],

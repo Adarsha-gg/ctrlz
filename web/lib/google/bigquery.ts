@@ -3,7 +3,6 @@ import "server-only";
 import { BigQuery } from "@google-cloud/bigquery";
 import { unstable_cache } from "next/cache";
 import { decodeEventLog } from "viem";
-import { fixtureMarketplaceData } from "@/lib/marketplace/fixtures";
 import { erc8004HederaTestnet } from "@/lib/contract";
 import type {
   AgentHistoryEvent,
@@ -892,8 +891,23 @@ async function queryMarketplaceData(): Promise<MarketplaceData> {
     };
   } catch (error) {
     return {
-      ...fixtureMarketplaceData,
+      source: "bigquery",
       generatedAt: new Date().toISOString(),
+      stats: {
+        identityTransactions: 0,
+        reputationTransactions: 0,
+        validationTransactions: 0,
+        activeAgents: 0,
+        feedbackEvents: 0,
+        uniqueFeedbackClients: 0,
+        x402Agents: 0,
+        uniqueOwners: 0,
+        agentsWithFeedback: 0,
+        topRaterShare: 0,
+        top10RaterShare: 0,
+        topOwnerShare: 0
+      },
+      agents: [],
       error: error instanceof Error ? error.message : "Unknown BigQuery error"
     };
   }

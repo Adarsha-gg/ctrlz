@@ -276,6 +276,10 @@ export default async function MarketplacePage({
       </section>
 
       {data.error ? <p className="terminal-warning">Data fallback: {data.error}</p> : null}
+      <p className="terminal-warning">
+        Source: {data.source === "bigquery" ? "Google BigQuery ERC-8004 index" : data.source === "hedera" ? "Hedera mirror node" : "fixture fallback"} · generated{" "}
+        {new Date(data.generatedAt).toLocaleString("en-US", { timeZoneName: "short" })}
+      </p>
 
       <section className="market-stats" aria-label="Marketplace stats">
         <div>
