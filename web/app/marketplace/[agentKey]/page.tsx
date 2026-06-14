@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TerminalHeader } from "@/app/components/TerminalHeader";
 import { ethereumErc8004Registries, getMarketplaceData, hederaErc8004Registries } from "@/lib/google/bigquery";
+import { REPUTATION_CONFIG, marketplaceCluster, trustForAgent } from "@/lib/reputation";
 import { getTrustBridgeData } from "@/lib/trust/bridge";
 import type { AgentMarketplaceRow } from "@/lib/marketplace/types";
 
@@ -325,6 +326,11 @@ export default async function AgentDetailPage({
   const registries = selectedChain === "hedera" ? hederaErc8004Registries : ethereumErc8004Registries;
   const registryAddressUrl = selectedChain === "hedera" ? hashscanAddress : etherscanAddress;
 
+  // Live reputation: build the operator cluster from the real rows sharing this
+  // owner and run the engine on it (fraud-free on mainnet data — see clusters.ts).
+  const repCluster = marketplaceCluster(data.agents, agent.ownerAddress);
+  const repTrust = trustForAgent(repCluster, agent.agentKey, Date.now());
+
   return (
     <main className="terminal-app">
       <TerminalHeader active="marketplace" />
@@ -497,6 +503,39 @@ export default async function AgentDetailPage({
                 <dd>{data.source === "bigquery" ? "Live Google BigQuery" : "Fixture fallback"}</dd>
               </div>
             </dl>
+          </section>
+
+          <section className="terminal-panel">
+            <p className="terminal-eyebrow">Operator cluster — live reputation engine</p>
+            <h2>1 of {repCluster.agents.length} under this operator</h2>
+            <dl className="terminal-ledger">
+              <div>
+                <dt>Operator tier</dt>
+                <dd>{repCluster.tier}</dd>
+              </div>
+              <div>
+                <dt>Cluster standing</dt>
+                <dd>{repCluster.standing} / 100</dd>
+              </div>
+              <div>
+                <dt>This agent&apos;s trust</dt>
+                <dd>
+                  {repTrust.trust} / {repTrust.breakdown.cap}
+                </dd>
+              </div>
+              <div>
+                <dt>Breakdown</dt>
+                <dd>
+                  floor +{repTrust.breakdown.floor} · earned +{repTrust.breakdown.earned} · drag −
+                  {repTrust.breakdown.contamination}
+                </dd>
+              </div>
+            </dl>
+            <p className="muted" style={{ fontSize: "0.8rem" }}>
+              Good reputation is shared at a discount: a fresh sibling inherits only floor ={" "}
+              {REPUTATION_CONFIG.DISCOUNT}× the operator&apos;s standing (capped) — never full trust. A fraud
+              event (none in this mainnet data) would drag every sibling. Engine: <code>web/lib/reputation</code>.
+            </p>
           </section>
 
           <section className="terminal-panel">
