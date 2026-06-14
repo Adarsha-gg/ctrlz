@@ -9,13 +9,32 @@ The current project is no longer primarily the old Arc "undo payment" product.
 That earlier escrow/reputation work is useful prior art and reusable contract
 scaffolding, but the ETHGlobal G2 submission story is:
 
-**Hedera settlement + World AgentKit-style gating + Walrus evidence + ERC-8004
-worker/checker reputation.**
+**Hedera settlement + Walrus (Sui) verifiable evidence + ERC-8004 worker/checker
+reputation, with Google BigQuery discovery over the ERC-8004 population.**
 
 The honest claim:
 
 > We do not promise the work is perfect. We promise the decision is
 > constraint-based, reputation-weighted, and accountable.
+
+## Why now — the x402 gap
+
+Agents already pay each other: **x402** moves **$600M+** across **69k+ agents**, with
+every payment *final and non-refundable*. The economy solved **payment** and skipped
+**verification** — existing escrow checks only `2xx` + JSON schema (shape, not
+correctness). CTRL+Z Verify is the missing half: it holds the payment until the work
+is proven correct, then settles and updates reputation. We're the **verification +
+reputation layer**, not a marketplace — the marketplace is the front door that
+showcases it and seeds the reputation graph.
+
+## The wedge — pay-on-green
+
+The flagship is the narrowest verifiable job, where "correct" is binary and cheap to
+check: **a worker fixes a failing test; the payment releases the moment the suite goes
+green.** Expensive to produce (real engineering), cheap to verify (run the tests once),
+no completeness hole. It's the SWE-bench format wired to escrow + reputation instead of
+a leaderboard. See **[PAY_ON_GREEN.md](PAY_ON_GREEN.md)** for the full rationale and the
+prior-art landscape (why this wedge, and why not chain-datasets or swaps).
 
 ## What It Solves
 
@@ -49,10 +68,11 @@ later outcomes.
 5. **Split scoring resolves the task.**
    The UI keeps `outputValidity`, `agentTrust`, and `paymentRisk` separate.
    The LLM explains the recommendation but never decides it.
-6. **World-style gate controls access.**
-   Human-backed agents get a limited free verification quota and a capped
-   baseline trust lift. Unknown agents are pay-gated. Human backing never
-   replaces output checks.
+6. **Evidence is provably retrievable, not just claimed.**
+   The evidence blob is stored on Walrus (Sui's decentralized blob store) and
+   then round-tripped: CTRL+Z re-fetches it from the aggregator and recomputes
+   the sha256 to prove the bytes are content-addressed and retrievable. The hash
+   anchor is always computed first, so the decision survives Walrus being down.
 7. **Settlement and ERC-8004 reputation are live on Hedera.**
    The Solidity verify escrow is deployed on Hedera testnet and the demo
    lock/accept/submit/resolve path has real tx hashes. Worker/checker agent
@@ -63,10 +83,10 @@ later outcomes.
 
 | Layer | Role | Current status |
 |---|---|---|
-| Web verification UI | `/verify` demo flow with clean and bad submissions, split scores, checker reports, World gate, and LLM explanation | Shipped |
+| Web verification UI | `/verify` demo flow with clean and bad submissions, split scores, checker reports, evidence anchor, and LLM explanation | Shipped |
 | Checkers | Schema, price, wallet-risk, source/listing; registry + runner | Shipped |
 | Checker meta-reputation | Seeded outcome history, replay comparison, influence weighting in scoring/UI | Shipped; checker accuracy feedback live in ERC-8004 |
-| Walrus evidence | Manifest/evidence hashing, publisher/aggregator support, local fallback on failure | Shipped |
+| Walrus (Sui) evidence | Manifest/evidence hashing, publisher/aggregator store+read, round-trip retrievability proof, local fallback on failure | Shipped |
 | Hedera EVM escrow | Verify lifecycle contract, live deploy, and live lock/resolve demo | Shipped live on Hedera testnet |
 | Hedera HCS | Receipt topic/message script | Shipped live on topic `0.0.9222881` |
 | ERC-8004 | Hedera testnet IdentityRegistry and ReputationRegistry scripts | Shipped live for worker/checker identity and feedback |
@@ -84,10 +104,9 @@ later outcomes.
   recommendation are kept separate.
 - LLM explanation route is reused only for explanation; deterministic scoring
   remains the decision source.
-- Walrus evidence layer computes stable content hashes and can store/read via
-  Walrus, with a local hash fallback.
-- World AgentKit-style policy gate: human-backed agents get three free
-  verification uses; unknown/exhausted agents are pay-gated.
+- Walrus (Sui) evidence layer computes stable content hashes, stores/reads via
+  Walrus, and round-trips the blob to prove retrievability, with a local hash
+  fallback.
 - Hedera EVM sanity transfer plus live verify escrow deploy/lock/accept/submit/resolve
   txs on testnet.
 - HCS receipt topic/message for the C2 evidence hash, score, and recommendation.
@@ -117,9 +136,6 @@ pnpm --filter web build
 
 # Verification/scoring selfcheck
 node --experimental-strip-types web/lib/scoring/selfcheck.ts
-
-# World gate selfcheck
-node --experimental-strip-types web/lib/world/selfcheck.ts
 
 # Hedera live EVM txs
 npm run hedera:evm-sanity
@@ -164,10 +180,9 @@ Use this phrasing:
 
 - **Hedera:** C1 sanity transfer, C2 verify escrow deploy/lock/resolve, and C3
   HCS receipt are live on testnet.
-- **World:** World AgentKit-style gating is implemented as policy plus IDKit
-  plumbing with deterministic fallback when credentials are absent.
-- **Walrus:** evidence hashing and Walrus storage/read support are implemented;
-  the hash anchor is always shown even if publisher access fails.
+- **Walrus (Sui):** evidence hashing, Walrus store/read, and a round-trip
+  retrievability proof are implemented; the sha256 hash anchor is always shown
+  even if publisher access fails.
 - **ERC-8004:** worker/checker identities and reputation feedback are live;
   feedback should be described as settlement-derived and evidence-linked, not
   self-attested.

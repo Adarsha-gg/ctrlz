@@ -11,16 +11,20 @@
 | Lane | Owner | BUILD_PLAN | Owns these paths |
 |---|---|---|---|
 | **Verify / web** — checkers, split scoring, verification UI | **Claude** | A, B | `web/lib/checkers/**`, `web/lib/scoring/**`, `web/app/verify/**` |
-| **Evidence** — Walrus blobs + hash anchor | **Claude** | E | `web/lib/walrus/**` (+ wiring) |
-| **Auth** — World AgentKit gating | **Claude** | F | `web/lib/world/**` |
+| **Evidence** — Walrus (Sui) blobs + hash anchor + retrievability proof | **Claude** | E | `web/lib/walrus/**` (+ wiring) |
 | **Hedera / settlement** — escrow on Hedera EVM, HCS, ERC-8004 | **Codex** | C, D | `contracts/**`, `scripts/**`, Hedera SDK / HCS / ERC-8004-write code |
+
+> **World (F lane) was dropped 2026-06-13.** `web/lib/world/**` + `/api/world/**`
+> are deleted. The trust-boost-for-identity contradicted the verify-don't-trust
+> thesis and it was never configured. We double down on Walrus/Sui for evidence
+> instead. See `log.md`.
 
 **One shared handoff file:** `web/lib/contract.ts` (Codex writes the deployed
 Hedera address + ABI; Claude reads). Editing it requires a `log.md` entry first.
 
 ## I own (edit freely)
 `web/lib/checkers/**` · `web/lib/scoring/**` · `web/app/verify/**` ·
-`web/lib/walrus/**` · `web/lib/world/**` · verify-page UI + additive CSS.
+`web/lib/walrus/**` · verify-page UI + additive CSS.
 
 **Reuse, don't rewrite (consume as-is):** `web/lib/risk/**` (→ wallet-risk
 checker), `web/lib/llm/**` + `web/app/api/explain/**` (explains the
@@ -32,7 +36,7 @@ recommendation), `web/lib/chain/**` (history reads; re-point to Hedera RPC).
 ## My parts
 A1/A2/A3 (checker interface + split scoring + `/verify` page) · B1/B2 (checker
 framework + demo checkers) · B3 (meta-reputation UI side — needs Codex's ERC-8004)
-· E1/E2 (Walrus evidence) · F1 (World gating).
+· E1/E2 (Walrus evidence + Sui retrievability proof). ~~F1 (World gating)~~ — dropped.
 
 ## Done (merged; reframed per BUILD_PLAN §10)
 Risk engine → wallet-risk checker · LLM explainer → recommendation explainer ·
@@ -40,14 +44,14 @@ verdict UI → split-score card · on-chain history reads.
 
 ## Next
 **Phase A + B1/B2** — the verification core on a NEW `web/app/verify` route
-(don't touch `web/app/page.tsx`) → then E (Walrus) → F (World).
+(don't touch `web/app/page.tsx`) → then E (Walrus/Sui). F (World) is dropped.
 
 ## Waiting on Codex
 - Deployed **Hedera** escrow address + ABI in `web/lib/contract.ts` — to wire `resolve()` and re-point history reads to Hedera RPC.
 - **HCS topic id** + **ERC-8004 write hooks** — to anchor the evidence hash and write worker/checker feedback.
 
 ## Waiting on human
-- Hedera testnet creds (for Codex's deploy) · World AgentKit / IDKit app id (F) · Google qualification answer (conditional analytics lane).
+- Hedera testnet creds (for Codex's deploy) · Google qualification answer (conditional analytics lane).
 
 ## What I owe Codex (handoff outputs)
 - **The resolution decision** — the split-score `recommendation` + pass/fail that the contract's `resolve(taskId, …)` consumes (`web/lib/scoring`).

@@ -1,5 +1,9 @@
 packages:
   - "web"
 allowBuilds:
+  '@reown/appkit': set this to true or false
+  bufferutil: set this to true or false
+  keccak: set this to true or false
   protobufjs: false
   sharp: false
+  utf-8-validate: set this to true or false

@@ -23,7 +23,7 @@ scores are never collapsed; every on-chain record is a hash pointer, never bulk 
 
 | Lane | Owner | Paths |
 |---|---|---|
-| Verify / web / evidence / auth | **Claude** | `web/lib/checkers/**`, `web/lib/scoring/**`, `web/lib/walrus/**`, `web/lib/world/**`, `web/lib/risk/**`, `web/app/verify/**` |
+| Verify / web / evidence | **Claude** | `web/lib/checkers/**`, `web/lib/scoring/**`, `web/lib/walrus/**`, `web/lib/risk/**`, `web/app/verify/**` |
 | Hedera / contracts / scripts | **Codex** | `contracts/**`, `scripts/**`, Hedera SDK / HCS / ERC-8004 writes |
 | **Shared handoff** | both | `web/lib/contract.ts` — Codex writes deployed addresses/ABI, Claude reads. Editing it requires a `log.md` entry first. |
 
@@ -44,13 +44,12 @@ web/                       Next.js 15 / React 19 app (App Router, TS, ESM)
     page.tsx                 the verification UI
   app/buyer/               buyer verdict card (reused escrow-checkout UI)
   app/api/explain/         server-side LLM explanation of the recommendation
-  app/api/world/verify/    World IDKit proof verification endpoint
   lib/
     checkers/              checker framework + the demo checkers (see §5)
     scoring/score.ts       split-scoring engine → 3 scores + recommendation
     risk/                  deterministic wallet-risk engine (wrapped as a checker)
-    walrus/                content-addressed evidence: hash anchor + store/read
-    world/                 World AgentKit-style gating + human-backing trust boost
+    walrus/                content-addressed evidence: hash anchor + store/read + retrievability proof
+      heldout.ts             held-out test reveal store: publish + fetch/verify the revealed hidden checks
     chain/history.ts       on-chain reputation/history reads (Hedera RPC)
     contract.ts            *** shared handoff: addresses, ABIs, deploy metadata ***
     ledger/environment.ts  chain/env wiring
@@ -93,9 +92,6 @@ scoreSplit({checks, workerHistory})  ── scoring/score.ts
         │     ├── paymentRisk     ← wallet-risk checker
         │     └── recommendation  ← deterministic policy over the three
         ▼
-applyWorldTrustBoost(...)  ── world/  (human-backing raises baseline agentTrust only)
-        │
-        ▼
 buildManifest() + buildEvidenceBlob()  ── walrus/evidence.ts
         │
         ▼
@@ -103,6 +99,9 @@ storeEvidence(blob)  ── walrus/store.ts
         │     ├── hashBlob: canonical-JSON → sha256  (ALWAYS computed; load-bearing)
         │     └── PUT to Walrus publisher → {store:"walrus", blobId, uri, hash}
         │        (any failure → {store:"local", hash}; NEVER throws into the UI)
+        ▼
+verifyRetrievable(...)  ── walrus/  re-fetch from aggregator + recompute sha256
+        │                  → {retrieved, hashMatches}  (proves retrievability, not just claim)
         ▼
 on-chain (Codex lane, scripts/hedera/):
    CtrlZVerifyEscrow.resolve(taskId, result, evidenceHash, scoreBps, recHash)
@@ -181,8 +180,7 @@ cd web && ./node_modules/.bin/tsc --noEmit
 # Deterministic selfchecks (offline, no creds)
 node --experimental-strip-types web/lib/risk/selfcheck.ts
 node --experimental-strip-types web/lib/scoring/selfcheck.ts
-node --experimental-strip-types web/lib/walrus/selfcheck.ts     # also does a best-effort live Walrus store
-node --experimental-strip-types web/lib/world/selfcheck.ts
+node --experimental-strip-types web/lib/walrus/selfcheck.ts     # also does a best-effort live Walrus store + read-back
 
 # Rehearsal readiness (runs a full next build + selfchecks; sends no txs)
 npm run demo:check
@@ -220,7 +218,7 @@ All of these are read-verifiable: `cast code <addr> --rpc-url https://testnet.ha
 - **Walrus never throws into the UI** — it degrades to `{store:"local", hash}`. The
   sha256 anchor is always available even when the network is down.
 - **Selfchecks are the contract** for the deterministic lanes — add to them when you
-  change scoring/checkers/walrus/world; they run with plain Node + `--experimental-strip-types`.
+  change scoring/checkers/walrus; they run with plain Node + `--experimental-strip-types`.
 - **Checker hashes are intentional pins** — changing checker logic or risk-engine
   dependencies should fail `web/lib/scoring/selfcheck.ts` until
   `web/lib/checkers/runtime.ts` is updated with the new source/bundle hashes.

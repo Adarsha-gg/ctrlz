@@ -19,40 +19,24 @@ The items below are the demo gap + the two forward lanes (reputation, Google).
 - [ ] The demo must show, in one run:
   - clean invoice path (pass) **and** poisoned over-budget invoice path (reject)
   - the split scores (`outputValidity` / `agentTrust` / `paymentRisk`) kept separate
-  - World gate panel for a human-backed agent **and** an unknown agent
+  - the agentTrust contrast: a known agent (settlement history) **vs** a new agent (thin history)
   - checker meta-reputation visible in the report list
-  - the evidence hash / Walrus panel
+  - the evidence hash / Walrus (Sui) panel **including the round-trip retrievability proof**
   - presenter cites the **live** Hedera proof: HCS topic `0.0.9222881`, receipt tx
     `0.0.9222066@1781356716.807172813`, verify escrow `0xa2ac71dd…`
 - [ ] Only mark **G1 `[x]`** in BUILD_PLAN once the five rehearsals + video are done.
 
-## P1 — World AgentKit live proof (BUILD_PLAN F4/F5)
+> **World / AgentKit (old P1) was dropped 2026-06-13.** The identity/Sybil link is
+> now covered by earned-only reputation + ERC-8004 operator identity (see PITCH.md
+> necessity chain). No World AgentKit live-proof work remains.
 
-Policy + endpoint + selfcheck are **shipped** (Codex). Open items:
-
-- [ ] **Register the demo agent wallet in AgentBook** (World Chain). Wallet:
-      `0x1FB40496ca6e4Ab3A1d8c5ce1D603Df52a38f669`.
-      ```sh
-      npx @worldcoin/agentkit-cli register 0x1FB40496ca6e4Ab3A1d8c5ce1D603Df52a38f669
-      npx @worldcoin/agentkit-cli status   0x1FB40496ca6e4Ab3A1d8c5ce1D603Df52a38f669
-      ```
-      **Blocked:** needs an Orb-verified World ID account to complete World App
-      verification. Resume from the same wallet in `.env.world-agent`.
-- [ ] **Live AgentKit rehearsal:** start `web` dev, set
-      `WORLD_AGENTKIT_AGENT_PRIVATE_KEY`, run `pnpm --dir web world:agentkit-client`
-      **four times** → first 3 grant access, 4th returns payment-required.
-- [ ] Record the AgentKit demo proof (AgentBook status, 402 challenge, signed
-      retry, trial exhaustion).
-- [ ] *(stretch)* Replace in-memory trial/nonce maps with a durable atomic store
-      before any hosted/production claim.
-
-## P2 — Reputation engine (make it real) → spec in [REPUTATION.md](REPUTATION.md)
+## P1 — Reputation engine (make it real) → spec in [REPUTATION.md](REPUTATION.md)
 
 The design + the §8e determinism pinning are done. Build order:
 
-- [ ] **R1.1** `web/lib/reputation/` — operator-root + cluster model; replace the
-      flat tier boost in `world/policy.ts` with earned + shared operator standing
-      (`floor(tier, standing) + earned − contamination`). *(Claude/web)*
+- [ ] **R1.1** `web/lib/reputation/` — operator-root + cluster model: earned +
+      shared operator standing (`floor(tier, standing) + earned − contamination`).
+      Replaces the removed World tier boost. *(Claude/web)*
 - [ ] **R1.2** Public sibling linkage in the verdict UI ("1 of N under `<operator>`").
 - [ ] **R3.1/R3.2** Event typing (`fraud | quality | success`) + the contamination
       math (hard-but-not-0 decay) + a reputation selfcheck. *(Claude/web)*
@@ -65,7 +49,7 @@ The design + the §8e determinism pinning are done. Build order:
 Data-source decision for v1: seed from fixtures + on-chain escrow counters
 (`web/lib/chain/history.ts`); swap to a full indexer later without changing the math.
 
-## P3 — Google / ERC-8004 validator lane → spec in [GOOGLE.md](GOOGLE.md)
+## P2 — Google / ERC-8004 validator lane → spec in [GOOGLE.md](GOOGLE.md)
 
 Strategy: implement ERC-8004's **unsolved validation (3rd) pillar**, not "another
 leaderboard." Validation Registry confirmed **live on Hedera testnet** at
@@ -95,7 +79,11 @@ leaderboard." Validation Registry confirmed **live on Hedera testnet** at
 - [ ] **Booth (Sun AM):** ask if Hedera is in BigQuery (bonus) and whether our
       Hedera validation counts; show them VAL.* + the §8e re-execution design.
 
-## P4 — Optional / stretch
+## P3 — Optional / stretch
 
 - [ ] Fail→refund replay of the verify escrow for the demo (pass path already live).
 - [ ] Wire the buyer UNCERTAIN→pause path live (`buyerAcceptPaused` / `buyerRefundPaused`).
+- [ ] **Pay-on-green runner:** swap injected `results` for a real sandbox (pytest/jest
+      against the applied patch); then x402 receivable in front of escrow; settle notification UI.
+- [ ] **Two front-ends:** a CLI version (for agents) and a human-readable version —
+      framing: "this view is for *you*, since you're not an agent." (`app/cli` exists.)

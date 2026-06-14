@@ -3,9 +3,8 @@
 ## One-Liner
 
 CTRL+Z Verify lets buyer agents hire worker agents with explicit acceptance
-criteria, checker-agent verification, Walrus evidence, Hedera settlement hooks,
-World-style access gating, and ERC-8004 reputation for both workers and
-checkers.
+criteria, checker-agent verification, Walrus (Sui) verifiable evidence, Hedera
+settlement hooks, and ERC-8004 reputation for both workers and checkers.
 
 ## Current Story
 
@@ -13,7 +12,7 @@ The submission is **not** the old Arc undo-payment checkout as the primary
 product. That work remains useful prior art and stretch material. The current
 G2 framing is:
 
-**Hedera + World AgentKit-style gating + Walrus + ERC-8004 checker reputation.**
+**Hedera settlement + Walrus (Sui) verifiable evidence + ERC-8004 checker reputation.**
 
 The demo should emphasize that CTRL+Z Verify does not make a subjective oracle.
 It turns task requirements into explicit constraints, runs bounded checkers, and
@@ -26,10 +25,8 @@ scores the checkers by whether later outcomes agreed with them.
 - Demo checkers: schema, price cap, wallet risk, and source/listing.
 - Split scoring: output validity, agent trust, payment risk, recommendation.
 - LLM explanation reused only as explanation, never as the decision engine.
-- Walrus evidence layer for manifest/evidence hashes, publisher store, aggregator
-  read, and local fallback.
-- World AgentKit-style gate: human-backed agents get three free verification
-  uses, unknown/exhausted agents are pay-gated, trust boost is capped.
+- Walrus (Sui) evidence layer for manifest/evidence hashes, publisher store,
+  aggregator read, a round-trip retrievability proof, and local fallback.
 - Checker meta-reputation in scoring/UI using seeded outcome history and replay
   checks.
 - Hedera EVM sanity transfer, live verify escrow deployment, and lock/accept/submit/resolve transaction flow.
@@ -42,8 +39,7 @@ scores the checkers by whether later outcomes agreed with them.
 | Item | Status | Notes |
 |---|---|---|
 | A/B verification UI, checkers, split scoring | Shipped | Demo surface is live in the web app. |
-| F1 World AgentKit-style gating | Shipped | Policy and IDKit plumbing with deterministic fallback when credentials are missing. |
-| E1/E2 Walrus evidence | Shipped | Hash anchor always works; Walrus publisher/aggregator path is implemented. |
+| E1/E2 Walrus (Sui) evidence | Shipped | Hash anchor always works; Walrus publisher/aggregator store+read path plus a round-trip retrievability proof are implemented. |
 | B3 checker meta-reputation | Shipped + persisted | Influence weighting is in scoring/UI; checker accuracy feedback is written to ERC-8004 agent `102`. |
 | C1 Hedera sanity write | Shipped live | EVM sanity transfer tx: `0x9236c06cbd4021ce15c531a4d184d325b88c8ab852585bcf69c2a63733b09e97`. |
 | C2 Hedera EVM escrow deploy + live lock/resolve | Shipped live | Escrow: `0xa2ac71dd9e7835af08e6be33ec047c47a35b2462`; deploy `0xcd4b8b44fb3292a932a2e40b7f4c08a49847dc9c56f8419b825ccd28d23843f0`; resolve `0xdbdb8f5236d1a1473bebb7f95c0e12683bebfbdf9f857628e62e69e9fbbeeb10`. This run pins the exact clean `/verify` sha256 anchors: spec `0xc558bf1d075e6d7c622aaba021c8409b1cbbdf17c8cc527aa59c7326e9279d84`, evidence `0xe1d2e5496eb486230d9febb251aa36fa4dba36748522a4681539b09f48fee4d7`. |
@@ -67,9 +63,6 @@ pnpm --filter web build
 
 # Verification and checker meta-reputation selfcheck
 node --experimental-strip-types web/lib/scoring/selfcheck.ts
-
-# World gate selfcheck
-node --experimental-strip-types web/lib/world/selfcheck.ts
 
 # Hedera scripts: live tx paths
 npm run hedera:evm-sanity
@@ -96,14 +89,14 @@ npm run hedera:hcs -- \
   --walrus-uri=https://aggregator.walrus-testnet.walrus.space/v1/blobs/eDxE69ZD3dua2R7xO8Z1KlYa9RvKgpNZHzXIkO63frk
 ```
 
-Expected current behavior: web/scoring/world checks should pass if dependencies
+Expected current behavior: web/scoring checks should pass if dependencies
 are installed; `npm run hedera:evm-sanity` and `npm run hedera:verify-demo`
 return real Hedera testnet tx hashes with the current env. The ERC-8004
 registration and feedback scripts have already produced live tx hashes. The HCS
 script now works with portal-style ECDSA private keys and has produced a live
 receipt on topic `0.0.9222881`.
 
-`npm run demo:check` bundles the scoring selfcheck, World selfcheck, and `npm run
+`npm run demo:check` bundles the scoring selfcheck and `npm run
 build` in `web/`, then reports Hedera environment readiness by variable presence
 only. It does not print secrets, submit transactions, or mark G1 complete.
 
@@ -113,10 +106,8 @@ See [TODO.md](TODO.md) for the remaining G1 rehearsal/video checklist and all op
 
 - **Hedera:** live C1 sanity transfer, C2 verify escrow deploy/lock/resolve, and
   C3 HCS receipt are complete.
-- **World:** implemented World-style human-backed agent gating and capped trust
-  lift.
-- **Walrus:** implemented content-addressed manifest/evidence storage and read
-  path, with local fallback.
+- **Walrus (Sui):** implemented content-addressed manifest/evidence storage,
+  aggregator read path, and a round-trip retrievability proof, with local fallback.
 - **ERC-8004:** worker/checker identities and worker/checker feedback writes are
   live on Hedera testnet.
 - **Google BigQuery:** not shipped unless sponsor approves the Hedera data

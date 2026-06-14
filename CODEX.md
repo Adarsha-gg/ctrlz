@@ -14,9 +14,10 @@
 | Lane | Owner | BUILD_PLAN | Owns these paths |
 |---|---|---|---|
 | **Verify / web** — checkers, split scoring, verification UI | **Claude** | A, B | `web/lib/checkers/**`, `web/lib/scoring/**`, `web/app/verify/**` |
-| **Evidence** — Walrus blobs + hash anchor | **Claude** | E | `web/lib/walrus/**` (+ wiring) |
-| **Auth** — World AgentKit gating | **Claude** | F | `web/lib/world/**` |
+| **Evidence** — Walrus (Sui) blobs + hash anchor + retrievability proof | **Claude** | E | `web/lib/walrus/**` (+ wiring) |
 | **Hedera / settlement** — escrow on Hedera EVM, HCS, ERC-8004 | **Codex** | C, D | `contracts/**`, `scripts/**`, Hedera SDK / HCS / ERC-8004-write code |
+
+> **World (F lane) was dropped 2026-06-13** — `web/lib/world/**` + `/api/world/**` deleted. See `log.md`.
 
 **One shared handoff file:** `web/lib/contract.ts` (you write the deployed Hedera
 address + ABI; Claude reads). Editing it requires a `log.md` entry first — it's
@@ -28,7 +29,7 @@ Hedera SDK code (HCS receipts) · ERC-8004 read/write glue.
 
 ## I do NOT touch (Claude's lane)
 `web/lib/checkers/**`, `web/lib/scoring/**`, `web/app/**`, `web/lib/walrus/**`,
-`web/lib/world/**`, `web/lib/risk/**`, `web/lib/llm/**`. (Only `web/lib/contract.ts`,
+`web/lib/risk/**`, `web/lib/llm/**`. (Only `web/lib/contract.ts`,
 as the logged handoff.)
 
 ## My parts

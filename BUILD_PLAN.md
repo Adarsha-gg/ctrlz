@@ -34,7 +34,6 @@ and every decision is backed by auditable evidence.
 | **Worker / service agent** | Accepts the spec, performs the task, submits output + evidence. Earns settlement-derived reputation. |
 | **Checker agents** | Bounded, mostly-deterministic verifiers (schema, price, wallet-risk, source, code-tests…). Emit machine-readable reports. **Earn their own meta-reputation.** |
 | **Settlement contract** | Hedera EVM escrow: locks funds, releases/refunds on the verification result. |
-| **Human (World-backed)** | Optional human backing that raises an agent's *baseline* trust and unlocks a free-trial quota — never replaces output checks. |
 
 ---
 
@@ -163,14 +162,14 @@ counterparty.
 ```jsonc
 {
   "outputValidity": { "score": 98, "status": "pass" },   // from the checker reports
-  "agentTrust":     { "score": 31, "status": "weak" },   // from worker reputation (§8) + World backing
+  "agentTrust":     { "score": 31, "status": "weak" },   // from worker settlement reputation (§8)
   "paymentRisk":    { "score": 72, "status": "warn" },   // from the wallet-risk checker
   "recommendation": "proceed_with_protection"            // proceed | proceed_with_protection | pause | reject
 }
 ```
 
 - **outputValidity** ← hard-gate checker results (all pass = high).
-- **agentTrust** ← worker reputation (§8) + World human-backing baseline (§9, F).
+- **agentTrust** ← worker settlement reputation (§8).
 - **paymentRisk** ← wallet-risk checker (reused risk engine).
 - **recommendation** ← a deterministic policy over the three + the spec's `resolutionPolicy`.
 
@@ -310,21 +309,20 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 | `[x]` | **E1** | Walrus client: store the **manifest** (spec) and the **evidence blob** → URI + hash; read back. | Both blobs round-trip to/from Walrus. | Content-addressed; chain holds only the pointer. |
 | `[x]` | **E2** | Produce the manifest/evidence URI/hash payload consumed by the spec commit, HCS receipt (C3), and ERC-8004 feedback (D2). Live C1/C2/C3/D1/D2 Hedera writes are complete. | The web/evidence layer emits one hash/pointer object for downstream Hedera/HCS/ERC-8004 scripts. | One evidence object, referenced everywhere. |
 
-### Phase F — World AgentKit gating · `Cut: policy + IDKit call` · auth lane
-| St | Part | Goal | Done when | Guard |
-|---|---|---|---|---|
-| `[x]` | **F1** | Human-backed agent → first 3 verifications free; unknown → pay; backing raises baseline `agentTrust`. | Human-backed gets the trial; unknown is gated. | Backing raises baseline trust, NEVER replaces output checks. |
-| `[x]` | **F2** | Real AgentKit resource endpoint using `@worldcoin/agentkit` challenge + header verification + AgentBook lookup. | `/api/world/agentkit` returns an AgentKit-aware 402, verifies signed AgentKit headers, and grants only AgentBook-backed wallets. | Use official SDK, not a hand-rolled fake. |
-| `[x]` | **F3** | Agent-side AgentKit client path. | `pnpm --dir web world:agentkit-client` signs and retries the protected endpoint with `createAgentkitClient`. | Agent must operate, not only register. |
-| `[x]` | **F3b** | Backing-aware reputation subjects: human, enterprise, unbacked. | Same World human maps multiple agents to `world-human:*`; enterprise maps to `enterprise:*`; unbacked stays `agent:*`; UI shows the subject. | Shared backing can lift baseline only; checks still decide. |
-| `[ ]` | **F4** | Register the demo agent wallet in AgentBook on World Chain. | `npx @worldcoin/agentkit-cli status <agent-address>` shows registered/human-backed. | Needs World App verification; do not fake it. |
-| `[ ]` | **F5** | Live World AgentKit rehearsal. | With the registered wallet private key, the first three calls to `/api/world/agentkit` return access granted and the fourth returns payment-required. | Track A proof: delegated World ID enhances free initial usage. |
+### Phase F — World AgentKit gating · ~~`Cut: policy + IDKit call`~~ · **DROPPED 2026-06-13**
+
+> **Phase F was removed.** `web/lib/world/**` + `/api/world/**` + the
+> `@worldcoin/agentkit` dependency are deleted. The trust-boost-for-identity it
+> added contradicted the verify-don't-trust thesis, and it was never configured.
+> The identity/Sybil link in the necessity chain is now carried by **earned-only
+> reputation + ERC-8004 operator identity** (see PITCH.md). Evidence doubles down
+> on **Walrus/Sui** instead (Phase E). See `log.md` for the rip-out entry.
 
 ### Phase G — Demo + submission · `NEVER` · Sun
 | St | Part | Goal | Done when | Guard |
 |---|---|---|---|---|
 | `[ ]` | **G1** | The one demo (§13), rehearse ×5, fallback where integrations are flaky. | Runs clean start-to-finish 5×. | Protect rehearsal above any feature. |
-| `[x]` | **G2** | README + SUBMISSION reframe + honest prize-box language (Hedera, World, Walrus, ERC-8004; Google conditional). | Docs/submission framing complete with shipped-vs-blocked boundary. | List only what shipped; do not claim live Hedera txs until they exist. |
+| `[x]` | **G2** | README + SUBMISSION reframe + honest prize-box language (Hedera, Walrus/Sui, ERC-8004; Google conditional). | Docs/submission framing complete with shipped-vs-blocked boundary. | List only what shipped; do not claim live Hedera txs until they exist. |
 
 ---
 
@@ -332,7 +330,6 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` done. Each has **Done when** + 
 - **NEVER cut:** reframed verification page + split scores (A) · ≥2 checkers (B2) · evidence **hash anchor** (E) · one real Hedera op + lock/resolve (C1, C2) · HCS receipt (C3) · ERC-8004 identity/feedback writes (D1/D2) · the demo (G1). C1/C2/C3/D1/D2 now have real Hedera testnet confirmations.
 - **Walrus blob store:** committed as the evidence layer. If the SDK fights at hour 20, fall back to a local store **behind the same hash anchor** — the anchor is what's load-bearing; the store is swappable. (Walrus = the prize + the on-narrative store.)
 - **ERC-8004 (D):** worker/checker identities and worker/checker feedback are live on Hedera testnet. Feedback is resolver/client-signed because the registry correctly blocks self-feedback.
-- **World (F):** gating as policy/UI with the real IDKit verification call; degrade to "design" if the SDK fights.
 - **HCS (C3):** live topic/message receipt is complete. The native SDK key parser uses ECDSA for portal-style 32-byte hex keys.
 - **DISPUTED + appeal:** design-only. MVP states: LOCKED → ACCEPTED → SUBMITTED → VERIFIED_PASS/FAIL → PAID/REFUNDED (+ UNCERTAIN→PAUSED).
 
@@ -366,8 +363,8 @@ wallet + shipping proof."**
 ## 14. Lanes & ownership
 - **Hedera/settlement lane** (C, D) — redeploy escrow to Hedera EVM + HCS + ERC-8004. *Codex, re-pointed off Arc.*
 - **Verify/web lane** (A, B) — checkers, split scoring, reframed UI. *Claude.*
-- **Evidence lane** (E) — Walrus client + wiring. *Claude or a worker.*
-- **Auth lane** (F) — World AgentKit. *Claude or a worker.*
+- **Evidence lane** (E) — Walrus (Sui) client + wiring + retrievability proof. *Claude.*
+- ~~**Auth lane** (F) — World AgentKit.~~ **Dropped 2026-06-13.**
 
 > **Codex re-point (user action):** move the contract lane from **Arc → Hedera
 > Testnet EVM** (same Solidity, new RPC/deploy) and add **HCS** + **ERC-8004

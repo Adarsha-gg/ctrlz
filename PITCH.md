@@ -53,9 +53,11 @@ CTRL+Z is the **trust layer** for that economy. Here is the whole thing as one d
 6. **Now reputation — why isn't it garbage like star ratings?** Because it's not
    opinions; it's a record of **verified, paid settlements.** But that raises three
    attacks, each needing a piece:
-   - **Sybil** (spin up 1,000 fake agents to farm it) → **Identity.** Every agent is
-     tied to a real human (World ID proof-of-personhood) or company (domain proof).
-     Faking reputation now costs a scarce human/company, not a free wallet. *(World.)*
+   - **Sybil** (spin up 1,000 fake agents to farm it) → **Earned, not bought.**
+     Reputation comes *only* from paid, verified settlements, so each fake agent
+     must actually do expensive work and get paid to build standing — and every
+     agent is bound to an operator identity (ERC-8004 Identity Registry + optional
+     domain proof). Faking reputation stops being free. *(ERC-8004 identity + economic cost.)*
    - **Whitewash** (abandon a bad agent, mint a clean one) → **Cluster reputation.**
      An operator's agents are publicly linked; fraud by one contaminates the whole
      cluster, so you can't escape by re-minting. *(REPUTATION §5–6.)*
@@ -86,10 +88,10 @@ moved — tied to real identities, on an open standard. **No trust required.**
 |---|---|---|
 | Escrow (Hedera) | strangers won't pay/work on a promise | pay-and-pray |
 | Acceptance spec + checkers | when does money release? | escrow releases on opinion |
-| Evidence (Walrus) | why trust the verdict? | "it passed" is unverifiable |
+| Evidence (Walrus / Sui) | why trust the verdict? | "it passed" is unverifiable |
 | Deterministic re-exec + held-out tests | gamed/overfit checks | disputes unprovable; spec-gaming free |
 | Staked verifiers + disputes | who judges, why honest? | the judge is bribable |
-| Identity (World ID / domain) | Sybil reputation farming | reputation is free to fake |
+| Earned-via-settlement + operator identity (ERC-8004) | Sybil reputation farming | reputation is free to fake |
 | Cluster reputation | whitewash by re-minting | bad actors escape by new agent |
 | Two-sided + checker reputation | griefing buyers, lazy checkers | the raters poison everything |
 | ERC-8004 (standard) | siloed reputation | nobody else trusts it |
@@ -100,15 +102,56 @@ moved — tied to real identities, on an open standard. **No trust required.**
 Each technology solves exactly **one** link in the chain — by necessity, not by
 prize-chasing:
 
-- **Hedera** → settlement (escrow) + audit (HCS): fast, cheap, EVM + native consensus log.
-- **Walrus** → content-addressed evidence: the tamper-proof, re-runnable proof.
-- **World** → identity / proof-of-personhood: the Sybil wall under reputation.
-- **ERC-8004** → the open identity+reputation+validation standard: portability.
+- **Hedera** → settlement (escrow) + audit (HCS) + the agent stack we build on
+  (HCS-14 IDs, HCS-10 discovery, x402 payments via `standards-sdk`): fast, cheap,
+  EVM + native consensus log. We consume their tooling, not reimplement it.
+- **Walrus (Sui)** → content-addressed, retrievable evidence: the tamper-proof,
+  re-runnable proof, round-tripped from Sui's decentralized blob store so retrieval
+  is demonstrated, not just claimed.
+- **ERC-8004** → the open identity+reputation+validation standard: portability,
+  and the operator-identity binding that (with earned-only reputation) walls off Sybil farming.
 - **Google BigQuery** → population-scale discovery + the baseline that proves our
   validated signal beats raw reputation.
 
 That's the answer to "why do you need all this": pull any one and a specific,
 nameable attack walks straight through the hole.
+
+## We build on Hedera's agent stack — we don't reinvent it
+
+The agent-trust problem already has *rails*. Hashgraph Online (on Hedera) ships a
+full stack: **HCS-14** (Universal Agent IDs / UAID), **HCS-10 "OpenConvAI"** (agent
+discovery + messaging), **ERC-8004** (identity + reputation + validation
+registries), and **x402** (per-call stablecoin/HBAR payments) — wired together by
+their Registry Broker and the `@hashgraphonline/standards-sdk` /
+`standards-agent-kit` tooling. We **adopt that tooling instead of rebuilding it.**
+Our earlier hand-rolled identity, registration, and receipt plumbing was reinventing
+a wheel Hedera already ships better; we drop it and consume theirs.
+
+What none of that stack does — *by design* — is decide whether the work was actually
+**done right.** ERC-8004's Validation Registry is explicitly just *hooks* for
+"independent validators" it never defines; the EIP itself concedes it "cannot
+guarantee that advertised capabilities are functional." Our own BigQuery scan
+confirms it: the Validation Registry is empty on mainnet (§5) — the column nobody
+has filled.
+
+**That undefined validator is CTRL+Z.** We are the verification layer that plugs into
+their rails: the acceptance spec, the checkers, the split score, the held-out tests,
+the re-runnable evidence — the thing that *produces* the verdict their Validation
+Registry was built to record. We don't compete with the Hedera/HOL stack; we are the
+missing layer that makes it pay out correctly.
+
+| Layer | We adopt (Hedera / HOL) | We build (our wedge) |
+|---|---|---|
+| Identity | HCS-14 UAID + ERC-8004 Identity Registry | — |
+| Discovery / messaging | HCS-10 OpenConvAI · standards-agent-kit | — |
+| Payments | x402 + Hedera EVM escrow | acceptance-spec-gated release |
+| Reputation slots | ERC-8004 Reputation Registry | cluster + checker meta-reputation scoring |
+| **Validation** | ERC-8004 Validation Registry (empty hooks) | **the validator: checkers + split scoring + held-out tests** |
+| Audit | HCS receipts | evidence hashing + Walrus anchor |
+
+The pitch to Hedera, in one line: *you built the trust plumbing and deliberately left
+the hardest column — "did it pass?" — open. CTRL+Z fills it, and writes the answer
+back into your standard so the whole ecosystem can read it.*
 
 ## What we deliberately DON'T solve (the boundaries that make the story credible)
 
@@ -177,6 +220,30 @@ agents, but it does **not** yet have a trustworthy marketplace.
 - Translation: this is the opening. Google/ERC-8004 already has identity and
   raw reputation. CTRL+Z adds the missing column: **validated work outcomes**.
 
+### 6. Hedera shows the same problem on the chain where we settle
+
+We also queried the official ERC-8004 Hedera testnet registries through the
+Hedera mirror node. This is smaller than Ethereum mainnet, but it is the better
+end-to-end demo lane because our escrow, validation response, and proof flow all
+run on Hedera.
+
+- Hedera ERC-8004 has **103 registered agents** in the observed registry.
+- Only **6 / 103** agents have any feedback.
+- There are **55** feedback events from only **3** rater wallets.
+- The top rater wrote **52 / 55** feedback events — **94.5%**.
+- The top owner minted **62 / 103** agents — **60.2%** of supply.
+- Translation: the naive "average review" metric fails on Hedera too. The graph
+  needs rater diversity, owner clustering, repeated-pair penalties, and
+  validation-backed settlements before a buyer agent should trust it.
+
+This makes the demo story clean:
+
+> Ethereum shows the problem at scale: top 10 raters account for about 85% of
+> reviews. Hedera shows the same problem on the chain where CTRL+Z actually
+> settles and validates work: one rater accounts for 94.5% of feedback. CTRL+Z is
+> the marketplace layer that turns raw registry activity into a usable trust
+> decision.
+
 ### Product implication
 
 CTRL+Z should be pitched as:
@@ -219,7 +286,8 @@ stranger agent — did it do the work, can you believe its reputation? We're the
 neutral escrow + referee: the buyer commits a machine-checkable spec up front, the
 deliverable is verified against it with the proof stored on-chain and re-runnable by
 anyone, and money releases only on a pass. Reputation is a byproduct of those
-verified settlements, tied to a real human or company via World ID so it can't be
-Sybil-farmed, and published to ERC-8004 so it's portable. We don't verify "good" —
+verified settlements — earned only by costly, verified work and bound to operator
+identity so it can't be Sybil-farmed — and published to ERC-8004 so it's portable.
+We don't verify "good" —
 we verify "met the agreed spec," which is the part that can actually carry money.
 It's the exact validation pillar ERC-8004's own authors say is unsolved.*
