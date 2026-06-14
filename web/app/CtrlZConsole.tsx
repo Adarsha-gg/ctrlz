@@ -38,6 +38,8 @@ type BackendResult = {
   evidenceHash?: string;
   evidenceStore?: string;
   evidenceUri?: string | null;
+  specStore?: string;
+  specUri?: string | null;
   reports?: unknown[];
   recommendation?: string;
   specHash?: string;
@@ -223,6 +225,7 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
   const [inspectedStage, setInspectedStage] = useState<number | null>(null);
   const [hashes, setHashes] = useState({
     spec: "",
+    specUri: "",
     evidence: "",
     evidenceUri: "",
     x402: "",
@@ -356,6 +359,7 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
     setInspectedStage(null);
     setHashes({
       spec: "",
+      specUri: "",
       evidence: "",
       evidenceUri: "",
       x402: "",
@@ -406,6 +410,7 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
       setHeldoutTests(data.heldoutTests ?? data.replay?.heldout?.hiddenTests ?? []);
       setHashes({
         spec: data.specHash ?? "",
+        specUri: data.specUri ?? "",
         evidence: data.evidenceHash ?? "",
         evidenceUri: data.evidenceUri ?? "",
         x402: x402Tx,
@@ -979,7 +984,7 @@ function Stage(props: {
   checker: Identity | null;
   cheat: boolean;
   current: number;
-  hashes: { spec: string; evidence: string; evidenceUri: string; x402: string; blob: string; resolve: string; task: string };
+  hashes: { spec: string; specUri: string; evidence: string; evidenceUri: string; x402: string; blob: string; resolve: string; task: string };
   heldoutTests: string[];
   hbar: number;
   inspected: boolean;
@@ -1071,8 +1076,8 @@ function StageInspection(props: Parameters<typeof Stage>[0]) {
       <div className="cz-inspector" onClick={(event) => event.stopPropagation()}>
         <InfoBlock label="x402 MODE" value={x402Mode} />
         <InfoBlock label="x402 TRANSACTION / RECEIPT" value={x402Receipt?.transaction ?? hashes.x402 ?? "not issued"} blue />
-        <InfoBlock label="ASSET" value={x402Requirements?.asset ?? "USDC"} />
-        <InfoBlock label="MAX REQUIRED" value={x402Requirements?.maxAmountRequired ?? "10000"} />
+        <InfoBlock label="ASSET" value={x402Requirements?.asset ?? "HBAR"} />
+        <InfoBlock label="MAX REQUIRED" value={x402Requirements?.maxAmountRequired ?? "0.01"} />
       </div>
     );
   }
@@ -1199,18 +1204,24 @@ function StageLive(props: Parameters<typeof Stage>[0]) {
         </div>
       );
     }
+    const x402Tx = hashes.x402;
+    const x402HasChainReceipt = isTxHash(x402Tx);
     return (
       <div className="cz-stage-body">
         <p>Calling the real verification backend and x402 payment gate.</p>
         <div className="cz-ledger">
           <span>asset</span>
-          <strong>USDC</strong>
+          <strong>{runReceipt?.x402?.requirements?.asset ?? "HBAR"}</strong>
           <span>maxAmountRequired</span>
-          <strong>10000 (0.01)</strong>
-          <span>receipt</span>
-          <a href={`https://sepolia.basescan.org/tx/${hashes.x402}`} target="_blank">
-            {shortHash(hashes.x402)}
-          </a>
+          <strong>{runReceipt?.x402?.requirements?.maxAmountRequired ?? "0.01"}</strong>
+          <span>{x402HasChainReceipt ? "receipt" : "gate"}</span>
+          {x402HasChainReceipt ? (
+            <a href={`https://hashscan.io/testnet/transaction/${x402Tx}`} target="_blank">
+              {shortHash(x402Tx)}
+            </a>
+          ) : (
+            <strong>{runReceipt?.x402?.receipt?.mode === "demo" ? "demo accepted" : x402Tx || "accepted"}</strong>
+          )}
         </div>
       </div>
     );
@@ -1320,7 +1331,7 @@ function StageSummary({
   const summaries: Record<number, string> = {
     1: `${worker?.short ?? "worker"} - checker bound`,
     2: `${bounty} HBAR escrowed - held-out tests committed`,
-    3: `0.01 USDC paid - receipt ${shortHash(hashes.x402)}`,
+    3: `Hedera x402 gate accepted - ${shortHash(hashes.x402)}`,
     4: `patch generated - ${source.split("\n").length} lines - ${source.length} B`,
     5:
       runResults.length > 0
@@ -1376,13 +1387,17 @@ function jsonProofHref(label: string, value: unknown) {
   return rawProofHref(label, JSON.stringify(value, null, 2));
 }
 
-function ProofTile({ href, label, value }: { href: string; label: string; value: string }) {
+function isTxHash(value: string) {
+  return /^0x[0-9a-fA-F]{64}$/.test(value);
+}
+
+function ProofTile({ href, label, value, action = "open proof ->" }: { href: string; label: string; value: string; action?: string }) {
   const safeValue = value || "-";
   return (
     <a className="cz-proof-tile" href={href} target="_blank" rel="noreferrer" title={`Open ${label.toLowerCase()}`}>
       <span>{label}</span>
       <code>{safeValue}</code>
-      <small>open proof -&gt;</small>
+      <small>{action}</small>
     </a>
   );
 }
@@ -1403,7 +1418,7 @@ function Receipt({
   agent: Agent;
   bounty: number;
   cheat: boolean;
-  hashes: { spec: string; evidence: string; evidenceUri: string; x402: string; blob: string; resolve: string; task: string };
+  hashes: { spec: string; specUri: string; evidence: string; evidenceUri: string; x402: string; blob: string; resolve: string; task: string };
   runReceipt: BackendResult | null;
   runError: string;
   settleResult: SettleResult | null;
@@ -1432,55 +1447,72 @@ function Receipt({
   const settlementLabel = settleResult?.configured === false ? "SETTLEMENT - NOT CONFIGURED" : cheat ? "SETTLEMENT - REFUNDED" : "SETTLEMENT - PAID";
   const settlementValue = settleResult?.configured === false ? (settleResult.error ?? "missing Hedera keys") : hashes.resolve;
   const scoreValue = runReceipt?.settlement ? `${runReceipt.settlement.scoreBps} bps - ${runReceipt.settlement.resultLabel}` : cheat ? "3300 bps - FAIL" : `10000 bps - paid ${bounty} HBAR`;
+  const x402Transaction = runReceipt?.x402?.receipt?.transaction ?? hashes.x402;
+  const hasX402ChainReceipt = isTxHash(x402Transaction);
+  const evidenceProofHref =
+    hashes.evidenceUri ||
+    jsonProofHref("EVIDENCE HASH PROOF", {
+      evidenceHash: hashes.evidence,
+      store: runReceipt?.evidenceStore ?? null,
+      note: "Walrus URI was unavailable; verify this hash against the evidence bundle returned by the backend."
+    });
   const proofRows = [
     {
       label: "WORKER IDENTITY",
       value: worker?.uaid ?? worker?.short ?? "-",
-      href: "/api/agents/identity"
+      href: "/api/agents/identity",
+      action: "open identity ->"
     },
     {
-      label: "SPEC HASH",
+      label: "SPEC MANIFEST",
       value: hashes.spec,
-      href: jsonProofHref("SPEC HASH PROOF", {
-        specHash: hashes.spec,
-        task: runReceipt?.task ?? null,
-        publicTests: runReceipt?.publicTests ?? [],
-        heldoutTests: runReceipt?.heldoutTests ?? [],
-        evidenceHash: hashes.evidence,
-        binding: "specHash commits the task acceptance manifest before settlement"
-      })
+      href:
+        hashes.specUri ||
+        jsonProofHref("SPEC MANIFEST PROOF", {
+          specHash: hashes.spec,
+          task: runReceipt?.task ?? null,
+          publicTests: runReceipt?.publicTests ?? [],
+          heldoutTests: runReceipt?.heldoutTests ?? [],
+          specStore: runReceipt?.specStore ?? null,
+          note: "This is the acceptance manifest hash; when Walrus returns a specUri this tile opens that stored manifest directly."
+        }),
+      action: hashes.specUri ? "open manifest ->" : "open hash record ->"
     },
     {
       label: "EVIDENCE",
       value: hashes.evidenceUri || hashes.evidence,
-      href: hashes.evidenceUri || jsonProofHref("EVIDENCE HASH PROOF", { evidenceHash: hashes.evidence, store: runReceipt?.evidenceStore ?? null })
+      href: evidenceProofHref,
+      action: hashes.evidenceUri ? "open walrus ->" : "open hash record ->"
     },
     {
-      label: "x402 RECEIPT",
-      value: hashes.x402,
-      href: runReceipt?.x402?.receipt?.transaction?.startsWith("0x")
-        ? `https://sepolia.basescan.org/tx/${runReceipt.x402.receipt.transaction}`
+      label: hasX402ChainReceipt ? "x402 RECEIPT" : "x402 GATE",
+      value: hasX402ChainReceipt ? x402Transaction : runReceipt?.x402?.receipt?.mode === "demo" ? "demo accepted" : x402Transaction || "accepted",
+      href: hasX402ChainReceipt
+        ? `https://hashscan.io/testnet/transaction/${x402Transaction}`
         : jsonProofHref("x402 RECEIPT PROOF", {
             x402: runReceipt?.x402 ?? null,
-            note: "demo mode receipts are verified by the server x402 gate; facilitator mode should include a chain transaction"
-          })
+            note: "No external x402 transaction is available in demo mode. Configure X402_FACILITATOR_URL to emit a chain/verifier receipt."
+          }),
+      action: hasX402ChainReceipt ? "open receipt ->" : "open gate record ->"
     },
     {
       label: settlementLabel,
       value: settlementValue,
-      href: settlementValue?.startsWith("0x") ? `https://hashscan.io/testnet/transaction/${settlementValue}` : jsonProofHref("SETTLEMENT PROOF", settleResult ?? {})
+      href: isTxHash(settlementValue) ? `https://hashscan.io/testnet/transaction/${settlementValue}` : jsonProofHref("SETTLEMENT PROOF", settleResult ?? {}),
+      action: isTxHash(settlementValue) ? "open hashscan ->" : "open record ->"
     },
     {
       label: "SCORE",
       value: scoreValue,
-      href: jsonProofHref("SCORE PROOF", {
+      href: hashes.evidenceUri || jsonProofHref("SCORE PROOF", {
         settlement: runReceipt?.settlement ?? null,
         recommendation: runReceipt?.recommendation ?? null,
         reports: runReceipt?.reports ?? [],
         results: runReceipt?.results ?? [],
         publicTests: runReceipt?.publicTests ?? [],
         heldoutTests: runReceipt?.heldoutTests ?? []
-      })
+      }),
+      action: hashes.evidenceUri ? "open evidence ->" : "open score record ->"
     }
   ];
 
@@ -1495,7 +1527,7 @@ function Receipt({
       </p>
       <div className="cz-proof-grid">
         {proofRows.map((row) => (
-          <ProofTile key={row.label} href={row.href} label={row.label} value={row.value} />
+          <ProofTile key={row.label} href={row.href} label={row.label} value={row.value} action={row.action} />
         ))}
       </div>
       <div className="cz-receipt-actions">

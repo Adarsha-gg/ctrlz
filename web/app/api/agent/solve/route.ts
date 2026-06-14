@@ -89,6 +89,7 @@ export async function POST(request: Request) {
   const intent = `Earn bounty: ${task.spec}`;
   const manifest = buildManifest({ intent, checks: [publicDef, heldoutDef] });
   const specHash = await hashBlob(manifest);
+  const storedSpec = await storeEvidence(manifest);
   const evidence = buildEvidenceBlob({
     taskSpec: manifest,
     workerOutput: submission,
@@ -111,6 +112,8 @@ export async function POST(request: Request) {
       recommendation: split.recommendation,
       settlement,
       specHash,
+      specStore: storedSpec.store,
+      specUri: storedSpec.uri ?? null,
       evidenceHash: stored.hash,
       evidenceStore: stored.store,
       evidenceUri: stored.uri ?? null
