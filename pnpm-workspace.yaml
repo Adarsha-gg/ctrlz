@@ -1,9 +1,9 @@
 packages:
   - "web"
-onlyBuiltDependencies:
-  - '@reown/appkit'
-  - bufferutil
-  - keccak
-  - protobufjs
-  - sharp
-  - utf-8-validate
+allowBuilds:
+  '@reown/appkit': true
+  bufferutil: true
+  keccak: true
+  protobufjs: true
+  sharp: true
+  utf-8-validate: true
