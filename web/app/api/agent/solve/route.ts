@@ -32,7 +32,18 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   // The buyer commissions the verification job by paying via x402 (when enabled).
-  const x402 = await verifyX402ForRequest(request);
+  const x402 = await verifyX402ForRequest(request, {
+    payTo:
+      process.env.HEDERA_WORKER_ADDRESS ||
+      process.env.X402_PAY_TO ||
+      process.env.X402_RECEIVER_ADDRESS,
+    network: process.env.X402_HEDERA_NETWORK || "eip155:296",
+    asset: process.env.X402_HEDERA_ASSET || "HBAR",
+    settlement: "direct-worker-trusted",
+    trustPolicy: "ctrlz-worker-agent-101",
+    description:
+      "CTRL+Z trusted worker direct pay on Hedera. The worker is paid through x402 V2, then verification records Walrus evidence and reputation."
+  });
   if (x402.required && !x402.paid) {
     return NextResponse.json(
       { error: x402.error ?? "x402 payment required to commission the job", accepts: [x402.requirements], x402 },

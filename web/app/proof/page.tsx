@@ -20,7 +20,187 @@ const shortUaid = (uaid: string) => {
   return `uaid:aid:${aid.slice(0, 8)}...${aid.slice(-6)}`;
 };
 
-export default async function ProofPage() {
+type ProofSearchParams = {
+  uri?: string;
+  hash?: string;
+  kind?: string;
+};
+
+function proofKindLabel(kind?: string) {
+  if (kind === "spec") return "Spec Manifest";
+  if (kind === "score") return "Score Evidence";
+  if (kind === "evidence") return "Evidence Bundle";
+  return "Walrus Proof";
+}
+
+function safeWalrusUri(uri?: string) {
+  if (!uri) return null;
+  try {
+    const parsed = new URL(uri);
+    if (parsed.protocol !== "https:") return null;
+    if (!parsed.hostname.endsWith("walrus.space")) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function compactValue(value: unknown) {
+  if (value == null) return "-";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
+}
+
+function canonicalize(value: unknown): unknown {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(canonicalize);
+  const out: Record<string, unknown> = {};
+  const obj = value as Record<string, unknown>;
+  for (const key of Object.keys(obj).sort()) {
+    if (obj[key] !== undefined) out[key] = canonicalize(obj[key]);
+  }
+  return out;
+}
+
+async function hashProofBlob(value: unknown) {
+  const data = new TextEncoder().encode(JSON.stringify(canonicalize(value)));
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function formatScore(value: unknown) {
+  if (typeof value !== "number") return compactValue(value);
+  return value <= 100 ? `${value}/100` : `${value} bps`;
+}
+
+function pickSummaryRows(blob: unknown) {
+  const obj = blob && typeof blob === "object" ? (blob as Record<string, any>) : {};
+  const split = obj.splitScore as Record<string, any> | undefined;
+  const settlement = obj.settlement as Record<string, any> | undefined;
+  const taskSpec = obj.taskSpec as Record<string, any> | undefined;
+  const x402 = obj.x402 as Record<string, any> | undefined;
+  const rows: Array<[string, unknown]> = [];
+
+  if (taskSpec?.intent || obj.intent) rows.push(["Intent", taskSpec?.intent ?? obj.intent]);
+  if (Array.isArray(taskSpec?.checks) || Array.isArray(obj.checks)) rows.push(["Checks", `${(taskSpec?.checks ?? obj.checks).length} committed checks`]);
+  if (Array.isArray(obj.checkerReports)) rows.push(["Checker reports", `${obj.checkerReports.length} reports`]);
+  if (split?.recommendation || obj.recommendation) rows.push(["Recommendation", split?.recommendation ?? obj.recommendation]);
+  if (split?.outputValidity?.score != null) rows.push(["Output validity", formatScore(split.outputValidity.score)]);
+  if (split?.agentTrust?.score != null) rows.push(["Agent trust", formatScore(split.agentTrust.score)]);
+  if (split?.paymentRisk?.score != null) rows.push(["Payment risk", formatScore(split.paymentRisk.score)]);
+  if (settlement?.resultLabel) rows.push(["Settlement result", settlement.resultLabel]);
+  if (settlement?.scoreBps != null) rows.push(["Settlement score", `${settlement.scoreBps} bps`]);
+  if (x402?.requirements?.network) rows.push(["x402 network", x402.requirements.network]);
+  if (x402?.requirements?.asset) rows.push(["x402 asset", x402.requirements.asset]);
+
+  return rows;
+}
+
+function firstCode(blob: unknown) {
+  const obj = blob && typeof blob === "object" ? (blob as Record<string, any>) : {};
+  const patch = obj.workerOutput?.patch?.diff ?? obj.replay?.inProcess?.patchedSource ?? obj.generatedSource;
+  return typeof patch === "string" ? patch : "";
+}
+
+async function ProofViewer({ params }: { params: ProofSearchParams }) {
+  const uri = safeWalrusUri(params.uri);
+  const kind = proofKindLabel(params.kind);
+  let blob: unknown = null;
+  let error = "";
+
+  if (!uri) {
+    error = "Missing or unsupported Walrus URI.";
+  } else {
+    try {
+      const response = await fetch(uri, { cache: "no-store" });
+      if (!response.ok) {
+        error = `Walrus returned ${response.status}`;
+      } else {
+        blob = await response.json();
+      }
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : "Could not read Walrus proof.";
+    }
+  }
+
+  const computedHash = blob ? await hashProofBlob(blob) : "";
+  const expectedHash = params.hash ?? "";
+  const hashMatches = Boolean(computedHash && expectedHash && computedHash === expectedHash.replace(/^0x/, ""));
+  const summaryRows = pickSummaryRows(blob);
+  const code = firstCode(blob);
+
+  return (
+    <main className="terminal-app proof-surface">
+      <TerminalHeader active="proof" />
+
+      <section className="proof-hero">
+        <div>
+          <p className="terminal-eyebrow">Readable Walrus Proof</p>
+          <h1>{kind}</h1>
+          <p>Public Walrus data rendered into the parts a human needs: hash anchor, committed checks, checker results, score, and raw JSON.</p>
+        </div>
+        {uri ? (
+          <a className="primary-action" href={uri} target="_blank" rel="noreferrer">
+            Raw Walrus
+          </a>
+        ) : null}
+      </section>
+
+      <section className="proof-readable-grid">
+        <div>
+          <span>Expected hash</span>
+          <code>{expectedHash || "-"}</code>
+        </div>
+        <div>
+          <span>Computed hash</span>
+          <code>{computedHash || "-"}</code>
+        </div>
+        <div className={hashMatches ? "proof-ok" : "proof-warn"}>
+          <span>Status</span>
+          <strong>{error ? "unreadable" : expectedHash ? (hashMatches ? "hash verified" : "hash mismatch") : "hash not supplied"}</strong>
+        </div>
+      </section>
+
+      {error ? <p className="terminal-warning">{error}</p> : null}
+
+      {summaryRows.length ? (
+        <section className="proof-readable-card">
+          <p className="terminal-eyebrow">Summary</p>
+          <dl>
+            {summaryRows.map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{compactValue(value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
+
+      {code ? (
+        <section className="proof-readable-card">
+          <p className="terminal-eyebrow">Worker Output</p>
+          <pre>{code}</pre>
+        </section>
+      ) : null}
+
+      {blob ? (
+        <section className="proof-readable-card">
+          <p className="terminal-eyebrow">Raw JSON</p>
+          <pre>{JSON.stringify(blob, null, 2)}</pre>
+        </section>
+      ) : null}
+    </main>
+  );
+}
+
+export default async function ProofPage({ searchParams }: { searchParams?: Promise<ProofSearchParams> }) {
+  const params = (await searchParams) ?? {};
+  if (params.uri || params.hash) return <ProofViewer params={params} />;
+
   const bridge = await getTrustBridgeData();
 
   return (

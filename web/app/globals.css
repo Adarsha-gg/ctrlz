@@ -3702,6 +3702,90 @@ dd {
   color: #cfc8ba;
 }
 
+.proof-readable-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(190px, 0.55fr);
+  gap: 12px;
+}
+
+.proof-readable-grid > div,
+.proof-readable-card {
+  border: 1px solid #d8d2c7;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.proof-readable-grid > div {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.proof-readable-grid span,
+.proof-readable-card dt {
+  color: #8a857a;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.proof-readable-grid code,
+.proof-readable-card dd {
+  margin: 0;
+  color: #151515;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.proof-readable-grid .proof-ok strong {
+  color: #1a7f5a;
+}
+
+.proof-readable-grid .proof-warn strong {
+  color: #b45309;
+}
+
+.proof-readable-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.proof-readable-card dl {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.proof-readable-card dl > div {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 12px;
+  border-top: 1px solid #ece6d9;
+  padding: 10px 0;
+}
+
+.proof-readable-card dl > div:first-child {
+  border-top: 0;
+}
+
+.proof-readable-card pre {
+  max-height: 560px;
+  margin: 0;
+  overflow: auto;
+  border: 1px solid #ece6d9;
+  border-radius: 10px;
+  background: #15171c;
+  color: #f3f1ea;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  padding: 14px;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 1050px) {
   .terminal-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3720,6 +3804,7 @@ dd {
   .proof-hero,
   .market-bridge,
   .proof-registry,
+  .proof-readable-grid,
   .agent-profile-hero {
     grid-template-columns: 1fr;
   }
@@ -3784,6 +3869,11 @@ dd {
     gap: 4px;
   }
 
+  .proof-readable-card dl > div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
   .terminal-table-top {
     display: grid;
   }
@@ -3826,7 +3916,8 @@ dd {
   .market-agent-stats,
   .score-split-grid,
   .proof-guard-grid,
-  .proof-signal-grid {
+  .proof-signal-grid,
+  .proof-readable-grid {
     grid-template-columns: 1fr;
   }
 

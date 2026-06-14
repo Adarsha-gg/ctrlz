@@ -32,8 +32,36 @@ type BackendResult = {
     enabled?: boolean;
     required?: boolean;
     paid?: boolean;
-    requirements?: { asset?: string; maxAmountRequired?: string };
-    receipt?: { mode?: string; transaction?: string; verifiedAt?: string };
+    requirements?: {
+      scheme?: string;
+      network?: string;
+      asset?: string;
+      maxAmountRequired?: string;
+      payTo?: string;
+      resource?: string;
+      extra?: { settlement?: string; x402Version?: number; paymentHeader?: string; settlementHeader?: string };
+    };
+    receipt?: {
+      mode?: string;
+      transaction?: string;
+      verifiedAt?: string;
+      payer?: string;
+      payTo?: string;
+      amountHbar?: string;
+      network?: string;
+      asset?: string;
+      status?: string;
+      blockNumber?: string;
+      explorer?: string;
+    };
+  };
+  paymentPolicy?: {
+    mode?: string;
+    settlement?: string;
+    payTo?: string | null;
+    network?: string | null;
+    asset?: string | null;
+    recipientTrustScore?: number;
   };
   evidenceHash?: string;
   evidenceStore?: string;
@@ -182,6 +210,50 @@ function initialStatuses(): Record<number, Status> {
 function shortHash(hash: string) {
   if (!hash) return "-";
   return `${hash.slice(0, 10)}...${hash.slice(-6)}`;
+}
+
+function encodePaymentPayload(value: unknown) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(value))));
+}
+
+function paymentIdentifier() {
+  const randomId = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+  return `ctrlz-homepage-${Date.now()}-${randomId}`;
+}
+
+function paymentSignatureFor(requirements: NonNullable<BackendResult["x402"]>["requirements"]) {
+  if (!requirements) return "";
+  return encodePaymentPayload({
+    x402Version: requirements.extra?.x402Version ?? 2,
+    scheme: requirements.scheme ?? "exact",
+    network: requirements.network ?? "eip155:296",
+    payload: {
+      amount: requirements.maxAmountRequired ?? "0.01",
+      payTo: requirements.payTo ?? "",
+      asset: requirements.asset ?? "HBAR",
+      resource: requirements.resource ?? "/api/agent/solve",
+      paymentIdentifier: paymentIdentifier()
+    }
+  });
+}
+
+async function postWithX402(url: string, init: RequestInit = {}) {
+  const first = await fetch(url, init);
+  if (first.status !== 402) return first;
+
+  const challenge = (await first.json().catch(() => null)) as (BackendResult & { accepts?: NonNullable<BackendResult["x402"]>["requirements"][] }) | null;
+  const requirements = challenge?.x402?.requirements ?? challenge?.accepts?.[0];
+  const signature = paymentSignatureFor(requirements);
+  if (!signature) return new Response(JSON.stringify(challenge ?? { error: "x402 payment required" }), { status: 402 });
+
+  const headers = new Headers(init.headers);
+  headers.set("PAYMENT-SIGNATURE", signature);
+  if (!headers.has("content-type")) headers.set("content-type", "application/json");
+  return fetch(url, { ...init, headers });
+}
+
+function isDirectX402Receipt(result?: BackendResult | null) {
+  return result?.x402?.receipt?.mode === "hedera-direct" && Boolean(result.x402.receipt.transaction);
 }
 
 function statusCopy(status: Status) {
@@ -434,7 +506,13 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
       finish(6);
 
       go(7);
-      const settle = await settleOnChain(data);
+      const settle = isDirectX402Receipt(data)
+        ? {
+            finalStateLabel: "PAID",
+            resolveHash: data.x402?.receipt?.transaction,
+            taskId: "hedera-direct-x402"
+          }
+        : await settleOnChain(data);
       setSettleResult(settle);
       setHashes((prev) => ({
         ...prev,
@@ -463,9 +541,8 @@ export default function CtrlZConsole({ escrowAddress }: { escrowAddress: string 
 
   async function runBackend(nextMode: Mode): Promise<BackendResult> {
     if (nextMode === "green") {
-      const llmRun = (await fetch("/api/agent/solve", {
-        method: "POST",
-        headers: { "x-payment": "demo-x402:homepage" }
+      const llmRun = (await postWithX402("/api/agent/solve", {
+        method: "POST"
       }).then((res) => res.json())) as BackendResult;
       if (!llmRun.error) return llmRun;
       if (!llmRun.error.includes("GEMINI_API_KEY")) return llmRun;
@@ -1387,6 +1464,12 @@ function jsonProofHref(label: string, value: unknown) {
   return rawProofHref(label, JSON.stringify(value, null, 2));
 }
 
+function readableProofHref(kind: "spec" | "evidence" | "score", uri: string, hash: string) {
+  const params = new URLSearchParams({ kind, uri });
+  if (hash) params.set("hash", hash);
+  return `/proof?${params.toString()}`;
+}
+
 function isTxHash(value: string) {
   return /^0x[0-9a-fA-F]{64}$/.test(value);
 }
@@ -1450,7 +1533,7 @@ function Receipt({
   const x402Transaction = runReceipt?.x402?.receipt?.transaction ?? hashes.x402;
   const hasX402ChainReceipt = isTxHash(x402Transaction);
   const evidenceProofHref =
-    hashes.evidenceUri ||
+    (hashes.evidenceUri ? readableProofHref("evidence", hashes.evidenceUri, hashes.evidence) : "") ||
     jsonProofHref("EVIDENCE HASH PROOF", {
       evidenceHash: hashes.evidence,
       store: runReceipt?.evidenceStore ?? null,
@@ -1467,7 +1550,7 @@ function Receipt({
       label: "SPEC MANIFEST",
       value: hashes.spec,
       href:
-        hashes.specUri ||
+        (hashes.specUri ? readableProofHref("spec", hashes.specUri, hashes.spec) : "") ||
         jsonProofHref("SPEC MANIFEST PROOF", {
           specHash: hashes.spec,
           task: runReceipt?.task ?? null,
@@ -1504,7 +1587,7 @@ function Receipt({
     {
       label: "SCORE",
       value: scoreValue,
-      href: hashes.evidenceUri || jsonProofHref("SCORE PROOF", {
+      href: (hashes.evidenceUri ? readableProofHref("score", hashes.evidenceUri, hashes.evidence) : "") || jsonProofHref("SCORE PROOF", {
         settlement: runReceipt?.settlement ?? null,
         recommendation: runReceipt?.recommendation ?? null,
         reports: runReceipt?.reports ?? [],
