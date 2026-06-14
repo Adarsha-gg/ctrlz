@@ -42,6 +42,7 @@ type QueryRow = {
   agent_key: string;
   owner_address: string;
   agent_uri: string | null;
+  metadata_text?: string | null;
   registered_at: { value?: string } | string;
   recent_feedback?: FeedbackHistoryRow[] | null;
   recent_validations?: ValidationHistoryRow[] | null;
@@ -89,6 +90,11 @@ type MirrorResponse = {
   links?: {
     next?: string | null;
   };
+};
+
+type X402Signal = {
+  support: boolean;
+  evidence: string[];
 };
 
 const identityEventAbi = [
@@ -262,6 +268,7 @@ const hederaSnapshotRows: QueryRow[] = [
 ];
 
 function hederaSnapshotData(error?: string): MarketplaceData {
+  const agents = rankRows(hederaSnapshotRows);
   return {
     source: "hedera",
     generatedAt: new Date().toISOString(),
@@ -272,13 +279,14 @@ function hederaSnapshotData(error?: string): MarketplaceData {
       activeAgents: 103,
       feedbackEvents: 55,
       uniqueFeedbackClients: 3,
+      x402Agents: agents.filter((agent) => agent.x402Support).length,
       uniqueOwners: 5,
       agentsWithFeedback: 6,
       topRaterShare: 0.9455,
       top10RaterShare: 1,
       topOwnerShare: 0.6019
     },
-    agents: rankRows(hederaSnapshotRows),
+    agents,
     ...(error ? { error } : {})
   };
 }
@@ -312,6 +320,22 @@ const numberValue = (value: number | string | null | undefined): number => {
   }
   return Number(value);
 };
+
+const compactEvidence = (items: string[]) => [...new Set(items.filter(Boolean))].slice(0, 4);
+
+function isBlockedMetadataHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host === "0.0.0.0" ||
+    host === "::1" ||
+    host.startsWith("127.") ||
+    host.startsWith("10.") ||
+    host.startsWith("192.168.") ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+  );
+}
 
 const timestampValue = (value: { value?: string } | string): string => {
   if (typeof value === "string") {
@@ -360,6 +384,80 @@ function decodedDataUri(uri: string | null): string {
   }
 }
 
+async function fetchMetadataText(uri: string | null): Promise<string> {
+  if (!uri || uri.startsWith("data:")) {
+    return decodedDataUri(uri);
+  }
+
+  let url: URL;
+  try {
+    url = new URL(uri);
+  } catch {
+    return "";
+  }
+
+  if (!["http:", "https:"].includes(url.protocol) || isBlockedMetadataHost(url.hostname)) {
+    return "";
+  }
+
+  try {
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(2_500),
+      headers: {
+        accept: "application/json,text/plain;q=0.9,*/*;q=0.5"
+      },
+      next: { revalidate: marketplaceCacheSeconds }
+    });
+    if (!response.ok) {
+      return "";
+    }
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType && !/(json|text|ld\+json|javascript)/i.test(contentType)) {
+      return "";
+    }
+    return (await response.text()).slice(0, 50_000);
+  } catch {
+    return "";
+  }
+}
+
+async function enrichMetadataRows(rows: QueryRow[]): Promise<QueryRow[]> {
+  const enriched = await Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      metadata_text: row.metadata_text ?? (await fetchMetadataText(row.agent_uri))
+    }))
+  );
+  return enriched;
+}
+
+function detectX402(uri: string | null, metadataText?: string | null): X402Signal {
+  const text = `${uri ?? ""}\n${metadataText ?? ""}`;
+  const lowered = text.toLowerCase();
+  const evidence: string[] = [];
+
+  if (/\bx402\b/.test(lowered)) {
+    evidence.push("metadata explicitly mentions x402");
+  }
+  if (/"?paymentrequirements"?\s*:/.test(lowered) || /payment[_-]?requirements/.test(lowered)) {
+    evidence.push("metadata exposes payment requirements");
+  }
+  if (/"?accepts"?\s*:\s*\[[^\]]*x402/.test(lowered) || /payment[_-]?protocols?[^\n{}[\]]*x402/.test(lowered)) {
+    evidence.push("metadata lists x402 as an accepted payment protocol");
+  }
+  if (/x402[./_-]?(facilitator|payment|checkout|endpoint|url)/.test(lowered)) {
+    evidence.push("metadata publishes an x402 payment endpoint");
+  }
+  if (/402\s+payment\s+required/.test(lowered)) {
+    evidence.push("metadata references HTTP 402 payment flow");
+  }
+
+  return {
+    support: evidence.length > 0,
+    evidence: compactEvidence(evidence)
+  };
+}
+
 function domainFromUri(uri: string | null): string {
   if (!uri || uri.startsWith("data:")) {
     return uri?.startsWith("data:") ? "embedded metadata" : "unknown";
@@ -371,9 +469,12 @@ function domainFromUri(uri: string | null): string {
   }
 }
 
-function classifyWork(uri: string | null): { workKind: WorkKind; workLabel: string; categoryEvidence: string[] } {
+function classifyWork(
+  uri: string | null,
+  metadataText?: string | null
+): { workKind: WorkKind; workLabel: string; categoryEvidence: string[] } {
   const decoded = decodedDataUri(uri);
-  const text = `${uri ?? ""} ${domainFromUri(uri)} ${decoded}`.toLowerCase();
+  const text = `${uri ?? ""} ${domainFromUri(uri)} ${decoded} ${metadataText ?? ""}`.toLowerCase();
   let workKind: WorkKind = "general";
   let matched = "no strong metadata keyword";
 
@@ -530,7 +631,9 @@ function rankRows(rows: QueryRow[]): AgentMarketplaceRow[] {
       const averageScore = rawAverageScore === null || Number.isNaN(rawAverageScore) ? null : rawAverageScore;
       const agentUri = row.agent_uri ?? "";
       const domain = domainFromUri(agentUri);
-      const work = classifyWork(agentUri);
+      const metadataText = row.metadata_text ?? decodedDataUri(row.agent_uri);
+      const work = classifyWork(agentUri, metadataText);
+      const x402 = detectX402(agentUri, metadataText);
       const history = buildHistory(row, work, domain);
       const weightedFeedback = numberValue(row.weighted_feedback);
       const largestRaterVolume = numberValue(row.largest_rater_volume);
@@ -555,6 +658,8 @@ function rankRows(rows: QueryRow[]): AgentMarketplaceRow[] {
         ownerAddress: row.owner_address,
         agentUri,
         domain,
+        x402Support: x402.support,
+        x402Evidence: x402.evidence,
         ...work,
         registeredAt: timestampValue(row.registered_at),
         history,
@@ -765,8 +870,9 @@ async function queryMarketplaceData(): Promise<MarketplaceData> {
       bigquery.query({ query: marketplaceQuery, ...options })
     ]);
     const statsRows = statsResponse[0] as StatsRow[];
-    const rows = agentsResponse[0] as QueryRow[];
+    const rows = await enrichMetadataRows(agentsResponse[0] as QueryRow[]);
     const stats = statsRows[0];
+    const agents = rankRows(rows);
 
     const liveStats: MarketplaceStats = {
       identityTransactions: numberValue(stats?.identity_transactions),
@@ -774,14 +880,15 @@ async function queryMarketplaceData(): Promise<MarketplaceData> {
       validationTransactions: numberValue(stats?.validation_transactions),
       activeAgents: numberValue(stats?.active_agents),
       feedbackEvents: numberValue(stats?.feedback_events),
-      uniqueFeedbackClients: numberValue(stats?.unique_feedback_clients)
+      uniqueFeedbackClients: numberValue(stats?.unique_feedback_clients),
+      x402Agents: agents.filter((agent) => agent.x402Support).length
     };
 
     return {
       source: "bigquery",
       generatedAt: new Date().toISOString(),
       stats: liveStats,
-      agents: rankRows(rows)
+      agents
     };
   } catch (error) {
     return {
@@ -978,7 +1085,9 @@ async function queryHederaMarketplaceData(): Promise<MarketplaceData> {
       .slice(0, 10)
       .reduce((sum, value) => sum + value, 0);
     const topOwnerCount = Math.max(0, ...ownerCounts.values());
-    const rows = [...rowsByAgent.values()];
+    const rows = await enrichMetadataRows([...rowsByAgent.values()]);
+    const agents = rankRows(rows);
+    const x402Agents = agents.filter((agent) => agent.x402Support).length;
 
     return {
       source: "hedera",
@@ -990,13 +1099,14 @@ async function queryHederaMarketplaceData(): Promise<MarketplaceData> {
         activeAgents: registered.length,
         feedbackEvents,
         uniqueFeedbackClients: raterCounts.size,
+        x402Agents,
         uniqueOwners: ownerCounts.size,
         agentsWithFeedback: rows.filter((row) => numberValue(row.feedback_count) > 0).length,
         topRaterShare: feedbackEvents ? topRaterCount / feedbackEvents : 0,
         top10RaterShare: feedbackEvents ? top10RaterCount / feedbackEvents : 0,
         topOwnerShare: registered.length ? topOwnerCount / registered.length : 0
       },
-      agents: rankRows(rows)
+      agents
     };
   } catch (error) {
     return hederaSnapshotData(error instanceof Error ? error.message : "Unknown Hedera mirror node error");

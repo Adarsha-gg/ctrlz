@@ -68,6 +68,8 @@ export type EvidenceBlob = {
   recommendation: Recommendation;
   /** §8f: pointer to the held-out test reveal blob on Walrus, when the task used held-out checks */
   heldoutReveal?: HeldoutRevealPointer;
+  /** Replay bundle for third-party audit/re-execution of the verifier's inputs and outputs. */
+  replay?: unknown;
   /** ISO timestamp (optional → omit for a deterministic, replayable blob) */
   createdAt?: string;
 };
@@ -95,6 +97,7 @@ export function buildEvidenceBlob(input: {
   splitScore: SplitScore;
   recommendation: Recommendation;
   heldoutReveal?: HeldoutRevealPointer;
+  replay?: unknown;
   createdAt?: string;
 }): EvidenceBlob {
   return {
@@ -106,6 +109,7 @@ export function buildEvidenceBlob(input: {
     splitScore: input.splitScore,
     recommendation: input.recommendation,
     ...(input.heldoutReveal ? { heldoutReveal: input.heldoutReveal } : {}),
+    ...(input.replay ? { replay: input.replay } : {}),
     ...(input.createdAt ? { createdAt: input.createdAt } : {})
   };
 }

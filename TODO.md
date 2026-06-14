@@ -55,14 +55,16 @@ Strategy: implement ERC-8004's **unsolved validation (3rd) pillar**, not "anothe
 leaderboard." Validation Registry confirmed **live on Hedera testnet** at
 `0x8004Cb1BF31DAf7788923b405b754f57acEB4272` (no deploy needed).
 
-- [ ] **GQ.1** *(human)* GCP account + billing + **$1,000 coupon**; access the
-      BigQuery Ethereum dataset. Only the human can do the billing step.
-- [ ] **GQ.2** Adapt the sponsor gist queries to the **mainnet** registries
-      (Identity `0x8004A169…` / Reputation `0x8004BAa1…`): registrations over time,
-      decoded metadata, reputation leaderboard, X402 join. *(Claude/web)*
-- [ ] **GQ.3** Explorer route (e.g. `web/app/explorer`) over the BigQuery results.
-- [ ] **GQ.4** Sybil/spam lens — flag agents whose feedback comes from few unique
-      raters (sets up the validator contrast).
+- [x] **GQ.1** BigQuery backend path over the public Ethereum mainnet dataset;
+      deploy still needs `GOOGLE_CLOUD_PROJECT` / credentials to avoid fixture fallback.
+- [x] **GQ.2** Mainnet registry queries
+      (Identity `0x8004A169…` / Reputation `0x8004BAa1…` / Validation
+      `0x8004Cc84…`): registrations, metadata URIs, reputation leaderboard,
+      validation counts, and x402 metadata flags.
+- [x] **GQ.3** Explorer route: `/marketplace` plus `/marketplace/[agentKey]`.
+- [x] **GQ.4** Sybil/spam lens — rater concentration, repeated pairs, same-day
+      burst penalty, mega-rater penalty, and top-rater/top-10 share.
+- [x] **GQ.5** x402 filter and badges from decoded/fetched agent metadata.
 - [x] **VAL.1** *(Codex)* copy `ValidationRegistry.json` ABI → `scripts/hedera/abis/`.
 - [x] **VAL.2/VAL.3** *(Codex)* `erc8004-validation-request.mjs` +
       `erc8004-validation-respond.mjs` (mirror `erc8004-feedback.mjs`); call
@@ -75,7 +77,7 @@ leaderboard." Validation Registry confirmed **live on Hedera testnet** at
       response `0x3ee62f1cc9c848a809ffb5bc46a3f2e2b55f8a1038afc93a9ab7b67c78a6fd51`;
       `getAgentValidations(101)` returns request hash
       `0xc558bf1d075e6d7c622aaba021c8409b1cbbdf17c8cc527aa59c7326e9279d84`.
-- [ ] **TELL.1** Explorer screen contrasting naive mainnet rep vs CTRL+Z-validated signal.
+- [x] **TELL.1** Explorer screen contrasting naive mainnet rep vs CTRL+Z-validated signal.
 - [ ] **Booth (Sun AM):** ask if Hedera is in BigQuery (bonus) and whether our
       Hedera validation counts; show them VAL.* + the §8e re-execution design.
 

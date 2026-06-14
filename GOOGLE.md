@@ -76,20 +76,22 @@ This is literally our resolve path, mirrored on-chain into the ERC-8004 standard
 Status: `[ ]` todo · `[~]` wip · `[x]` done. Lane in brackets.
 
 ### Phase GQ — BigQuery explorer (the floor) [Claude web + data]
-- [ ] **GQ.1** Google Cloud account + billing + coupon; access the BigQuery
-      Ethereum dataset. **Done when** a sample query runs. **Guard** mainnet data;
-      no secrets in repo. *(needs the human — billing ID required.)*
-- [ ] **GQ.2** Adapt the sponsor's gist queries to the **mainnet** registries:
-      registrations over time, decoded agent metadata, reputation leaderboard
-      (feedback count / unique clients / avg score), X402 join. **Done when** each
-      returns rows. **Guard** query the mainnet addresses in §1, not the testnet ones.
-- [ ] **GQ.3** Explorer surface — a new route (e.g. `web/app/explorer`) with
-      analytics-over-time + per-agent drill-down. **Done when** it renders live
-      BigQuery results. **Guard** read-only; don't touch `web/app/page.tsx`.
-- [ ] **GQ.4** **Sybil/spam lens** — surface the weakness Google admitted: rank
-      agents whose feedback comes from few unique clients / circular raters
-      ("repeating actor" filter). **Done when** the explorer flags gameable rep.
-      **Guard** descriptive, not accusatory; it sets up the validator contrast.
+- [x] **GQ.1** Google BigQuery backend path. `web/lib/google/bigquery.ts` uses the
+      public Ethereum mainnet BigQuery dataset. Runtime still needs
+      `GOOGLE_CLOUD_PROJECT` / credentials in the deploy environment; without
+      them the UI clearly shows fixture fallback.
+- [x] **GQ.2** Mainnet registry queries. The backend queries the EF ERC-8004
+      Identity `0x8004A169...`, Reputation `0x8004BAa1...`, and Validation
+      `0x8004Cc84...` addresses for registrations, feedback, validation events,
+      rater concentration, weighted feedback, and per-agent history.
+- [x] **GQ.3** Explorer surface. `/marketplace` provides the lightweight Next.js
+      visualization; `/marketplace/[agentKey]` provides per-agent drill-down.
+- [x] **GQ.4** Sybil/spam lens. The score downweights same-day bursts, repeated
+      rater pairs, and mega-raters; the UI surfaces top-rater/top-10 share.
+- [x] **GQ.5** x402 transparency. Agent URIs from BigQuery are decoded/fetched as
+      metadata and flagged when they expose `x402`, `paymentRequirements`,
+      accepted payment protocols, or x402 endpoints. The UI has an `x402 only`
+      filter, count, badges, and evidence on each profile.
 
 ### Phase VAL — CTRL+Z as a live ERC-8004 validator (the headline) [Codex chain]
 - [x] **VAL.1** Copy `ValidationRegistry.json` ABI into `scripts/hedera/abis/`
@@ -112,9 +114,10 @@ Status: `[ ]` todo · `[~]` wip · `[x]` done. Lane in brackets.
       **Guard** settlement-derived; validate real evidence only.
 
 ### Phase TELL — the narrative [Claude web]
-- [ ] **TELL.1** In the explorer, show the contrast: mainnet agent's *naive* rep
-      (BigQuery) vs a CTRL+Z-validated agent's *work-validated* signal (Hedera
-      ValidationRegistry, via mirror node). **Done when** the before/after is one screen.
+- [x] **TELL.1** The marketplace shows the contrast: Google BigQuery ranks the
+      raw Ethereum ERC-8004 population, while the bridge section shows the
+      CTRL+Z Hedera validation response and Walrus evidence path that turns a
+      completed job into a stronger validation signal.
 
 ## 5. Booth questions (Sunday AM — now bonuses, not blockers)
 1. Is there (or will there be) a **Hedera BigQuery dataset**? If yes → query our

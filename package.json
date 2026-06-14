@@ -13,6 +13,7 @@
     "hedera:verify-demo": "node scripts/hedera/verify-escrow-demo.mjs",
     "demo:hashes": "node --experimental-strip-types scripts/demo/verify-hashes.mjs",
     "demo:check": "node scripts/demo/check.mjs",
+    "vercel:check-env": "node scripts/vercel-check-env.mjs",
     "web:dev": "pnpm --filter web dev"
   },
   "dependencies": {

@@ -89,6 +89,16 @@ Pay-on-green reuses the entire existing verification spine; only the checker is 
   `TestResult[]`. Framework-agnostic (pytest/jest/`node --test` all emit JUnit).
 - `web/app/verify/payongreen/route.ts` — wired to run for real via `demo` (baked
   fixture) or `run` (caller workspace), falling back to injected `results`.
+- Replay evidence is now included inside the anchored evidence blob: runner source,
+  fixed command/report path, workspace files for demo/caller-run, patch, public +
+  held-out tests, raw run output, checker runtime manifest, and settlement plan.
+- x402 gating can sit in front of `/verify/payongreen` with
+  `X402_PAYONGREEN_REQUIRED=1`; paid requests return `x-payment-response`, unpaid
+  requests return HTTP 402 plus the payment requirements.
+- Pay-on-green can write or prepare an ERC-8004 ValidationRegistry response via
+  `writeValidation=true` or `PAYONGREEN_WRITE_ERC8004=1`.
+- `/verify/payongreen-demo` is the lightweight demo screen for the notification
+  moment: paid/refunded result, replay evidence, x402 status, and ERC-8004 status.
 
 **Proven live** (`node --test`, in-process): `POST /verify/payongreen {"demo":"green"}`
 → all tests pass → **PASS, releases**. `{"demo":"cheat"}` (hardcode `=> 5`) → passes
@@ -105,10 +115,12 @@ the same `CheckerReport`.
    timeout (fine for trusted/demo inputs). Before running UNTRUSTED worker patches,
    move the spawn into a container / microVM. Interface (`RunSpec → RunOutcome`) is
    unchanged, so it's a drop-in swap.
-2. **x402 receivable in front of the escrow** — so the demo is "an x402 payment that
-   only settles on proof."
-3. **The notification / UI** — the "paid `solver-7` $4, suite green, reputation +1"
-   moment.
+2. **Actual x402 facilitator settlement** — the route verifies a facilitator receipt
+   when configured, but the project still needs the chosen production facilitator and
+   asset configuration in Vercel.
+3. **Multi-verifier dispute path** — replay evidence is anchored, but v1 is still a
+   trusted CTRL+Z verifier unless independent verifiers or an optimistic challenge
+   window are added.
 
 ## Scope & boundary (stay honest)
 
