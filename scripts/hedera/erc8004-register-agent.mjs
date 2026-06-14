@@ -5,6 +5,7 @@ import {
   getHederaEvmClients,
   readAbi,
 } from "./evm.mjs";
+import { agentUaid } from "./hcs14.mjs";
 
 const args = parseArgs();
 loadDotenv();
@@ -47,6 +48,16 @@ try {
   agentId = null;
 }
 
+// HCS-14 tooling on top of the ERC-8004 identity (additive; never blocks the write).
+const hcs14 =
+  agentId !== null
+    ? await agentUaid({
+        agentId,
+        name: args.name ?? "CTRL+Z Agent",
+        options: { identityRegistry: identityRegistryAddress },
+      })
+    : null;
+
 printJson({
   network: "hedera-testnet",
   identityRegistry: identityRegistryAddress,
@@ -56,4 +67,6 @@ printJson({
   status: receipt.status,
   blockNumber: receipt.blockNumber.toString(),
   agentId,
+  uaid: hcs14?.uaid ?? null,
+  agentNativeId: hcs14?.nativeId ?? null,
 });

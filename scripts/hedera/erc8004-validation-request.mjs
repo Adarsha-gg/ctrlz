@@ -6,6 +6,7 @@ import {
   normalizeBytes32,
   readAbi,
 } from "./evm.mjs";
+import { agentUaid } from "./hcs14.mjs";
 
 const args = parseArgs();
 loadDotenv();
@@ -40,12 +41,16 @@ const hash = await walletClient.writeContract({
 
 const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
+// HCS-14 UAID of the agent whose work is being validated.
+const hcs14 = await agentUaid({ agentId: agentId.toString() });
+
 printJson({
   network: "hedera-testnet",
   validationRegistry: validationRegistryAddress,
   requester: account.address,
   validator,
   agentId: agentId.toString(),
+  agentUaid: hcs14?.uaid ?? null,
   requestURI,
   requestHash,
   transactionHash: hash,

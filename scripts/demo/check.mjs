@@ -144,15 +144,15 @@ results.push(
   ])
 );
 results.push(
-  await runStep("world selfcheck", "node", [
+  await runStep("walrus evidence selfcheck", "node", [
     "--experimental-strip-types",
-    "web/lib/world/selfcheck.ts"
+    "web/lib/walrus/selfcheck.ts"
   ])
 );
 results.push(
-  await runStep("world agentkit selfcheck", "node", [
+  await runStep("held-out reveal-store selfcheck", "node", [
     "--experimental-strip-types",
-    "web/lib/world/agentkit-selfcheck.ts"
+    "web/lib/walrus/heldout-selfcheck.ts"
   ])
 );
 results.push(await runStep("web build", "npm", ["run", "build"], { cwd: resolve(root, "web") }));

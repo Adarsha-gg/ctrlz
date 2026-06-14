@@ -97,7 +97,14 @@ node scripts/hedera/erc8004-register-agent.mjs \
 ```
 
 The script prints the transaction hash and, when the ERC-721 transfer log is
-available in the receipt, the minted `agentId`.
+available in the receipt, the minted `agentId`. It also prints the agent's
+deterministic **HCS-14 UAID** (`uaid:aid:...`) derived from that ERC-8004
+identity — ERC-8004 stays the source of truth, HCS-14 is a portable pointer on
+top. Pass `--name="..."` to label the agent in the UAID canonical data. The same
+helper (`hcs14.mjs`, using `@hashgraphonline/standards-sdk`) also annotates the
+feedback and validation-request outputs with the subject agent's UAID. UAID
+generation is a pure offline hash (no creds) and additive — if it fails, the
+on-chain ERC-8004 write is unaffected.
 
 ## D2 ERC-8004 reputation feedback
 
