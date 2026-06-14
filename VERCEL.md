@@ -91,8 +91,14 @@ Keep this unset or `0` on Vercel:
 PAYONGREEN_ALLOW_RUN=0
 ```
 
-The baked `demo=green|cheat` path is safe. Caller-supplied workspaces execute
-arbitrary code and should run only in a separate container/microVM worker.
+The baked `demo=green|cheat` path runs **in-process** (pure JS — applies the diff
+and evaluates the trusted module; no `git`, no child process, no filesystem), so
+it works on Vercel's serverless runtime and is deterministically replayable.
+
+Caller-supplied workspaces (`run`) use the subprocess runner (`git apply` +
+`node --test`), which is **not** available on Vercel — they execute arbitrary
+code and must run only in a separate container/microVM worker behind
+`PAYONGREEN_ALLOW_RUN=1`. Keep it unset/`0` on Vercel.
 
 ## Verify The Deploy
 

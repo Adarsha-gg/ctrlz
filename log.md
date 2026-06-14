@@ -9,6 +9,29 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-14 · agent (Claude) · Vercel-safe in-process runner + settle wiring
+
+- **Vercel blocker fixed:** the demo path spawned `git apply` + `node --test` —
+  neither exists on Vercel serverless, so a deployed `demo=green` would fail the
+  patch-apply and wrongly refund. Added an **in-process runner** (`lib/runner/
+  diff.ts` pure-JS unified-diff applier + `inproc.ts` eval-the-module + run
+  cases). No git, no subprocess, no fs. `demo` now uses it → runs identically on
+  Vercel, and is deterministic so the anchored replay is reproducible anywhere.
+  Subprocess runner stays for the gated `run` (untrusted/sandbox) path only.
+- **Settle wired through:** `payongreen-demo` page now chains a green/red verdict
+  into `POST /verify/settle` (release/refund on Hedera) using the route's
+  `specHash` / `evidenceHash` / `settlement.recommendationHash` — and degrades to
+  a clear "not configured" note when `HEDERA_*_PRIVATE_KEY` is absent (keyless
+  Vercel deploy stays functional).
+- **Verified** (shipped code, no mocks): in-process green=all-pass,
+  cheat=held-out-fail, deterministic across runs, bad-patch→applied:false/suite
+  skipped; through the Next route `runner.node = ctrlz:in-process`, releases=PASS,
+  replay bundle carries the in-process spec. `tsc` clean.
+- **Docs:** VERCEL.md "Runner Safety" corrected (demo is in-process/Vercel-safe;
+  subprocess runner is sandbox-only).
+- **Next:** real `run` execution needs an external sandbox (Vercel Sandbox /
+  container) before enabling `PAYONGREEN_ALLOW_RUN`.
+
 ## 2026-06-13 · agent (Codex) · Google ERC-8004 explorer + x402 flags
 
 - **Did:** Closed the Google bounty minimum: `/marketplace` now uses Google

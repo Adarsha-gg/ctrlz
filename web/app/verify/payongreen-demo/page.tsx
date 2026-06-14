@@ -26,10 +26,12 @@ type PayOnGreenResponse = {
   recommendation?: string;
   evidenceHash?: string;
   evidenceUri?: string | null;
+  specHash?: string;
   settlement?: {
-    resultLabel: "PASS" | "FAIL";
+    resultLabel: "PASS" | "FAIL" | "UNCERTAIN";
     releases: boolean;
     scoreBps: number;
+    recommendationHash: string;
     detail: string;
   };
   split?: {
@@ -57,6 +59,15 @@ type PayOnGreenResponse = {
   };
 };
 
+type SettleResponse = {
+  configured?: boolean;
+  error?: string;
+  escrowAddress?: string;
+  taskId?: string;
+  finalStateLabel?: string;
+  resolveHash?: string;
+};
+
 function short(value?: string | null) {
   if (!value) return "n/a";
   if (value.length <= 22) return value;
@@ -74,10 +85,13 @@ export default function PayOnGreenDemoPage() {
   const [agentId, setAgentId] = useState("101");
   const [pending, setPending] = useState(false);
   const [response, setResponse] = useState<PayOnGreenResponse | null>(null);
+  const [settling, setSettling] = useState(false);
+  const [settleResult, setSettleResult] = useState<SettleResponse | null>(null);
 
   async function runDemo(nextMode = mode) {
     setPending(true);
     setResponse(null);
+    setSettleResult(null);
     try {
       const headers: HeadersInit = { "content-type": "application/json" };
       if (payment.trim()) headers["x-payment"] = payment.trim();
@@ -97,6 +111,30 @@ export default function PayOnGreenDemoPage() {
       setResponse({ error: error instanceof Error ? error.message : "pay-on-green request failed" });
     } finally {
       setPending(false);
+    }
+  }
+
+  async function settleOnChain() {
+    if (!response?.specHash || !response.evidenceHash || !response.settlement) return;
+    setSettling(true);
+    setSettleResult(null);
+    try {
+      const res = await fetch("/verify/settle", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          specHash: response.specHash,
+          evidenceHash: response.evidenceHash,
+          recommendationHash: response.settlement.recommendationHash,
+          result: response.settlement.resultLabel,
+          scoreBps: response.settlement.scoreBps
+        })
+      });
+      setSettleResult((await res.json()) as SettleResponse);
+    } catch (error) {
+      setSettleResult({ error: error instanceof Error ? error.message : "settlement request failed" });
+    } finally {
+      setSettling(false);
     }
   }
 
@@ -198,24 +236,68 @@ export default function PayOnGreenDemoPage() {
                 ) : null}
               </div>
             ) : settlement ? (
-              <div className="key-value-list">
-                <div>
-                  <span>Result</span>
-                  <strong>{settlement.resultLabel}</strong>
+              <>
+                <div className="key-value-list">
+                  <div>
+                    <span>Result</span>
+                    <strong>{settlement.resultLabel}</strong>
+                  </div>
+                  <div>
+                    <span>Settlement</span>
+                    <strong>{settlement.releases ? "release worker payment" : "refund buyer"}</strong>
+                  </div>
+                  <div>
+                    <span>Score</span>
+                    <strong>{settlement.scoreBps} bps</strong>
+                  </div>
+                  <div>
+                    <span>Evidence</span>
+                    <code>{short(response.evidenceHash)}</code>
+                  </div>
                 </div>
-                <div>
-                  <span>Settlement</span>
-                  <strong>{settlement.releases ? "release worker payment" : "refund buyer"}</strong>
+
+                <div className="action-row">
+                  <button className="primary-action" disabled={settling} onClick={() => void settleOnChain()}>
+                    {settling
+                      ? "settling on Hedera..."
+                      : settlement.releases
+                        ? "Settle on Hedera → release"
+                        : "Settle on Hedera → refund"}
+                  </button>
                 </div>
-                <div>
-                  <span>Score</span>
-                  <strong>{settlement.scoreBps} bps</strong>
-                </div>
-                <div>
-                  <span>Evidence</span>
-                  <code>{short(response.evidenceHash)}</code>
-                </div>
-              </div>
+
+                {settleResult ? (
+                  settleResult.configured === false ? (
+                    <p className="muted">
+                      On-chain settle is not configured on this deploy (set <code>HEDERA_*_PRIVATE_KEY</code>). The
+                      verdict, replay bundle, and evidence hash are still anchored.
+                    </p>
+                  ) : settleResult.error ? (
+                    <div className="notice warning">
+                      <strong>{settleResult.error}</strong>
+                    </div>
+                  ) : (
+                    <div className="key-value-list">
+                      <div>
+                        <span>On-chain state</span>
+                        <strong>{settleResult.finalStateLabel}</strong>
+                      </div>
+                      <div>
+                        <span>Escrow</span>
+                        <code>{short(settleResult.escrowAddress)}</code>
+                      </div>
+                      <div>
+                        <span>Task</span>
+                        <strong>{settleResult.taskId}</strong>
+                      </div>
+                      <div>
+                        <span>resolve tx</span>
+                        <code>{short(settleResult.resolveHash)}</code>
+                      </div>
+                    </div>
+                  )
+                ) : null}
+              </>
             ) : (
               <p className="muted">No run yet.</p>
             )}

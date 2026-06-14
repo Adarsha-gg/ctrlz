@@ -37,7 +37,13 @@ import {
 } from "@/lib/checkers";
 import { buildHeldoutManifest, randomSalt } from "@/lib/checkers/heldout";
 import { commitPatch, verifyPatchReveal } from "@/lib/checkers/patchwork";
-import { payOnGreenDemo, runTests, type RunOutcome } from "@/lib/runner";
+import {
+  payOnGreenDemoInProc,
+  runInProcess,
+  runTests,
+  type InProcCase,
+  type RunOutcome
+} from "@/lib/runner";
 import { scoreSplit, type ScoredCheck } from "@/lib/scoring/score";
 import { planResolution } from "@/lib/settlement/resolve";
 import { writeValidationResponse, type ValidationWriteResult } from "@/lib/erc8004/validation";
@@ -148,24 +154,36 @@ export async function POST(request: Request) {
   let replayReportPath = "report.xml";
   let runnerSource: "demo" | "caller-run" | "injected-results" = "injected-results";
   let runOutcome: RunOutcome | null = null;
+  let replayInProc:
+    | { moduleSource: string; patch: string; exportName: string; cases: InProcCase[]; patchedSource: string }
+    | undefined;
 
   if (body.demo === "green" || body.demo === "cheat") {
-    const fx = payOnGreenDemo(body.demo);
-    const outcome = await runTests({
-      files: fx.files,
-      patch: fx.patch,
-      command: fx.command,
-      reportPath: fx.reportPath
-    });
+    // In-process runner: pure JS, no git/subprocess — runs identically on Vercel
+    // and is deterministically replayable. (Trusted baked code only.)
+    const fx = payOnGreenDemoInProc(body.demo);
+    const outcome = runInProcess(fx);
     diff = fx.patch;
     results = outcome.results;
-    runOutcome = outcome;
     requiredTests = fx.requiredTests;
     heldoutHidden = fx.hiddenTests;
-    runMeta = runMetaOf(outcome);
-    replayFiles = fx.files;
-    replayCommand = fx.command;
-    replayReportPath = fx.reportPath;
+    runMeta = {
+      ran: true,
+      applied: outcome.applied,
+      exitCode: outcome.applied ? 0 : 1,
+      timedOut: false,
+      reportFound: true,
+      totalTests: outcome.results.length
+    };
+    replayInProc = {
+      moduleSource: fx.moduleSource,
+      patch: fx.patch,
+      exportName: fx.exportName,
+      cases: fx.cases,
+      patchedSource: outcome.patchedSource
+    };
+    replayCommand = ["ctrlz:in-process"];
+    replayReportPath = "(in-process)";
     runnerSource = "demo";
   } else if (body.run && body.run.files) {
     // Caller-supplied workspaces execute arbitrary code — gate behind an explicit
@@ -306,10 +324,11 @@ export async function POST(request: Request) {
       source: runnerSource,
       command: replayCommand,
       reportPath: replayReportPath,
-      node: "node --test",
+      node: runnerSource === "demo" ? "ctrlz:in-process (pure JS, Vercel-safe)" : "node --test",
       sandbox: process.env.PAYONGREEN_ALLOW_RUN === "1" ? "external-sandbox-required" : "baked-demo-or-injected"
     },
     workspace: replayFiles ? { files: replayFiles } : undefined,
+    inProcess: replayInProc,
     patch,
     publicTests: requiredTests,
     heldout,
