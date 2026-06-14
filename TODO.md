@@ -2,90 +2,81 @@
 
 > Single source of open work. Newest priorities on top. Box source of truth for
 > shipped work is [BUILD_PLAN.md](BUILD_PLAN.md); forward design lives in
-> [REPUTATION.md](REPUTATION.md) (reputation/validation) and [GOOGLE.md](GOOGLE.md)
-> (ERC-8004 validator + BigQuery). Last updated 2026-06-13.
+> [REPUTATION.md](REPUTATION.md) and [GOOGLE.md](GOOGLE.md). Last updated 2026-06-14.
 
-**State of the build:** everything in BUILD_PLAN is shipped + verified **except
-G1** (demo rehearsal/video). Hedera C1–C3, ERC-8004 D1/D2 are live; verify escrow
-is redeployed with exact sha256 anchors (`0xa2ac71dd9e7835af08e6be33ec047c47a35b2462`).
-The items below are the demo gap + the two forward lanes (reputation, Google).
+**State of the build (submission ~7h out):** verification core + pay-on-green are
+shipped and **production-build clean** — `next build` green, all 16 routes 200 on
+`next start`, demo green→PASS/release and cheat→reject both correct, marketplace
+and settle degrade gracefully without creds. The remaining work is **deploy +
+rehearse**, not code.
 
 ---
 
-## P0 — Submission demo (the only open BUILD_PLAN box: G1)
+## P0 — SHIP (the only things that block submission)
 
-- [ ] **Rehearse the `/verify` demo end-to-end ×5 and record the video.** Nothing
-      in code blocks this. Pre-flight: `npm run demo:check` must pass.
-- [ ] The demo must show, in one run:
-  - clean invoice path (pass) **and** poisoned over-budget invoice path (reject)
-  - the split scores (`outputValidity` / `agentTrust` / `paymentRisk`) kept separate
-  - the agentTrust contrast: a known agent (settlement history) **vs** a new agent (thin history)
-  - checker meta-reputation visible in the report list
-  - the evidence hash / Walrus (Sui) panel **including the round-trip retrievability proof**
-  - presenter cites the **live** Hedera proof: HCS topic `0.0.9222881`, receipt tx
-    `0.0.9222066@1781356716.807172813`, verify escrow `0xa2ac71dd…`
-- [ ] Only mark **G1 `[x]`** in BUILD_PLAN once the five rehearsals + video are done.
+- [ ] **Deploy to Vercel.** Project root = `web`. Connect the repo, deploy `main`.
+      See [VERCEL.md](VERCEL.md). Build is verified green locally.
+- [ ] **Pick the env mode** (VERCEL.md has the exact `vercel env add` list):
+  - *Keyless demo* — works out of the box: in-process pay-on-green (real
+    verdicts), marketplace on fixture data, settle button shows "not configured".
+  - *Live* — add Hedera (`HEDERA_*_PRIVATE_KEY`) for the on-chain settle moment,
+    ERC-8004, BigQuery (`GOOGLE_*`), and/or x402. **Keep `PAYONGREEN_ALLOW_RUN=0`**
+    on Vercel; use `PAYONGREEN_SANDBOX=1` only if demoing untrusted `run`.
+- [ ] **Smoke-test the live URL:** `/api/deploy/status` (config, no secrets) ·
+      `/verify/payongreen-demo` (run green + cheat + click settle) · `/marketplace`
+      · `/verify` · `/proof`.
+- [ ] **G1 — rehearse the demo ×5 + record the video.** The only open BUILD_PLAN box.
+      Show: pay-on-green green→release **and** cheat caught by held-out tests →
+      refund; the anchored replay bundle; (if live) the on-chain settle + ERC-8004
+      write; the marketplace explorer. Pre-flight `npm run demo:check`.
+- [ ] **SUBMISSION.md pass** — confirm every claim/link/proof is current (pay-on-green
+      added; World lane removed; live Hedera/ERC-8004 hashes correct).
 
-> **World / AgentKit (old P1) was dropped 2026-06-13.** The identity/Sybil link is
-> now covered by earned-only reputation + ERC-8004 operator identity (see PITCH.md
-> necessity chain). No World AgentKit live-proof work remains.
+### Honest-claims guardrails (say these, don't overclaim)
+- Trust model is **"CTRL+Z is the v1 verifier"** — the anchored replay bundle makes
+  a lying verifier *catchable*; there is **no automatic dispute/multi-verifier yet**.
+- Marketplace is **fixture data** unless `GOOGLE_*` creds are set — label it as such.
+- The untrusted `run` path is **gated** (`403` by default); the demo uses the safe
+  in-process path. Real untrusted execution = Vercel Sandbox (`PAYONGREEN_SANDBOX=1`).
 
-## P1 — Reputation engine (make it real) → spec in [REPUTATION.md](REPUTATION.md)
+### Known minor (non-blocking)
+- [ ] `/verify/settle` reports `configured:true` while `/api/deploy/status` shows
+      Hedera `false` — confirm both read the same env group (cosmetic; on a keyless
+      Vercel deploy both read false, so the demo stays safe).
 
-The design + the §8e determinism pinning are done. Build order:
+---
 
-- [ ] **R1.1** `web/lib/reputation/` — operator-root + cluster model: earned +
-      shared operator standing (`floor(tier, standing) + earned − contamination`).
-      Replaces the removed World tier boost. *(Claude/web)*
+## ✅ Done this cycle (pay-on-green wedge)
+- [x] `tests_pass` checker + commit-reveal patch + held-out tests (catches the cheat).
+- [x] **In-process runner** (pure JS, no git/subprocess) — Vercel-safe demo.
+- [x] **Vercel Sandbox** executor for untrusted `run` patches (isolated microVM).
+- [x] **Settle wiring** — green/red verdict → `POST /verify/settle` (release/refund on Hedera).
+- [x] **Anchored re-execution** — replay bundle (workspace + patch + results) in the evidence blob.
+- [x] x402 receivable gate + ERC-8004 validation write on the pay-on-green verdict.
+
+---
+
+## P1 — Reputation engine (post-submission) → [REPUTATION.md](REPUTATION.md)
+
+- [ ] **R1.1** `web/lib/reputation/` — operator-root + cluster model
+      (`floor(tier, standing) + earned − contamination`). *(Claude/web)*
 - [ ] **R1.2** Public sibling linkage in the verdict UI ("1 of N under `<operator>`").
-- [ ] **R3.1/R3.2** Event typing (`fraud | quality | success`) + the contamination
-      math (hard-but-not-0 decay) + a reputation selfcheck. *(Claude/web)*
-- [ ] **R2.x** Self-serve **domain proof** for enterprise tier — reuse the ERC-8004
-      spec's own well-known domain-verification format (not a custom one).
-- [ ] **R3.3 / R4.x** *(Codex/chain — heavier)* operator bond + slash; dispute
-      window + staked verifiers + challenge, adjudicated by deterministic
-      re-execution (§8e). 5× at-risk bonds; permissionless verifiers; human-backed jurors.
+- [ ] **R3.1/R3.2** Event typing (`fraud | quality | success`) + contamination math + selfcheck.
+- [ ] **R2.x** Self-serve **domain proof** (reuse ERC-8004's well-known domain format).
+- [ ] **R3.3 / R4.x** *(Codex/chain)* operator bond + slash; dispute window + staked
+      verifiers, adjudicated by deterministic re-execution (§8e).
 
-Data-source decision for v1: seed from fixtures + on-chain escrow counters
-(`web/lib/chain/history.ts`); swap to a full indexer later without changing the math.
+## P2 — Google / ERC-8004 validator lane → [GOOGLE.md](GOOGLE.md)
 
-## P2 — Google / ERC-8004 validator lane → spec in [GOOGLE.md](GOOGLE.md)
+Validation Registry live on Hedera testnet (`0x8004Cb1BF31DAf7788923b405b754f57acEB4272`).
 
-Strategy: implement ERC-8004's **unsolved validation (3rd) pillar**, not "another
-leaderboard." Validation Registry confirmed **live on Hedera testnet** at
-`0x8004Cb1BF31DAf7788923b405b754f57acEB4272` (no deploy needed).
-
-- [x] **GQ.1** BigQuery backend path over the public Ethereum mainnet dataset;
-      deploy still needs `GOOGLE_CLOUD_PROJECT` / credentials to avoid fixture fallback.
-- [x] **GQ.2** Mainnet registry queries
-      (Identity `0x8004A169…` / Reputation `0x8004BAa1…` / Validation
-      `0x8004Cc84…`): registrations, metadata URIs, reputation leaderboard,
-      validation counts, and x402 metadata flags.
-- [x] **GQ.3** Explorer route: `/marketplace` plus `/marketplace/[agentKey]`.
-- [x] **GQ.4** Sybil/spam lens — rater concentration, repeated pairs, same-day
-      burst penalty, mega-rater penalty, and top-rater/top-10 share.
-- [x] **GQ.5** x402 filter and badges from decoded/fetched agent metadata.
-- [x] **VAL.1** *(Codex)* copy `ValidationRegistry.json` ABI → `scripts/hedera/abis/`.
-- [x] **VAL.2/VAL.3** *(Codex)* `erc8004-validation-request.mjs` +
-      `erc8004-validation-respond.mjs` (mirror `erc8004-feedback.mjs`); call
-      `validationResponse(requestHash, score/100, walrusUri, evidenceHash, "ctrlz.verify")`.
-- [x] **VAL.4** *(Codex)* wire `/verify` resolve → on-chain validationResponse.
-      `/verify` now calls `/api/erc8004/validation` after evidence anchoring; with
-      Hedera requester/validator keys configured it writes request+response,
-      otherwise it returns the exact replayable payload. Live proof: request
-      `0x58127f902d18df683efb23f50674fb549ebf111b3fae462cf5a798b683366bf4`,
-      response `0x3ee62f1cc9c848a809ffb5bc46a3f2e2b55f8a1038afc93a9ab7b67c78a6fd51`;
-      `getAgentValidations(101)` returns request hash
-      `0xc558bf1d075e6d7c622aaba021c8409b1cbbdf17c8cc527aa59c7326e9279d84`.
-- [x] **TELL.1** Explorer screen contrasting naive mainnet rep vs CTRL+Z-validated signal.
-- [ ] **Booth (Sun AM):** ask if Hedera is in BigQuery (bonus) and whether our
-      Hedera validation counts; show them VAL.* + the §8e re-execution design.
+- [x] GQ.1–GQ.5 BigQuery backend, registry queries, explorer routes, Sybil lens, x402 badges.
+- [x] VAL.1–VAL.4 ValidationRegistry ABI + request/respond scripts + `/verify` → on-chain write.
+- [x] TELL.1 Explorer contrast: naive mainnet rep vs CTRL+Z-validated signal.
+- [ ] **Booth:** ask if Hedera is in BigQuery and whether our validation counts; show VAL.* + §8e.
 
 ## P3 — Optional / stretch
-
 - [ ] Fail→refund replay of the verify escrow for the demo (pass path already live).
 - [ ] Wire the buyer UNCERTAIN→pause path live (`buyerAcceptPaused` / `buyerRefundPaused`).
-- [ ] **Pay-on-green runner:** swap injected `results` for a real sandbox (pytest/jest
-      against the applied patch); then x402 receivable in front of escrow; settle notification UI.
-- [ ] **Two front-ends:** a CLI version (for agents) and a human-readable version —
-      framing: "this view is for *you*, since you're not an agent." (`app/cli` exists.)
+- [ ] Pay-on-green: pre-bake a Vercel Sandbox **snapshot** (git preinstalled) for fast cold starts.
+- [ ] **Two front-ends:** CLI (for agents) + human view ("this view is for *you*"). (`app/cli` exists.)
