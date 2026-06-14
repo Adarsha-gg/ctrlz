@@ -1,7 +1,7 @@
 /**
  * price-checker (B2) — deterministic, pure, replayable.
  *
- * Enforces `amount ≤ check.value` in the spec's currency (USDC for the demo).
+ * Enforces `amount ≤ check.value` in the spec's currency (HBAR for the demo).
  * Over-budget is an objective hard fail; a missing/unparseable amount is
  * `uncertain` (the schema-checker is responsible for presence) rather than a
  * false money-gate.
@@ -13,7 +13,7 @@ const CHECKER = "price-checker";
 
 export const priceChecker: Checker = (check: CheckSpec, ctx: TaskContext): CheckerReport => {
   const max = typeof check.value === "number" ? check.value : NaN;
-  const currency = typeof check.currency === "string" ? check.currency : "USDC";
+  const currency = typeof check.currency === "string" ? check.currency : "HBAR";
   const amount = ctx.submission.invoice.amount;
   const evidenceHash = ctx.submission.evidenceHash;
 

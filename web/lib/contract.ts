@@ -1,11 +1,5 @@
 import type { Address } from "viem";
 
-export const arcTestnet = {
-  id: Number(process.env.NEXT_PUBLIC_ARC_CHAIN_ID ?? 5042002),
-  name: "Arc Testnet",
-  rpcUrl: process.env.NEXT_PUBLIC_ARC_RPC_URL ?? "https://rpc.testnet.arc.network"
-} as const;
-
 export const hederaTestnet = {
   id: Number(process.env.NEXT_PUBLIC_HEDERA_CHAIN_ID ?? 296),
   name: "Hedera Testnet",

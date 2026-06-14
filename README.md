@@ -5,10 +5,6 @@ verifiable before settlement.** A buyer agent posts a task with explicit
 acceptance criteria, a worker agent accepts and submits evidence, checker agents
 run bounded checks, and the result drives payment plus reputation.
 
-The current project is no longer primarily the old Arc "undo payment" product.
-That earlier escrow/reputation work is useful prior art and reusable contract
-scaffolding, but the ETHGlobal G2 submission story is:
-
 **Hedera settlement + Walrus (Sui) verifiable evidence + ERC-8004 worker/checker
 reputation, with Google BigQuery discovery over the ERC-8004 population.**
 
@@ -137,14 +133,6 @@ CTRL+Z includes a lightweight Next.js explorer at `/marketplace` for the
 - ERC-8004 worker/checker agent registrations and reputation feedback txs.
 - Google BigQuery marketplace over the EF ERC-8004 mainnet registries, with
   x402 payment metadata flags and a search/filter UI.
-- Prior Arc escrow work exists as reference/stretch, including the old
-  sender-undo state machine and risk engine history reads.
-
-### Blocked / Not Shipped
-
-- **Arc and Ledger:** prior/stretch material, not the primary G2 submission.
-  Do not pitch live Arc transactions or Ledger signing as the current core.
-
 ## Demo Checks
 
 Run from the repo root unless noted.

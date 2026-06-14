@@ -1,7 +1,7 @@
 /**
  * Demo fixtures for the /verify page (B2 demo / §13).
  *
- * The one demo task — "Buy an RTX 4090 under 700 USDC from a seller with a
+ * The one demo task — "Buy an RTX 4090 under 700 HBAR from a seller with a
  * valid wallet + shipping proof" — plus its acceptance spec and two one-click
  * sample submissions:
  *
@@ -22,7 +22,7 @@ import type { CheckerOutcomeRecord } from "../../lib/checkers/metaReputation.ts"
 import type { RecipientHistory } from "../../lib/risk/index.ts";
 
 export const DEMO_INTENT =
-  "Buy an RTX 4090 under 700 USDC from a seller with a valid wallet + shipping proof.";
+  "Buy an RTX 4090 under 700 HBAR from a seller with a valid wallet + shipping proof.";
 
 /** The acceptance spec (manifest) for the demo task — §4 shape. */
 export const DEMO_ACCEPTANCE_SPEC: { intent: string; checks: CheckSpec[] } = {
@@ -33,7 +33,7 @@ export const DEMO_ACCEPTANCE_SPEC: { intent: string; checks: CheckSpec[] } = {
       hardGate: true,
       requiredFields: ["invoiceId", "seller", "item", "amount", "currency"]
     },
-    { type: "price_max", hardGate: true, value: 700, currency: "USDC" },
+    { type: "price_max", hardGate: true, value: 700, currency: "HBAR" },
     { type: "wallet_risk", hardGate: true, maxTier: "yellow" },
     { type: "source_listing", hardGate: false }
   ]
@@ -59,7 +59,7 @@ export type DemoSubmission = {
   recipientHistory?: RecipientHistory;
 };
 
-/** CLEAN: known seller, 689 USDC (< 700), recognizable source → proceed. */
+/** CLEAN: known seller, 689 HBAR (< 700), recognizable source → proceed. */
 export const CLEAN_SUBMISSION: DemoSubmission = {
   id: "clean",
   label: "Run valid output",
@@ -74,7 +74,7 @@ export const CLEAN_SUBMISSION: DemoSubmission = {
       seller: ALICE_NAME,
       item: "NVIDIA GeForce RTX 4090 Founders Edition",
       amount: 689,
-      currency: "USDC"
+      currency: "HBAR"
     },
     sourceListing: {
       url: "https://www.newegg.com/p/rtx-4090-fe",
@@ -101,7 +101,7 @@ export const UNKNOWN_CLEAN_SUBMISSION: DemoSubmission = {
       seller: ALICE_NAME,
       item: "NVIDIA GeForce RTX 4090 Founders Edition",
       amount: 689,
-      currency: "USDC"
+      currency: "HBAR"
     },
     sourceListing: {
       url: "https://www.newegg.com/p/rtx-4090-fe",
@@ -113,11 +113,11 @@ export const UNKNOWN_CLEAN_SUBMISSION: DemoSubmission = {
   }
 };
 
-/** BAD: poisoned lookalike wallet AND 879 USDC (> 700) → reject/pause. */
+/** BAD: poisoned lookalike wallet AND 879 HBAR (> 700) → reject/pause. */
 export const BAD_SUBMISSION: DemoSubmission = {
   id: "bad",
   label: "Run bad output",
-  hint: "Poisoned lookalike wallet + price over 700 USDC",
+  hint: "Poisoned lookalike wallet + price over 700 HBAR",
   // no workerHistory → weak agentTrust; no recipientHistory → unknown wallet
   submission: {
     recipientAddress: POISONED_LOOKALIKE,
@@ -127,7 +127,7 @@ export const BAD_SUBMISSION: DemoSubmission = {
       seller: ALICE_NAME,
       item: "NVIDIA GeForce RTX 4090 Founders Edition",
       amount: 879,
-      currency: "USDC"
+      currency: "HBAR"
     },
     sourceListing: {
       url: "https://deals-rtx4090.example",

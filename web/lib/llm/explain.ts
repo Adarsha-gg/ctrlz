@@ -24,7 +24,7 @@ const TIER_LABEL: Record<RiskVerdict["tier"], string> = {
 };
 
 const SYSTEM = [
-  "You explain a crypto-payment risk verdict to the person about to send USDC.",
+  "You explain a crypto-payment risk verdict to the person about to send HBAR.",
   "A deterministic risk engine has ALREADY decided the verdict tier and produced",
   "the signal list. Your only job is to explain that verdict in 1-2 short, plain",
   "sentences a non-technical sender understands.",

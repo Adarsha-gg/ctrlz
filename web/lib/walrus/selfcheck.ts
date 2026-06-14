@@ -35,10 +35,10 @@ const isSha256Hex = (s: string) => /^[0-9a-f]{64}$/.test(s);
 // A representative evidence blob (shape mirrors the /verify wiring).
 const manifest = buildManifest(
   {
-    intent: "Buy an RTX 4090 under 700 USDC from a seller with a valid wallet + shipping proof.",
+    intent: "Buy an RTX 4090 under 700 HBAR from a seller with a valid wallet + shipping proof.",
     checks: [
       { type: "schema", hardGate: true },
-      { type: "price_max", hardGate: true, value: 700, currency: "USDC" }
+      { type: "price_max", hardGate: true, value: 700, currency: "HBAR" }
     ]
   },
   { createdAt: "2026-06-13T00:00:00.000Z" }
@@ -50,7 +50,7 @@ const blob = buildEvidenceBlob({
   workerOutput: {
     recipientAddress: "0xabc",
     recipientName: "alice",
-    invoice: { invoiceId: "INV-1", item: "RTX 4090", amount: 689, currency: "USDC" }
+    invoice: { invoiceId: "INV-1", item: "RTX 4090", amount: 689, currency: "HBAR" }
   },
   checkerReports: [
     { checker: "price-checker", result: "pass", confidence: 1, detail: "689 ≤ 700" }

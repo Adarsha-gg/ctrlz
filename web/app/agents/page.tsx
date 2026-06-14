@@ -147,7 +147,7 @@ export default function AgentsDemoPage() {
       };
       if (data.x402?.paid) {
         const req = data.x402.requirements;
-        say("settle", `x402 commission settled: ${req?.maxAmountRequired ?? ""} ${req?.asset ?? "USDC"} (${short(data.x402.receipt?.transaction)}).`);
+        say("settle", `x402 commission settled: ${req?.maxAmountRequired ?? ""} ${req?.asset ?? "HBAR"} (${short(data.x402.receipt?.transaction)}).`);
       }
       if (data.error || !data.settlement) {
         say("worker", `couldn't generate a fix: ${data.error ?? "no verdict"}`);

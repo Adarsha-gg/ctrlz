@@ -36,7 +36,7 @@ export function TerminalHeader({ active }: { active: ActiveSurface }) {
       </nav>
       <div className="terminal-status" aria-label="Demo buyer status">
         <span>buyer 0x9f4c...21a3</span>
-        <strong>12,480 USDC</strong>
+        <strong>12,480 HBAR</strong>
       </div>
     </header>
   );

@@ -25,7 +25,7 @@ export type CheckerRuntimeManifest = {
 };
 
 export const CHECKER_SOURCE_HASHES = {
-  "web/lib/checkers/registry.ts": "sha256:676d3b4a4916d2cc48740206081f7d4d062a4c21e94c9d6c5460ec0177adaf8a",
+  "web/lib/checkers/registry.ts": "sha256:d62f8ad42c3e49d2bac10b264168b12fdf4984ad8b61f2ecdb494ab9d892994a",
   "web/lib/checkers/schema.ts": "sha256:689551bbc1d6244c6c981630ce456c8ffdc377ca46560b1a93d04abe0f1c86ca",
   "web/lib/checkers/price.ts": "sha256:91485392935900cd294f32ed8d896d5912c98df1fc585bfe5d02730a3ffc0fa7",
   "web/lib/checkers/walletRisk.ts": "sha256:de32013afadd0aa8ecaed4f4699e8a32d769037e3b411f0186a4475ce82d4625",
@@ -38,7 +38,7 @@ export const CHECKER_SOURCE_HASHES = {
   "web/lib/risk/verdict.ts": "sha256:77846cb3fb24c420b5741868a3fd5c562a3b47e7f0c02df4673943d99c68c0bf"
 } as const;
 
-export const CHECKER_BUNDLE_HASH = "sha256:76202475f6c90dd0e2c51f015a4ef74bf875bc18335022167c1d3d1e5d64f530";
+export const CHECKER_BUNDLE_HASH = "sha256:86ef800bae1715ab03a7ac85c8453af1be57f6c729410ab23278ef35e6f8fc6d";
 
 export const CHECKER_CODE_VERSIONS: Record<string, CheckerCodeVersion> = {
   schema: {

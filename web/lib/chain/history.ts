@@ -2,7 +2,7 @@
  * P2.5 — on-chain reputation reads.
  *
  * Reads a recipient's reputation counters from the deployed CTRL+Z escrow on
- * Arc and shapes them into `RecipientHistory` for the deterministic risk
+ * Hedera and shapes them into `RecipientHistory` for the deterministic risk
  * engine. These counters are maintained ON SEAL only (see `_recordSealed` in
  * CtrlZEscrow.sol) — so only CLAIMED payments count toward reputation. We never
  * count PENDING payments ourselves (ethos guard #1); we only READ what the
@@ -22,10 +22,10 @@ import {
   type PublicClient
 } from "viem";
 import {
-  arcTestnet,
   ctrlzEscrowAbi,
   ctrlzEscrowAddress,
-  ctrlzEscrowDeployBlock
+  ctrlzEscrowDeployBlock,
+  hederaTestnet
 } from "@/lib/contract";
 import type { RecipientHistory } from "@/lib/risk";
 
@@ -41,12 +41,12 @@ let cachedClient: PublicClient | undefined;
 
 function getClient(): PublicClient {
   if (cachedClient) return cachedClient;
-  const rpcUrl = arcTestnet.rpcUrl ?? process.env.NEXT_PUBLIC_ARC_RPC_URL;
+  const rpcUrl = hederaTestnet.rpcUrl ?? process.env.NEXT_PUBLIC_HEDERA_RPC_URL;
   cachedClient = createPublicClient({
     chain: {
-      id: arcTestnet.id,
-      name: arcTestnet.name,
-      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      id: hederaTestnet.id,
+      name: hederaTestnet.name,
+      nativeCurrency: { name: "HBAR", symbol: "HBAR", decimals: 18 },
       rpcUrls: { default: { http: [rpcUrl] } }
     },
     transport: http(rpcUrl)

@@ -67,16 +67,16 @@ const specVariants: Array<{
 }> = [
   {
     id: "procurement-700",
-    title: "GPU procurement <= 700 USDC",
+    title: "GPU procurement <= 700 HBAR",
     desc: "The live verify escrow demo: valid invoice schema, known seller wallet, source listing, and max price.",
     spec: DEMO_ACCEPTANCE_SPEC
   },
   {
     id: "procurement-500",
-    title: "Strict budget <= 500 USDC",
+    title: "Strict budget <= 500 HBAR",
     desc: "Same task shape, but a tighter hidden-budget style gate. The sample output fails this one.",
     spec: {
-      intent: "Buy an RTX 4090 under 500 USDC from a seller with a valid wallet + shipping proof.",
+      intent: "Buy an RTX 4090 under 500 HBAR from a seller with a valid wallet + shipping proof.",
       checks: DEMO_ACCEPTANCE_SPEC.checks.map((check) =>
         check.type === "price_max" ? { ...check, value: 500 } : check
       )
@@ -144,7 +144,7 @@ function specDetail(check: CheckSpec, submission: DemoSubmission) {
   if (check.type === "price_max") {
     return {
       title: "Invoice stays under committed cap",
-      detail: `max ${String(check.value)} ${String(check.currency ?? "USDC")} · sample ${submission.submission.invoice.amount} USDC`
+      detail: `max ${String(check.value)} ${String(check.currency ?? "HBAR")} · sample ${submission.submission.invoice.amount} HBAR`
     };
   }
   if (check.type === "wallet_risk") {
@@ -380,7 +380,7 @@ export function PaymentDemo({ query }: { query: BuyerQuery }) {
         <dl className="payment-ledger">
           <div>
             <dt>Budget</dt>
-            <dd>{budget} USDC</dd>
+            <dd>{budget} HBAR</dd>
           </div>
           <div>
             <dt>Policy</dt>
@@ -495,7 +495,7 @@ export function PaymentDemo({ query }: { query: BuyerQuery }) {
               </div>
               <div>
                 <span>{copy.lockLabel}</span>
-                <strong>{budget} USDC</strong>
+                <strong>{budget} HBAR</strong>
               </div>
             </div>
             {runError ? (
@@ -571,7 +571,7 @@ export function PaymentDemo({ query }: { query: BuyerQuery }) {
                 <dl>
                   <div>
                     <dt>{copy.fundsLabel}</dt>
-                    <dd>{passed && !rejected ? `${budget} USDC` : "0 USDC"}</dd>
+                    <dd>{passed && !rejected ? `${budget} HBAR` : "0 HBAR"}</dd>
                   </div>
                   <div>
                     <dt>Live tx shown</dt>

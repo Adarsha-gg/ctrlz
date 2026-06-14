@@ -34,8 +34,20 @@ value. Do not prefix it with a path; Vercel does not have your local credential
 file. The app also accepts `GCLOUD_PROJECT` for the project id and
 `GOOGLE_CLOUD_CREDENTIALS` for the service-account JSON.
 
-Without these values, `/marketplace` falls back to fixture data and displays that
-fallback state.
+Without these values, `/marketplace` shows a BigQuery error and no fake Ethereum
+rows. Do not rely on local ADC or the repo-root `.env` in Vercel; Vercel only
+sees variables configured in the project settings.
+
+## Required For Gemini Worker Agent
+
+The homepage and `/api/agent/solve` use Gemini to generate the worker patch:
+
+```sh
+vercel env add GEMINI_API_KEY production
+```
+
+Local development reads this from the repo-root `.env` through `web/next.config.mjs`.
+Vercel does not deploy `.env`, so set `GEMINI_API_KEY` in Vercel too.
 
 ## Optional Live Hedera Settlement
 
@@ -76,12 +88,33 @@ vercel env add X402_RECEIVER_ADDRESS production
 vercel env add X402_NETWORK production
 vercel env add X402_ASSET production
 vercel env add X402_AMOUNT production
+vercel env add X402_PAY_TO production
+vercel env add X402_HEDERA_DIRECT_SETTLE production
 vercel env add X402_FACILITATOR_URL production
 ```
 
-Set `X402_PAYONGREEN_REQUIRED=1`. If `X402_FACILITATOR_URL` is present, CTRL+Z
-posts the payment header to `<facilitator>/verify`. For a no-funds demo deploy,
-set `X402_DEMO_MODE=1` and send `X-PAYMENT: demo-x402:<id>`.
+Set `X402_PAYONGREEN_REQUIRED=1`. For the Hedera track, use:
+
+```sh
+X402_NETWORK=eip155:296
+X402_ASSET=HBAR
+X402_HEDERA_NETWORK=eip155:296
+X402_HEDERA_ASSET=HBAR
+X402_HEDERA_DIRECT_SETTLE=1
+TRUSTED_DIRECT_X402_THRESHOLD=80
+```
+
+For trusted agents (`trustScore >= 80` and x402-capable), CTRL+Z uses the x402
+V2 HTTP flow: the first request receives `402` with `PAYMENT-REQUIRED`, the MCP
+client retries with `PAYMENT-SIGNATURE`, and the backend returns
+`PAYMENT-RESPONSE` after settling the quoted amount as a Hedera testnet HBAR
+transfer. `X402_PAY_TO` or `HEDERA_WORKER_ADDRESS` should be the worker's EVM
+address. Lower-trust agents still use Hedera escrow.
+
+If `X402_FACILITATOR_URL` is present for non-direct routes, CTRL+Z posts the
+payment payload to `<facilitator>/verify`. Hosted facilitators may not support
+Hedera yet, so the trusted-agent path includes the Hedera facilitator/settler in
+the backend instead of depending on non-Hedera facilitator infrastructure.
 
 ## Runner Safety
 
@@ -134,3 +167,33 @@ open https://<deployment>/verify/payongreen-demo
 
 The status endpoint reports which credential groups are configured without
 returning secret values.
+
+## MCP Against Vercel
+
+The CTRL+Z MCP server defaults to the latest linked Vercel production deployment:
+
+```sh
+npm run mcp:ctrlz
+```
+
+Current default:
+
+```txt
+https://ctrlz-zeta.vercel.app
+```
+
+For preview deployments or a custom production domain:
+
+```sh
+CTRLZ_API_BASE=https://your-preview-or-domain.vercel.app npm run mcp:ctrlz
+```
+
+The production alias is public. If Vercel Deployment Protection is enabled on a
+preview deployment, MCP clients need a Protection Bypass for Automation token:
+
+```sh
+CTRLZ_VERCEL_BYPASS_TOKEN=<token> npm run mcp:ctrlz
+```
+
+Without that token on protected URLs, Vercel returns an authentication HTML page
+instead of API JSON, and the MCP server reports the deployment as protected.

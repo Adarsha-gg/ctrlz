@@ -74,12 +74,12 @@ type SettleReceipt = {
 };
 
 const INTENT =
-  "Reconcile every USDC transfer for the treasury wallet over the window, keyed by tx hash.";
+  "Reconcile every HBAR transfer for the treasury wallet over the window, keyed by tx hash.";
 
 /** A small honest dataset: tx hash → { amount, token }. Stands in for an expensive scan. */
 const HONEST_ROWS: DataRecord[] = Array.from({ length: 24 }, (_, i) => ({
   key: `0x${(0xa1000 + i * 7).toString(16)}`,
-  value: { amount: 1000 + i * 137, token: "USDC" }
+  value: { amount: 1000 + i * 137, token: "HBAR" }
 }));
 
 /** Ground truth a verifier independently re-fetches — here, the true chain values. */

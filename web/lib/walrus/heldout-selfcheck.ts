@@ -35,7 +35,7 @@ function check(label: string, cond: boolean, detail?: string) {
 
 const publicChecks: CheckSpec[] = [
   { type: "schema", hardGate: true, requiredFields: ["invoiceId", "amount", "currency"] },
-  { type: "price_max", hardGate: true, value: 700, currency: "USDC" }
+  { type: "price_max", hardGate: true, value: 700, currency: "HBAR" }
 ];
 const hiddenChecks: CheckSpec[] = [
   { type: "wallet_risk", hardGate: true, maxTier: "yellow" },
@@ -45,7 +45,7 @@ const salt = randomSalt();
 
 async function main() {
   const manifest = await buildHeldoutManifest({
-    intent: "Buy an RTX 4090 under 700 USDC from a seller with a valid wallet + shipping proof.",
+    intent: "Buy an RTX 4090 under 700 HBAR from a seller with a valid wallet + shipping proof.",
     publicChecks,
     hiddenChecks,
     salt,

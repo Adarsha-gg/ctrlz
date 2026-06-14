@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "CTRL+Z",
-  description: "Sender-controlled payment recall for Arc USDC payments"
+  description: "Hedera-native verification, settlement, and reputation for agent work"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

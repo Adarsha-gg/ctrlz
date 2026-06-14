@@ -7,7 +7,7 @@
 
 import type { AddressBookEntry } from "./types";
 
-/** alice — trusted seller with seeded sealed history on Arc */
+/** alice — trusted seller with seeded sealed history on Hedera */
 export const ALICE_ADDRESS = "0x3695f9A1A29b66ddbA90cD9069c65921C17b480C";
 export const ALICE_NAME = "alice.ctrlz.eth";
 
