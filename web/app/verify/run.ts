@@ -13,17 +13,12 @@ import {
   buildEvidenceBlob,
   buildManifest,
   hashBlob,
+  readEvidence,
   storeEvidence,
   type AcceptanceManifest,
   type EvidenceBlob,
   type StoreResult
 } from "@/lib/walrus";
-import {
-  applyWorldTrustBoost,
-  decideWorldGate,
-  type WorldGateDecision,
-  type WorldTrustBoost
-} from "@/lib/world";
 import { CHECKER_HISTORY, DEMO_ACCEPTANCE_SPEC, type DemoSubmission } from "./fixtures";
 
 export type AcceptanceSpecInput = {
@@ -36,14 +31,23 @@ export type VerificationResult = {
   reports: CheckerReport[];
   split: SplitScore;
   checkerMeta: CheckerMeta[];
-  /** World AgentKit-style free-trial/payment gate + human-backing signal (F1) */
-  worldGate: WorldGateDecision;
-  /** capped baseline adjustment applied only to agentTrust, never output checks */
-  worldTrustBoost: WorldTrustBoost;
   /** the acceptance-spec manifest this submission was judged against (E2) */
   manifest: AcceptanceManifest;
   /** the assembled evidence blob (E2) — the thing money resolves against */
   evidence: EvidenceBlob;
+};
+
+/**
+ * Round-trip proof that the evidence is actually retrievable from Walrus (Sui),
+ * not just claimed: re-fetch the stored blob from the aggregator and recompute
+ * its hash. `retrieved` = the aggregator returned the blob; `hashMatches` = the
+ * fetched bytes hash to the same sha256 anchor we committed. Both false when the
+ * blob stayed local (Walrus unavailable) — the hash anchor still holds.
+ */
+export type WalrusReadback = {
+  attempted: boolean;
+  retrieved: boolean;
+  hashMatches: boolean;
 };
 
 /** The evidence + manifest anchors surfaced in the UI (E2). */
@@ -52,6 +56,8 @@ export type EvidenceAnchors = {
   evidence: StoreResult;
   /** acceptance-manifest sha256 anchor (Codex's on-chain commit uses this) */
   manifestHash: string;
+  /** Walrus (Sui) retrievability proof — round-trips the stored blob */
+  readback: WalrusReadback;
 };
 
 /** Run an acceptance spec over a submission and produce the split score. */
@@ -81,17 +87,7 @@ export function verifySubmission(
     report: reports[i],
     metaWeight: checkerMeta[i]?.weight
   }));
-  const rawSplit = scoreSplit({ checks: scored, workerHistory: demo.workerHistory });
-  const worldGate = decideWorldGate({
-    agentId: demo.worldAgent.agentId,
-    usedVerifications: demo.worldAgent.usedVerifications,
-    identity: demo.worldAgent.identity
-  });
-  const { split, boost: worldTrustBoost } = applyWorldTrustBoost(
-    rawSplit,
-    worldGate,
-    demo.worldAgent.identity
-  );
+  const split = scoreSplit({ checks: scored, workerHistory: demo.workerHistory });
 
   // Assemble the verifiable manifest + evidence blob (E2). The manifest uses the
   // injected checks (so its hash reflects exactly what was evaluated); the
@@ -107,7 +103,7 @@ export function verifySubmission(
     checkerMeta
   });
 
-  return { scored, reports, split, checkerMeta, worldGate, worldTrustBoost, manifest, evidence };
+  return { scored, reports, split, checkerMeta, manifest, evidence };
 }
 
 /**
@@ -115,11 +111,32 @@ export function verifySubmission(
  * blob (Walrus → local fallback). Best-effort and NEVER throws — on any Walrus
  * failure the evidence store degrades to `{ store: "local", hash }` so the page
  * always has a hash to render.
+ *
+ * When the blob lands on Walrus (Sui), we then round-trip it: re-fetch from the
+ * aggregator and recompute the sha256 to prove the evidence is genuinely
+ * retrievable and content-addressed, not just a claimed hash. The read-back is
+ * also best-effort — a slow/unavailable aggregator degrades to "not verified"
+ * without touching the committed anchor.
  */
 export async function anchorEvidence(result: VerificationResult): Promise<EvidenceAnchors> {
   const [evidence, manifestHash] = await Promise.all([
     storeEvidence(result.evidence),
     hashBlob(result.manifest)
   ]);
-  return { evidence, manifestHash };
+
+  const readback = await verifyRetrievable(evidence);
+  return { evidence, manifestHash, readback };
+}
+
+/** Round-trip the stored blob from Walrus to prove retrievability + integrity. */
+async function verifyRetrievable(evidence: StoreResult): Promise<WalrusReadback> {
+  if (evidence.store !== "walrus" || !evidence.blobId) {
+    return { attempted: false, retrieved: false, hashMatches: false };
+  }
+  const fetched = await readEvidence(evidence.blobId);
+  if (fetched === undefined) {
+    return { attempted: true, retrieved: false, hashMatches: false };
+  }
+  const refetchedHash = await hashBlob(fetched);
+  return { attempted: true, retrieved: true, hashMatches: refetchedHash === evidence.hash };
 }

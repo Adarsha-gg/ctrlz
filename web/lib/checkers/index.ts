@@ -5,7 +5,12 @@ export type {
   Checker,
   TaskContext,
   WorkerSubmission,
-  InvoiceItem
+  InvoiceItem,
+  DataRecord,
+  DatasetArtifact,
+  TestStatus,
+  TestResult,
+  PatchArtifact
 } from "./types.ts";
 export {
   CHECKER_REGISTRY,
@@ -28,3 +33,12 @@ export { schemaChecker } from "./schema.ts";
 export { priceChecker } from "./price.ts";
 export { walletRiskChecker } from "./walletRisk.ts";
 export { sourceListingChecker } from "./sourceListing.ts";
+export { dataReconcileChecker } from "./dataReconcile.ts";
+export { testsPassChecker } from "./testsPass.ts";
+export {
+  commitDataset,
+  verifyDatasetReveal,
+  deriveSampleKeys,
+  DEFAULT_SAMPLE_SIZE
+} from "./reconcile.ts";
+export { commitPatch, verifyPatchReveal } from "./patchwork.ts";
