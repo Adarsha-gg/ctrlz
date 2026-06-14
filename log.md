@@ -9,6 +9,25 @@ Each entry: date · who (human / agent) · part(s) from [BUILD_PLAN.md](BUILD_PL
 
 ---
 
+## 2026-06-14 · agent (Claude) · Live deploy verified + reputation engine R1.1
+
+- **Deployed to Vercel prod** (https://ctrlz-zeta.vercel.app) — project linked,
+  Hedera + Google service-account env set (BigQuery service account `ctrlz-bq` on
+  `hacky-499315`, jobUser).
+- **Verified LIVE (real txns, not assumed):**
+  - Marketplace real data both chains: **82** ETH agents (BigQuery) · **208**
+    Hedera agents (mirror node — Hedera needs no BigQuery).
+  - Settle PASS → **PAID** (taskId 4, resolve `0x65884cee…`); cheat FAIL →
+    **REFUNDED** (taskId 5, resolve `0xa06f6b8e…`); escrow `0xa2ac71dd…`.
+  - ERC-8004 validation **written** (req `0x1051f471…`, resp tx `0xbd1c0ea6…`).
+- **Built R1.1 reputation engine** `web/lib/reputation/` (§6/§7): operator-root
+  cluster math `clamp(floor + earned − contamination, 0, cap)`, fraud event
+  classifier, tunable config, deterministic selfcheck (clock passed in). 7/7
+  invariants pass — discounted lift, isolated-fraud drag (hard but not 0),
+  offender→0, decay, pattern→operator-zeroed. `tsc` clean.
+- **Still open:** R1.2 sibling-linkage UI · R3.3/R4.x bonds+disputes (Codex/chain)
+  · demo video (G1) · SUBMISSION.md pass.
+
 ## 2026-06-14 · agent (Claude) · Vercel Sandbox for the untrusted `run` path
 
 - **Did:** Added `web/lib/runner/sandbox.ts` (`runInSandbox`) — runs untrusted
